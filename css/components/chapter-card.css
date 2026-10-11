@@ -1,0 +1,30 @@
+#card {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  text-align: center;
+  visibility: hidden;
+  padding-inline: 16px;
+}
+#card .inner {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: center;
+}
+#card .num {
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+#card .ttl {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: var(--t-mega);
+  line-height: 0.95;
+  padding-bottom: 0.08em;
+}

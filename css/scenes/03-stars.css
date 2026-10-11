@@ -1,0 +1,53 @@
+.holdbox {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: center;
+  visibility: hidden;
+}
+.hold {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  display: grid;
+  place-items: center;
+}
+.hold svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.hold .track {
+  fill: rgba(43, 12, 32, 0.5);
+  stroke: rgba(242, 196, 204, 0.25);
+  stroke-width: 1.5;
+}
+.hold .fill {
+  fill: none;
+  stroke: var(--wax-hot);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px var(--wax-hot));
+}
+.hold .core {
+  width: 34px;
+  height: 34px;
+  color: var(--wax-hot);
+}
+.hold::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 1px solid rgba(216, 50, 79, 0.5);
+  animation: ring 2s var(--expo) infinite;
+  pointer-events: none;
+}
+#holdTxt {
+  min-height: 1.4em;
+}

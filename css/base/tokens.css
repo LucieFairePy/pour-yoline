@@ -1,0 +1,21 @@
+:root {
+  --ink: #14060f;
+  --plum: #2b0c20;
+  --wax: #a8102c;
+  --wax-hot: #d8324f;
+  --blush: #f2c4cc;
+  --paper: #fbefe6;
+  --gold: #e8bd84;
+  --quill: #3a1424;
+  --muted: #c495a6;
+  --f-display: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
+  --f-hand: 'Kalam', 'Segoe Print', 'Bradley Hand', cursive;
+  --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --t-mega: clamp(3rem, 14vw, 8.5rem);
+  --t-h1: clamp(2rem, 7.2vw, 4rem);
+  --t-h2: clamp(1.3rem, 4.4vw, 2.1rem);
+  --t-body: clamp(1rem, 3.5vw, 1.18rem);
+  --t-label: 0.7rem;
+  --expo: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: dark;
+}

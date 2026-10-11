@@ -1,0 +1,38 @@
+@media (max-height: 640px) {
+  .intro {
+    grid-template-rows: auto 24vh 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #yes::after,
+  .hold::after {
+    animation: none;
+  }
+}
+@media (max-width: 600px) {
+  .stamp {
+    padding: 0.45rem 0.9rem;
+    gap: 0.1rem;
+    background: rgba(43, 12, 32, 0.38);
+  }
+  .stamp .label {
+    font-size: 0.66rem;
+  }
+  .stamp .when {
+    font-size: 0.78rem;
+  }
+  .stamp .since {
+    font-size: 1.05rem;
+  }
+  .yesBottom {
+    gap: 0.45rem;
+  }
+  .yes .row {
+    gap: 0.35rem;
+  }
+  .yes .ghost {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+}

@@ -1,0 +1,30 @@
+const CONFIG = {
+  name: 'Yoline',
+  signature: '— Moi, un peu nerveux (même dans l’espace)',
+  letter: [
+    'Yoline,',
+    'Je voulais t’écrire quelque chose qui ne tienne pas dans un message.',
+    'Alors j’ai construit ça, ligne par ligne, juste pour toi. Et je t’ai emmenée dans l’espace pour te le dire.',
+    'Depuis que tu es là, mes journées ont un détail en plus : je cherche des raisons de te parler.',
+    'J’aime ton rire, ta façon de voir les choses, et le calme que je ressens quand tu es à côté.',
+    'Je ne sais pas écrire de poèmes. Mais je sais ce que je ressens.',
+    'Et ce que je ressens ne rentre plus dans la case « ami ».',
+    'Alors j’ai une question. Une seule. Mais avant, je veux te montrer quelque chose.',
+  ],
+  credits: [
+    ['title', '', 'Pour Yoline'],
+    ['', 'Une production', 'Moi, très amoureux'],
+    ['', 'Avec', 'Yoline, dans son propre rôle, en combinaison pailletée'],
+    ['', 'Copilote', 'Sa main, que je n’ai jamais lâchée'],
+    ['', 'Lettre écrite par', 'Quelqu’un qui a réécrit chaque phrase quatre fois'],
+    ['', 'Musique', 'Composée en direct par ton navigateur, juste pour toi'],
+    ['', 'La rose', 'Deux mille astéroïdes et un peu de poussière d’étoiles'],
+    ['', 'Le cœur', 'Une nébuleuse. Et le mien.'],
+    ['', 'Le trou noir', 'Seulement si tu disais non'],
+    ['', 'Le bouton « Non »', 'Aspiré. Il ne reviendra pas.'],
+    ['note', '', 'Aucun astronaute n’a été lâché pendant le tournage.'],
+    ['', 'Distance parcourue', 'Quelques années-lumière, en une seule prise'],
+    ['', 'Remerciements', 'À toi, d’avoir fait tout le voyage'],
+  ],
+};
+const FACE = {};

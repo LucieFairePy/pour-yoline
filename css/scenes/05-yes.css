@@ -1,0 +1,64 @@
+#s-yes {
+  align-items: stretch;
+  justify-items: center;
+}
+.yes {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  width: 100%;
+  max-width: 40rem;
+  justify-items: center;
+  gap: 0;
+}
+.yes h2 {
+  margin: 0;
+  font-size: clamp(2.6rem, 10vw, 5.6rem);
+  font-style: italic;
+  font-weight: 500;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+}
+.yes p {
+  margin: 0;
+  font-size: var(--t-body);
+  line-height: 1.55;
+  max-width: 28rem;
+  text-wrap: balance;
+}
+.yesTop,
+.yesBottom {
+  display: grid;
+  gap: 0.85rem;
+  justify-items: center;
+}
+.yesBottom {
+  align-self: end;
+}
+.stamp {
+  border: 1px solid rgba(232, 189, 132, 0.4);
+  border-radius: 4px;
+  padding: 0.9rem 1.4rem;
+  display: grid;
+  gap: 0.3rem;
+  background: rgba(43, 12, 32, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.stamp .when {
+  font-size: clamp(1rem, 4vw, 1.2rem);
+  color: var(--gold);
+  font-style: italic;
+}
+.stamp .since {
+  font-family: var(--f-mono);
+  font-size: clamp(1.3rem, 6vw, 1.9rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.yes .row {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}

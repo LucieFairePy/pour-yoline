@@ -1,0 +1,112 @@
+.hud {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+.hud > * {
+  pointer-events: auto;
+}
+.hud.top {
+  top: 0;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
+}
+.hud.bottom {
+  bottom: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  align-items: flex-end;
+}
+.mono {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--paper);
+}
+.mono b {
+  color: var(--wax-hot);
+  font-weight: 400;
+}
+#sound {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--f-mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  padding: 0.4rem 0;
+}
+#sound .bars {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 11px;
+}
+#sound .bars i {
+  width: 2px;
+  height: 100%;
+  background: var(--gold);
+  transform-origin: bottom;
+  transform: scaleY(0.2);
+}
+.chap {
+  display: grid;
+  gap: 0.45rem;
+}
+.chap .row {
+  display: flex;
+  gap: 0.7rem;
+  align-items: baseline;
+  font-family: var(--f-mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+#chapNum {
+  color: var(--wax-hot);
+  font-variant-numeric: tabular-nums;
+}
+.prog {
+  display: flex;
+  gap: 4px;
+}
+.prog i {
+  width: 18px;
+  height: 2px;
+  background: rgba(242, 196, 204, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+.prog i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--wax-hot);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.2s var(--expo);
+}
+.prog i.on::after {
+  transform: scaleX(1);
+}
+.clock {
+  font-family: var(--f-mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  display: grid;
+  gap: 0.3rem;
+}
+#fps {
+  opacity: 0.5;
+}

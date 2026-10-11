@@ -1,0 +1,167 @@
+#s-letter {
+  align-items: end;
+}
+.chatwrap {
+  width: min(100%, 26rem);
+  display: grid;
+  gap: 0.7rem;
+  justify-items: stretch;
+}
+.chathead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+.chathead .av {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #ff6b8f, #a8102c);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+.chathead small {
+  display: block;
+  font-size: 0.66rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+.chat {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.32rem;
+  height: min(46vh, 24rem);
+  height: min(46dvh, 24rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-top: 1.2rem;
+  padding-bottom: 0.2rem;
+  pointer-events: auto;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 16%);
+}
+.bub {
+  align-self: flex-end;
+  max-width: 84%;
+  padding: 0.52rem 0.82rem;
+  border-radius: 1.15rem;
+  border-bottom-right-radius: 0.5rem;
+  background: linear-gradient(180deg, #3b9bff, #0a7cff);
+  color: #fff;
+  text-align: left;
+  position: relative;
+  flex: none;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(0.94rem, 3.6vw, 1.04rem);
+  line-height: 1.32;
+  box-shadow: 0 8px 22px -10px rgba(10, 124, 255, 0.75);
+  transform-origin: 100% 100%;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.bub.sign {
+  background: linear-gradient(180deg, #ff5d7e, #e0244d);
+  box-shadow: 0 8px 22px -10px rgba(224, 36, 77, 0.8);
+}
+.typing {
+  align-self: flex-end;
+  flex: none;
+  background: rgba(58, 58, 60, 0.9);
+  border-radius: 1.15rem;
+  border-bottom-right-radius: 0.5rem;
+  padding: 0.72rem 0.9rem;
+  display: flex;
+  gap: 4px;
+  transform-origin: 100% 100%;
+}
+.typing i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a1a1a6;
+  animation: tdot 1.2s ease-in-out infinite;
+}
+.typing i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.typing i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes tdot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.tapback {
+  position: absolute;
+  left: -12px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2c2c2e;
+  border: 2px solid #05020a;
+  display: grid;
+  place-items: center;
+  color: #ff375f;
+  font-size: 14px;
+  line-height: 1;
+}
+.readmark {
+  align-self: flex-end;
+  flex: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-right: 0.35rem;
+}
+.chatfoot {
+  display: flex;
+  gap: 0.7rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 3rem;
+  align-items: center;
+}
+#giveBtn,
+#toRose,
+#skipChat,
+#likeHint {
+  visibility: hidden;
+}
+.w {
+  white-space: nowrap;
+}
+.chat::-webkit-scrollbar {
+  display: none;
+}
+.chat::before {
+  content: '';
+  margin-top: auto;
+}
+@media (min-width: 900px) {
+  #s-letter {
+    justify-items: start;
+    padding-left: 6vw;
+  }
+}

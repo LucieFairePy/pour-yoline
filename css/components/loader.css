@@ -1,0 +1,68 @@
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--ink);
+  clip-path: inset(0 0 0 0);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px
+    calc(env(safe-area-inset-bottom, 0px) + 18px);
+}
+#loader .top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+#loader .mid {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+#loader .quote {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: clamp(1.2rem, 4.6vw, 2rem);
+  max-width: 22ch;
+  line-height: 1.25;
+  text-wrap: balance;
+  margin: 0;
+}
+#loader .bot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+#loader .task {
+  min-width: 0;
+  flex: 1;
+}
+#loader .task p {
+  margin: 0;
+}
+#count {
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: clamp(4.2rem, 21vw, 13rem);
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  display: block;
+  padding-right: 0.08em;
+}
+#count span {
+  display: inline-block;
+}
+#lBar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--wax-hot);
+  transform: scaleX(0);
+  transform-origin: left;
+}

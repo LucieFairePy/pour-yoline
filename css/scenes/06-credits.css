@@ -1,0 +1,99 @@
+#s-end {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.creditsMask {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 9%,
+    #000 24%,
+    #000 70%,
+    transparent 86%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 9%,
+    #000 24%,
+    #000 70%,
+    transparent 86%
+  );
+}
+.credits {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: grid;
+  gap: 2.6rem;
+  justify-items: center;
+  padding-inline: 16px;
+  will-change: transform;
+}
+.credit {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 28rem;
+}
+.credit .role {
+  font-family: var(--f-mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.credit .who {
+  font-size: clamp(1.25rem, 4.6vw, 1.9rem);
+  font-style: italic;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.credit.title .who {
+  font-size: var(--t-mega);
+  font-style: italic;
+}
+.credit.note .who {
+  font-family: var(--f-mono);
+  font-style: normal;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.endbox {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 1.4rem;
+  justify-items: center;
+  visibility: hidden;
+}
+.endbox h2 {
+  margin: 0;
+  font-size: var(--t-mega);
+  font-style: italic;
+  font-weight: 500;
+  line-height: 0.95;
+}
+.endbox p {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--muted);
+}
+.endbox .row {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.skipnote {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+  margin: 0;
+}

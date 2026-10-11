@@ -1,0 +1,45 @@
+#s-intro {
+  grid-template-rows: minmax(0, 1fr);
+}
+.intro {
+  display: grid;
+  grid-template-rows: auto clamp(120px, 27vh, 250px) 1fr;
+  align-self: stretch;
+  justify-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  height: 100%;
+  max-width: 40rem;
+  padding-top: clamp(0px, 3vh, 28px);
+}
+.intro .eyebrow {
+  grid-row: 1;
+  align-self: start;
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: var(--t-h2);
+  color: var(--muted);
+  margin: 0;
+}
+.intro .nameSlot {
+  grid-row: 2;
+  align-self: stretch;
+  width: 100%;
+}
+.intro .lower {
+  grid-row: 3;
+  align-self: end;
+  display: grid;
+  gap: 1.4rem;
+  justify-items: center;
+}
+.intro .sub {
+  margin: 0;
+  font-size: var(--t-body);
+  line-height: 1.55;
+  max-width: 28ch;
+  text-wrap: balance;
+}
+.intro .hint {
+  margin: 0;
+}
