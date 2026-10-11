@@ -2,90 +2,53 @@
 
 # Pour Yoline
 
-**Une déclaration en forme de voyage dans l'espace.**
+**Toutes les destinations, au même endroit.**
 
-[▶ Voir la démo](https://luciefairepy.github.io/pour-yoline/)
+[▶ Ouvrir le launcher](https://luciefairepy.github.io/pour-yoline/)
 
 </div>
 
 ---
 
-Un site d'une seule page, en vue subjective : on flotte en combinaison, main dans la main, et on traverse sept chapitres
-reliés par des sauts en hyperespace. Tout est dessiné en temps réel (Three.js) et la musique est composée en direct par le
-navigateur.
+La page d'accueil est un launcher : chaque site fait pour Yoline y a sa bulle, avec une image de sa première scène.
 
-À ouvrir avec le son.
+## Destinations
 
-## Le voyage
-
-| #   | Chapitre    | Ce qui se passe                                                          |
-| --- | ----------- | ------------------------------------------------------------------------ |
-| 00  | Départ      | Le prénom écrit en étoiles, loin dans l'espace                           |
-| I   | La lettre   | La lettre arrive en bulles de messages, une par une                      |
-| II  | La rose     | Une rose qui se forme à partir de milliers d'astéroïdes                  |
-| III | Les étoiles | Une nébuleuse en forme de cœur ; garder le doigt appuyé pour la ressentir |
-| IV  | La question | La question. Le bouton « Non » ne se laisse pas faire, et finit dans un trou noir |
-| V   | Oui         | Grand final : galaxie-cœur, feux d'artifice en 3D                        |
-| VI  | Générique   | Le générique de fin                                                      |
+| #   | Site                          | Dossier              | Démo                                                         |
+| --- | ----------------------------- | -------------------- | ------------------------------------------------------------ |
+| 01  | [Le voyage](voyage/README.md) | [`voyage/`](voyage/) | [ouvrir](https://luciefairepy.github.io/pour-yoline/voyage/) |
 
 ## Lancer en local
 
-Aucun build, aucun serveur : ouvrir `index.html` dans un navigateur (le double-clic suffit).
-Les librairies sont chargées depuis un CDN, il faut donc une connexion internet.
+Aucun build, aucun serveur : ouvrir `index.html` dans un navigateur (le double-clic suffit), puis choisir une bulle.
 
-Sur mobile, le gyroscope sert à regarder autour de soi. Sans WebGL, le texte reste lisible.
+## Ajouter un site
 
-## Personnaliser
-
-Tous les textes affichés sont dans [`js/config.js`](js/config.js) :
+1. Mettre le site dans son propre dossier à la racine, par exemple `nouveau/` avec son `index.html`.
+2. Ajouter une image de sa première scène dans `launcher/img/` (format 16:10, `.webp`).
+3. Ajouter une entrée dans [`launcher/sites.js`](launcher/sites.js) :
 
 ```js
-const CONFIG = {
-  name: 'Yoline',          // le prénom (intro, messages, question)
-  signature: '— Moi, …',   // signature de la lettre
-  letter: [ … ],           // une ligne = une bulle
-  credits: [ … ],          // [style, rôle, nom] pour le générique
-};
+{
+  href: 'nouveau/index.html',
+  img: 'launcher/img/nouveau.webp',
+  title: 'Nouveau',
+  sub: 'Une phrase pour le décrire',
+  tag: 'Mois année',
+},
 ```
-
-## Technique
-
-- **3D** : Three.js r128, shaders GLSL maison (planètes, nébuleuse, trou noir, post-traitement avec bloom)
-- **Animation** : GSAP 3.13 (SplitText, ScrambleText)
-- **Son** : Web Audio API, musique générative et effets synthétisés, sans fichier audio
-- **Code** : HTML, CSS et JavaScript sans framework ni étape de build, formatés avec Prettier
 
 ## Structure
 
 ```
-index.html            scènes + ordre de chargement des CSS et des scripts
-css/
-  base/               tokens, reset, animations
-  components/         hud, curseur, loader, carton de chapitre, scène, boutons
-  scenes/             une feuille par chapitre (00-intro … 06-credits)
-  responsive.css      media queries
-js/
-  config.js           textes
-  core/               utilitaires
-  audio/              moteur, instruments, compositeur, battement de cœur, effets
-  world/
-    core/             renderer, post-traitement, lumières, boucle de rendu
-    environment/      ciel, particules, planètes, décors, nébuleuse
-    characters/       matériaux, gants, astronautes, poses
-    objects/          rose, enveloppe, prénom en étoiles, final
-  app/                interface, entrées, curseur, moteur de chapitres, démarrage
-  chapters/           la logique de chaque chapitre
+index.html            le launcher
+launcher/
+  sites.js            la liste des destinations
+  main.js             bulles, transitions, ciel étoilé
+  style.css           styles du launcher
+  img/                une image par destination
+voyage/               Le voyage (site complet, voir son README)
 ```
-
-Les scripts sont des scripts classiques, sans modules ES, pour que le site marche aussi en `file://`. Ils partagent la
-même portée globale, donc l'ordre des balises `<script>` dans `index.html` compte.
-
-Pour ajouter un chapitre, il faut :
-
-- `js/chapters/NN-id.js` ;
-- `css/scenes/NN-id.css` ;
-- son décor dans `js/world/environment/backdrops.js` ;
-- une entrée dans `CHAP` (`js/app/chapters.js`).
 
 ## Licence
 
