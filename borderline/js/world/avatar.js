@@ -74,6 +74,266 @@ const Avatar = (() => {
     toneMapped: false,
   });
 
+  const animState = () => ({
+    ph: 0,
+    lean: 0,
+    air: 0,
+    hang: 0,
+    grap: 0,
+    sit: 0,
+    land: 0,
+    hand: 0,
+    float: 0,
+    swim: 0,
+    lie: 0,
+    wasGround: true,
+  });
+
+  // Shared procedural animation: returns joint angles in the original rig convention
+  // (thigh/upper-arm rotation.x negative = forward, knee positive = bend, elbow negative = bend).
+  const animate = (A, dt, s, t) => {
+    const sp = s.speed || 0;
+    const run = clamp(sp / 9, 0, 1);
+    A.air = damp(A.air, s.grounded || s.mode === 'hang' ? 0 : 1, 10, dt);
+    A.hang = damp(A.hang, s.mode === 'hang' ? 1 : 0, 8, dt);
+    A.grap = damp(A.grap, s.mode === 'grapple' ? 1 : 0, 12, dt);
+    A.sit = damp(A.sit, s.mode === 'sit' ? 1 : 0, 6, dt);
+    A.hand = damp(A.hand, s.hand ? 1 : 0, 6, dt);
+    if (s.grounded && !A.wasGround) A.land = 1;
+    A.wasGround = s.grounded;
+    A.land = Math.max(0, A.land - dt * 4);
+    if (s.grounded) A.ph += sp * dt * 1.55;
+    const amp = clamp(sp / 5, 0, 1) * (0.55 + run * 0.35) * (1 - A.air);
+    const sn = Math.sin(A.ph);
+    const cs = Math.cos(A.ph);
+    const idle = Math.sin(t * 1.6) * 0.015;
+    A.lean = damp(A.lean, run * 0.22 * (1 - A.air), 6, dt);
+    const o = {
+      bodyY: -0.95 + Math.abs(sn) * 0.06 * amp + idle - A.land * 0.08 - A.sit * 0.42,
+      torsoX: A.lean + A.land * 0.15 - A.hang * 0.05,
+      torsoY: sn * 0.08 * amp,
+      headX: -A.lean * 0.6,
+      legs: [],
+      arms: [],
+      punch: 0,
+      amp,
+      sit: A.sit,
+      hang: A.hang,
+    };
+    for (let i = 0; i < 2; i++) {
+      const d = i ? -1 : 1;
+      const w = sn * d;
+      o.legs.push({
+        thigh:
+          -w * amp * 0.9 +
+          A.air * (i ? -0.7 : -0.25) +
+          A.hang * Math.sin(t * 1.3 + i) * 0.15 -
+          A.sit * 1.5,
+        knee:
+          Math.max(0, w) * amp * 1.3 +
+          0.2 * amp +
+          A.air * (i ? 1.1 : 0.5) +
+          A.sit * 1.55 +
+          A.land * 0.4,
+      });
+    }
+    for (let i = 0; i < 2; i++) {
+      const d = i ? 1 : -1;
+      const w = sn * d;
+      let ux = -w * amp * 0.8 + A.air * -0.4;
+      let uz = (i ? 1 : -1) * (0.12 + A.air * 0.9);
+      ux = lerp(ux, -2.9, A.hang);
+      uz = lerp(uz, (i ? 1 : -1) * 0.25, A.hang);
+      if (i === 1) {
+        ux = lerp(ux, -1.65, A.grap);
+        uz = lerp(uz, 0.05, A.grap);
+        ux = lerp(ux, -0.45, A.hand);
+        uz = lerp(uz, 0.7, A.hand);
+      }
+      ux = lerp(ux, -0.3, A.sit);
+      if (i === 1 && s.punch > 0) {
+        const k = Math.sin((s.punch / 0.25) * Math.PI);
+        ux = lerp(ux, -1.6, k);
+        uz = lerp(uz, 0.1, k);
+        o.punch = k;
+      }
+      o.arms.push({
+        ux,
+        uz,
+        fore: -0.25 - amp * 0.5 * (cs * d * 0.5 + 0.5) - A.air * 0.3 + A.hang * 0.2 - A.sit * 0.9,
+      });
+    }
+    A.float = damp(A.float, s.mode === 'float' ? 1 : 0, 4, dt);
+    A.swim = damp(A.swim, s.mode === 'swim' ? 1 : 0, 4, dt);
+    A.lie = damp(A.lie, s.mode === 'lie' ? 1 : 0, 4, dt);
+    if (A.float + A.swim + A.lie > 0.001) {
+      const sw = t * 2.4;
+      const mix3 = (base, f, w, l) => lerp(lerp(lerp(base, f, A.float), w, A.swim), l, A.lie);
+      o.legs.forEach((l, i) => {
+        const kick = Math.sin(sw * 2 + i * Math.PI);
+        l.thigh = mix3(
+          l.thigh,
+          Math.sin(t * 0.9 + i * 1.7) * 0.18 - 0.2,
+          kick * 0.45 - 0.1,
+          i ? 0.08 : -0.05,
+        );
+        l.knee = mix3(
+          l.knee,
+          0.35 + Math.sin(t * 1.1 + i) * 0.15,
+          0.3 + Math.max(0, kick) * 0.6,
+          0.12,
+        );
+      });
+      o.arms.forEach((a, i) => {
+        const sg = i ? 1 : -1;
+        a.ux = mix3(a.ux, -0.3 + Math.sin(t * 0.8 + i) * 0.15, -1.9 + Math.cos(sw) * 0.7, -0.15);
+        a.uz = mix3(
+          a.uz,
+          sg * (0.7 + Math.sin(t * 0.7 + i * 2) * 0.12),
+          sg * (0.35 + (Math.sin(sw) * 0.5 + 0.5) * 1.1),
+          sg * 0.55,
+        );
+        a.fore = mix3(a.fore, -0.5, -0.4 - Math.max(0, Math.sin(sw)) * 0.8, -0.15);
+      });
+      o.headX = lerp(o.headX, -0.25, A.swim);
+      o.bodyY = lerp(o.bodyY, -0.95, Math.min(1, A.float + A.swim + A.lie));
+    }
+    return o;
+  };
+
+  const shadowMesh = () => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.1, 1.1).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }),
+    );
+    m.renderOrder = 1;
+    return m;
+  };
+
+  const placeShadow = (root, shadow, s) => {
+    const gy = s.groundY == null ? root.position.y : s.groundY;
+    shadow.position.set(root.position.x, gy + 0.02, root.position.z);
+    const hgt = clamp((root.position.y - gy) / 6, 0, 1);
+    shadow.scale.setScalar(1 - hgt * 0.5);
+    shadow.material.opacity = 1 - hgt * 0.8;
+    shadow.visible = root.visible && gy > -1e3;
+  };
+
+  const ghostable = (root) => (k) => {
+    const on = k > 0;
+    if (on === !!root.userData.ghost) return;
+    root.userData.ghost = on;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      if (on) {
+        o.userData.mat = o.material;
+        o.material = ghostMat;
+      } else if (o.userData.mat) o.material = o.userData.mat;
+    });
+  };
+
+  // High-detail avatar: the same astronauts as the intro film, driven by the shared animation.
+  const HQ_LOOK = {
+    dame: () => ({
+      suit: HQ.sequinMat(0x006a3a, { rough: 0.55, metal: 0.12 }),
+      feminine: true,
+      name: CONFIG.her,
+    }),
+    valet: () => ({
+      suit: HQ.sequinMat(0x1d2d6e, { glint: 0.55 }),
+      feminine: false,
+      name: CONFIG.me,
+      accent: '#2a3f9e',
+      accentDark: '#1b2a6b',
+    }),
+  };
+  const SCALE = 0.9;
+
+  const buildHQ = (role) => {
+    const L = LOOK[role];
+    const glow = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(L.glow).multiplyScalar(2),
+      toneMapped: false,
+    });
+    const rig = HQRig.build(HQ_LOOK[role]());
+    rig.g.scale.setScalar(SCALE);
+    rig.apply(HQRig.P.stand());
+    const base = -rig.groundSnap(0, true);
+    rig.g.position.set(0, base, 0);
+    rig.g.traverse((o) => {
+      if (o.isMesh) o.frustumCulled = false;
+    });
+
+    const root = new THREE.Group();
+    const spin = new THREE.Group();
+    spin.position.y = 0.95;
+    const lean = new THREE.Group();
+    lean.position.y = -0.95;
+    root.add(spin);
+    spin.add(lean);
+    // lean pivots around the hips
+    const hips = new THREE.Group();
+    hips.position.y = base - 0.3 * SCALE;
+    lean.add(hips);
+    rig.g.position.y = 0.3 * SCALE;
+    hips.add(rig.g);
+    const shadow = shadowMesh();
+    const A = animState();
+    const pose = HQRig.P.zero();
+    const legOf = rig.A.legs.map((Lg) => (Lg.s > 0 ? 1 : 0));
+
+    return {
+      role,
+      root,
+      spin,
+      shadow,
+      glow,
+      hq: true,
+      ghost: ghostable(root),
+      hand(out = V3()) {
+        return rig.handWorld(0, out);
+      },
+      addTo(scene) {
+        scene.add(root, shadow);
+      },
+      set visible(v) {
+        root.visible = v;
+        shadow.visible = v;
+      },
+      update(dt, s, t) {
+        HQ.time.value = t;
+        const o = animate(A, dt, s, t);
+        hips.position.y = base - 0.3 * SCALE + (o.bodyY + 0.95);
+        hips.rotation.x = o.torsoX;
+        hips.rotation.y = o.torsoY;
+        // HQ arms: [0] = left (+x) = original arm 1, [1] = right (-x) = original arm 0
+        [1, 0].forEach((src, k) => {
+          const a = o.arms[src];
+          const sd = src ? 1 : -1;
+          const P = pose.arms[k];
+          P.p = -a.ux;
+          P.a = a.uz * sd;
+          P.e = Math.max(0.05, -a.fore);
+          P.g =
+            src === 1 && o.punch > 0 ? lerp(0.6, 1, o.punch) : s.hand && src === 1 ? 0.75 : 0.55;
+        });
+        rig.A.legs.forEach((Lg, k) => {
+          const l = o.legs[legOf[k]];
+          const P = pose.legs[k];
+          P.p = -l.thigh;
+          P.a = 0.05;
+          P.k = Math.max(0.03, l.knee);
+          P.f = -0.15 * o.sit;
+        });
+        pose.head.p = o.headX;
+        pose.head.y = 0;
+        rig.apply(pose);
+        spin.rotation.x = s.flip || 0;
+        placeShadow(root, shadow, s);
+      },
+    };
+  };
+
   const seg = (len, r0, r1, mat) => {
     const pivot = new THREE.Group();
     const m = new THREE.Mesh(
@@ -215,20 +475,7 @@ const Avatar = (() => {
     );
     shadow.renderOrder = 1;
 
-    const A = {
-      ph: 0,
-      lean: 0,
-      air: 0,
-      hang: 0,
-      grap: 0,
-      sit: 0,
-      land: 0,
-      hand: 0,
-      float: 0,
-      swim: 0,
-      lie: 0,
-    };
-    let wasGround = true;
+    const A = animState();
 
     return {
       role,
@@ -259,114 +506,20 @@ const Avatar = (() => {
         shadow.visible = v;
       },
       update(dt, s, t) {
-        const sp = s.speed || 0;
-        const run = clamp(sp / 9, 0, 1);
-        A.air = damp(A.air, s.grounded || s.mode === 'hang' ? 0 : 1, 10, dt);
-        A.hang = damp(A.hang, s.mode === 'hang' ? 1 : 0, 8, dt);
-        A.grap = damp(A.grap, s.mode === 'grapple' ? 1 : 0, 12, dt);
-        A.sit = damp(A.sit, s.mode === 'sit' ? 1 : 0, 6, dt);
-        A.hand = damp(A.hand, s.hand ? 1 : 0, 6, dt);
-        if (s.grounded && !wasGround) A.land = 1;
-        wasGround = s.grounded;
-        A.land = Math.max(0, A.land - dt * 4);
-        if (s.grounded) A.ph += sp * dt * 1.55;
-        const amp = clamp(sp / 5, 0, 1) * (0.55 + run * 0.35) * (1 - A.air);
-        const sn = Math.sin(A.ph);
-        const cs = Math.cos(A.ph);
-        const idle = Math.sin(t * 1.6) * 0.015;
-        A.lean = damp(A.lean, run * 0.22 * (1 - A.air), 6, dt);
-
-        body.position.y = -0.95 + Math.abs(sn) * 0.06 * amp + idle - A.land * 0.08 - A.sit * 0.42;
-        torso.rotation.x = A.lean + A.land * 0.15 - A.hang * 0.05;
-        torso.rotation.y = sn * 0.08 * amp;
-        head.rotation.x = -A.lean * 0.6;
-
+        const o = animate(A, dt, s, t);
+        body.position.y = o.bodyY;
+        torso.rotation.x = o.torsoX;
+        torso.rotation.y = o.torsoY;
+        head.rotation.x = o.headX;
         legs.forEach((l, i) => {
-          const d = i ? -1 : 1;
-          const w = sn * d;
-          const thigh =
-            -w * amp * 0.9 +
-            A.air * (i ? -0.7 : -0.25) +
-            A.hang * Math.sin(t * 1.3 + i) * 0.15 -
-            A.sit * 1.5;
-          const knee =
-            Math.max(0, w) * amp * 1.3 +
-            0.2 * amp +
-            A.air * (i ? 1.1 : 0.5) +
-            A.sit * 1.55 +
-            A.land * 0.4;
-          l.thigh.rotation.x = thigh;
-          l.shin.rotation.x = knee;
+          l.thigh.rotation.x = o.legs[i].thigh;
+          l.shin.rotation.x = o.legs[i].knee;
         });
         arms.forEach((a, i) => {
-          const d = i ? 1 : -1;
-          const w = sn * d;
-          let ux = -w * amp * 0.8 + A.air * -0.4;
-          let uz = (i ? 1 : -1) * (0.12 + A.air * 0.9);
-          ux = lerp(ux, -2.9, A.hang);
-          uz = lerp(uz, (i ? 1 : -1) * 0.25, A.hang);
-          if (i === 1) {
-            ux = lerp(ux, -1.65, A.grap);
-            uz = lerp(uz, 0.05, A.grap);
-            ux = lerp(ux, -0.45, A.hand);
-            uz = lerp(uz, 0.7, A.hand);
-          }
-          ux = lerp(ux, -0.3, A.sit);
-          if (i === 1 && s.punch > 0) {
-            const k = Math.sin((s.punch / 0.25) * Math.PI);
-            ux = lerp(ux, -1.6, k);
-            uz = lerp(uz, 0.1, k);
-          }
-          a.upper.rotation.x = ux;
-          a.upper.rotation.z = uz;
-          a.fore.rotation.x =
-            -0.25 - amp * 0.5 * (cs * d * 0.5 + 0.5) - A.air * 0.3 + A.hang * 0.2 - A.sit * 0.9;
+          a.upper.rotation.x = o.arms[i].ux;
+          a.upper.rotation.z = o.arms[i].uz;
+          a.fore.rotation.x = o.arms[i].fore;
         });
-        A.float = damp(A.float, s.mode === 'float' ? 1 : 0, 4, dt);
-        A.swim = damp(A.swim, s.mode === 'swim' ? 1 : 0, 4, dt);
-        A.lie = damp(A.lie, s.mode === 'lie' ? 1 : 0, 4, dt);
-        if (A.float + A.swim + A.lie > 0.001) {
-          const sw = t * 2.4;
-          const mix3 = (base, f, w, l) => lerp(lerp(lerp(base, f, A.float), w, A.swim), l, A.lie);
-          legs.forEach((l, i) => {
-            const kick = Math.sin(sw * 2 + i * Math.PI);
-            l.thigh.rotation.x = mix3(
-              l.thigh.rotation.x,
-              Math.sin(t * 0.9 + i * 1.7) * 0.18 - 0.2,
-              kick * 0.45 - 0.1,
-              i ? 0.08 : -0.05,
-            );
-            l.shin.rotation.x = mix3(
-              l.shin.rotation.x,
-              0.35 + Math.sin(t * 1.1 + i) * 0.15,
-              0.3 + Math.max(0, kick) * 0.6,
-              0.12,
-            );
-          });
-          arms.forEach((a, i) => {
-            const sg = i ? 1 : -1;
-            a.upper.rotation.x = mix3(
-              a.upper.rotation.x,
-              -0.3 + Math.sin(t * 0.8 + i) * 0.15,
-              -1.9 + Math.cos(sw) * 0.7,
-              -0.15,
-            );
-            a.upper.rotation.z = mix3(
-              a.upper.rotation.z,
-              sg * (0.7 + Math.sin(t * 0.7 + i * 2) * 0.12),
-              sg * (0.35 + (Math.sin(sw) * 0.5 + 0.5) * 1.1),
-              sg * 0.55,
-            );
-            a.fore.rotation.x = mix3(
-              a.fore.rotation.x,
-              -0.5,
-              -0.4 - Math.max(0, Math.sin(sw)) * 0.8,
-              -0.15,
-            );
-          });
-          head.rotation.x = lerp(head.rotation.x, -0.25, A.swim);
-          body.position.y = lerp(body.position.y, -0.95, Math.min(1, A.float + A.swim + A.lie));
-        }
         spin.rotation.x = s.flip || 0;
         const gy = s.groundY == null ? root.position.y : s.groundY;
         shadow.position.set(root.position.x, gy + 0.02, root.position.z);
@@ -378,5 +531,10 @@ const Avatar = (() => {
     };
   };
 
-  return { build, LOOK };
+  const useHQ = () =>
+    typeof HQRig !== 'undefined' &&
+    SETTINGS.quality !== 'low' &&
+    !/[?&]lowav\b/.test(location.search);
+
+  return { build: (role) => (useHQ() ? buildHQ(role) : build(role)), LOOK };
 })();

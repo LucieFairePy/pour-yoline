@@ -1,9 +1,45 @@
 (() => {
   const T = CONFIG;
   const seen = new Set();
-  const DOOR_BY_CHAPTER = { 0: 'h10', 1: 'c4', 2: 'sK', 3: 'd9' };
-  const PLACE_BY_CHAPTER = { 1: 'cafe', 2: 'banc', 3: 'kino', 4: 'danse' };
-  const ACT_BY_DOOR = { h10: 'act1', c4: 'act2', sK: 'garde', d9: 'portes' };
+  const ORDER = ['h10', 's3', 'c4', 's7', 'sK', 'd9', 'h2', 'cR'];
+  const DOOR_BY_CHAPTER = Object.fromEntries(ORDER.map((id, i) => [i, id]));
+  const PLACES = ['cafe', 'message', 'banc', 'pluie', 'kino', 'etoiles', 'chanson', 'danse'];
+  const PLACE_BY_CHAPTER = Object.fromEntries(PLACES.map((id, i) => [i + 1, id]));
+  const LAST = ORDER.length;
+  const ACT_BY_DOOR = {
+    h10: 'act1',
+    s3: 'soleil',
+    c4: 'act2',
+    s7: 'donjon',
+    sK: 'garde',
+    d9: 'portes',
+    h2: 'balade',
+    cR: 'raid',
+  };
+  const LABEL = {
+    h10: '♥ 10',
+    s3: '♠ 3',
+    c4: '♣ 4',
+    s7: '♠ 7',
+    sK: '♠ R',
+    d9: '♦ 9',
+    h2: '♥ 2',
+    cR: '♣ R',
+  };
+  const COLOR = {
+    h10: '#ff5f8a',
+    s3: '#ff9ec4',
+    c4: '#7ce0ff',
+    s7: '#b9a6ff',
+    sK: '#ffcf8a',
+    d9: '#ff9a3a',
+    h2: '#ffb3c7',
+    cR: '#7cf0c8',
+  };
+  const cardsWon = (ch) =>
+    ORDER.slice(0, ch)
+      .map((id) => LABEL[id])
+      .join(' · ');
 
   Clues.add('c1', V3(-45, 1.1, 77));
 
@@ -76,9 +112,8 @@
   const objective = (c) => {
     const ch = c.S.chapter;
     const place = PLACE_BY_CHAPTER[ch];
-    if (place && !seen.has(place))
-      return [null, T.city.memory1, T.city.memory2, T.city.memory3, T.city.memory4][ch];
-    if (DOOR_BY_CHAPTER[ch]) return [T.city.door1, T.city.door2, T.city.door3, T.city.door4][ch];
+    if (place && !seen.has(place)) return ch === LAST ? T.city.memoryLast : T.city.memory;
+    if (DOOR_BY_CHAPTER[ch]) return T.city.doors[DOOR_BY_CHAPTER[ch]];
     return '';
   };
 
@@ -101,14 +136,12 @@
         City.showPlace(place, first);
         City.pillar(place, !seen.has(place));
       }
-      const cards =
-        ['', '♥ 10', '♥ 10 · ♣ 4', '♥ 10 · ♣ 4 · ♠ R', '♥ 10 · ♣ 4 · ♠ R · ♦ 9'][ch] ||
-        '';
-      HUD.visa('Visa · 3 jours' + (cards ? ' · ' + cards : ''));
+      const door = DOOR_BY_CHAPTER[ch];
+      HUD.visa('Visa · 3 jours · ' + (ch ? ch + (ch > 1 ? ' cartes' : ' carte') : 'aucune carte'));
       BigScreen.show(
-        { h10: '♥ 10', c4: '♣ 4', sK: '♠ R' }[DOOR_BY_CHAPTER[ch]] || cards || '?',
-        DOOR_BY_CHAPTER[ch] ? 'Une porte s’est allumée' : 'Carte obtenue',
-        { c4: '#7ce0ff', sK: '#ffcf8a' }[DOOR_BY_CHAPTER[ch]] || '#ff5f8a',
+        door ? LABEL[door] : cardsWon(ch) || '?',
+        door ? 'Une porte s’est allumée' : 'Toutes les cartes du jeu',
+        door ? COLOR[door] : '#ff5f8a',
       );
       HUD.objective(objective(c));
       if (fromAct && !first) {
@@ -120,6 +153,9 @@
     },
     apply(c) {
       HUD.objective(objective(c));
+      Object.keys(City.doors).forEach((id) =>
+        City.door(id, id === DOOR_BY_CHAPTER[c.S.chapter] ? 1 : 0.15),
+      );
       const place = PLACE_BY_CHAPTER[c.S.chapter];
       if (place && seen.has(place)) City.pillar(place, false);
     },
@@ -131,7 +167,7 @@
         if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5))
           c.goto(ACT_BY_DOOR[id]);
       }
-      if (ch === 4 && c.S.seen.includes('danse')) {
+      if (ch === LAST && c.S.seen.includes(PLACE_BY_CHAPTER[LAST])) {
         c.local.banc = (c.local.banc || 0) + dt;
         const both = (c.S.x.seenBy || []).length >= 2;
         if ((both && c.local.banc > 4) || c.local.banc > 30) c.goto('act3');

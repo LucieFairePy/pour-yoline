@@ -13,17 +13,25 @@
 Un jeu coopératif en 3D, à la troisième personne, jouable dans le navigateur. Deux astronautes se réveillent dans une
 ville vide. Des écrans géants s'allument, et pour rentrer il faut gagner des cartes.
 
-Le jeu complet : un prologue, cinq actes et un final, pour une soirée d'environ une heure.
+Le jeu complet : un prologue, huit cartes à gagner, puis les derniers actes, pour une longue soirée.
 
-| Partie   | Nom                | Ce qui se passe                                           |
-| -------- | ------------------ | --------------------------------------------------------- |
-| Prologue | Réveil             | Se retrouver dans la ville vide                           |
-| ♥ 10    | La Balance         | Ponts invisibles, treuil, grappin, cabines                |
-| ♣ 4     | Le Labyrinthe noir | Guider l'autre dans le noir, désamorcer une bombe à cœurs |
-| III      | L'Heure dorée      | Une balade sans épreuve, des souvenirs, un toit           |
-| IV       | Le Joker           | …                                                         |
-| V        | Deux mondes        | Séparés, chacun ouvre le chemin de l'autre                |
-| ♛        | Dame de Cœur       | …                                                         |
+| Partie   | Nom                     | Ce qui se passe                                                       |
+| -------- | ----------------------- | --------------------------------------------------------------------- |
+| Prologue | Réveil                  | Se retrouver au son dans la ville vide                                |
+| ♥ 10    | La Balance              | Ponts invisibles, treuil, grappin, cabines                            |
+| ♠ 3     | Un, deux, trois, Soleil | Avancer quand la Poupée chante, se cacher l'un derrière l'autre       |
+| ♣ 4     | Le Labyrinthe noir      | Guider l'autre dans le noir, désamorcer une bombe à cœurs             |
+| ♠ 7     | La Crypte               | Un donjon : leviers, Cavaliers, spectres invisibles, le Cavalier noir |
+| ♠ R     | Le Roi de Pique         | Vagues d'ennemis et un boss en trois phases                           |
+| ♦ 9     | Les Portes              | Des portails, de la vitesse, deux boutons                             |
+| ♥ 2     | La Rivière              | Une balade : pont de lumière, lanternes, cascade, questions à deux    |
+| ♣ R     | Le Caveau               | Un raid : ascension par rôles, l'Oracle, rituels de symboles, Égide   |
+| III      | L'Heure dorée           | Une balade sans épreuve, des souvenirs, un toit                       |
+| IV       | Le Joker                | …                                                                     |
+| V        | Deux mondes             | Séparés, chacun ouvre le chemin de l'autre                            |
+| ♛        | Dame de Cœur            | …                                                                     |
+
+Chaque carte gagnée fait revenir un souvenir dans la ville.
 
 Six cassettes sont cachées dans le jeu. Les trouver toutes débloque une fin secrète.
 
@@ -69,8 +77,9 @@ js/
   core/             utilitaires, réglages, entrées clavier/manette, audio génératif
   net/net.js        connexion pair-à-pair (PeerJS) et mode local (BroadcastChannel)
   world/            rendu, ciel, ville, écrans, astronautes, arènes, particules, cassettes, physique
+  hq/ cine/         astronautes détaillés et film d'intro
   game/             HUD, joueur, joueur distant, caméra, bancs, moteur d'histoire, lobby
-  levels/           un fichier par partie (ville, act1 … act5, final)
+  levels/           un fichier par partie (ville, act1 … act5, soleil, donjon, balade, raid, final)
   main.js           boucle de jeu
 ```
 

@@ -60,13 +60,14 @@ const Combat = (() => {
       const dx = e.pos.x - p.x;
       const dz = e.pos.z - p.z;
       const d = Math.hypot(dx, dz);
-      const reach = e.type === 'roi' ? 5 : 3.2;
+      const T = Enemies.TYPES[e.type];
+      const reach = T.reach || 3.2;
       if (d < reach && (dx * fx + dz * fz) / (d || 1) > 0.35)
         act({
           a: 'hit',
           id: e.id,
           dmg: 12,
-          stun: e.type === 'roi' ? 6 : e.type === 'tour' ? 4.5 : 2.5,
+          stun: T.stunP || (e.type === 'tour' ? 4.5 : 2.5),
         });
     }
   };
@@ -141,7 +142,7 @@ const Combat = (() => {
           C.atkCd = 0.55;
           punch();
         }
-        if (role === 'valet' && Input.pressed('ability') && C.cloakCd <= 0) {
+        if (role === 'valet' && !C.noCloak && Input.pressed('ability') && C.cloakCd <= 0) {
           C.cloak = 6;
           C.cloakCd = 15;
           Sound.play('cloak');
@@ -173,7 +174,7 @@ const Combat = (() => {
         C.down,
         rs.down,
         C.revive / 2.2,
-        Story.role === 'valet' ? 1 - C.cloakCd / 15 : -1,
+        Story.role === 'valet' ? (C.abil != null ? C.abil : 1 - C.cloakCd / 15) : -1,
         C.cloak > 0,
       );
       return prompt;

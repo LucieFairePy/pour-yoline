@@ -414,6 +414,71 @@ const Sound = (() => {
       const t = ctx.currentTime;
       sweep(t, 400, 80, 0.5, 0.2, 'square');
     },
+    // Un, deux, trois, Soleil: the doll's chant, stretched over dur seconds
+    soleil(dur, pos) {
+      const out = pos ? spatial(pos, true) : sfx;
+      const t = ctx.currentTime;
+      const notes = [72, 72, 74, 72, 76, 74];
+      const at = [0, 0.16, 0.34, 0.52, 0.74, 0.92];
+      notes.forEach((m, i) => {
+        const tt = t + at[i] * Math.max(0.6, dur - 0.25);
+        bell(hz(m), tt, 0.16, out);
+        bell(hz(m - 12), tt, 0.06, out);
+      });
+    },
+    dollTurn(pos) {
+      const out = pos ? spatial(pos, true) : sfx;
+      const t = ctx.currentTime;
+      noise(t, 0.5, 300, 0.8, 0.25, 'lowpass', out);
+      sweep(t, 120, 60, 0.5, 0.12, 'sawtooth');
+    },
+    dollWarn() {
+      const t = ctx.currentTime;
+      bell(hz(91), t, 0.05, sfx);
+      bell(hz(96), t + 0.09, 0.04, sfx);
+    },
+    caught() {
+      const t = ctx.currentTime;
+      sweep(t, 660, 160, 0.6, 0.18, 'square');
+      noise(t, 0.4, 1200, 1, 0.12);
+    },
+    thud(pos) {
+      const out = pos ? spatial(pos) : sfx;
+      const t = ctx.currentTime;
+      noise(t, 0.8, 140, 0.6, 0.5, 'lowpass', out);
+      sweep(t, 80, 35, 0.6, 0.3);
+    },
+    gallop() {
+      const t = ctx.currentTime;
+      for (let i = 0; i < 6; i++) noise(t + i * 0.11, 0.08, 300, 1, 0.2, 'lowpass');
+    },
+    lantern() {
+      const t = ctx.currentTime;
+      [79, 84, 88, 91].forEach((m, i) => bell(hz(m), t + i * 0.18, 0.06, sfx));
+    },
+    chime() {
+      const t = ctx.currentTime;
+      bell(hz(88), t, 0.05, sfx);
+      bell(hz(95), t + 0.12, 0.04, sfx);
+    },
+    rune(ok) {
+      const t = ctx.currentTime;
+      if (ok) [72, 79, 84].forEach((m, i) => bell(hz(m), t + i * 0.07, 0.08, sfx));
+      else {
+        sweep(t, 220, 110, 0.5, 0.2, 'sawtooth');
+        sweep(t, 233, 116, 0.5, 0.2, 'sawtooth');
+      }
+    },
+    gaze() {
+      const t = ctx.currentTime;
+      sweep(t, 80, 900, 2.2, 0.08, 'sawtooth');
+      noise(t, 2.2, 600, 0.6, 0.15, 'bandpass');
+    },
+    dome() {
+      const t = ctx.currentTime;
+      sweep(t, 300, 900, 0.4, 0.07, 'triangle');
+      bell(hz(84), t, 0.05, sfx);
+    },
   };
 
   return {

@@ -2,8 +2,9 @@ const Enemies = (() => {
   const TYPES = {
     pion: { hp: 40, speed: 3.8, radius: 0.7, height: 1.1 },
     tour: { hp: 90, speed: 0, radius: 0.9, height: 2.6 },
-    roi: { hp: 900, speed: 0, radius: 2.4, height: 5.5 },
+    roi: { hp: 900, speed: 0, radius: 2.4, height: 5.5, boss: true, reach: 5, stunP: 6 },
   };
+  const DEF = {};
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
   const metal = new THREE.MeshStandardMaterial({
@@ -152,6 +153,7 @@ const Enemies = (() => {
   };
 
   const MODELS = { pion: modelPion, tour: modelTour, roi: modelRoi };
+  const lineTel = [];
 
   const list = new Map();
   const orbs = [];
@@ -177,7 +179,7 @@ const Enemies = (() => {
 
   const view = (e) => {
     if (e.view) return e.view;
-    const m = MODELS[e.type]();
+    const m = (DEF[e.type] ? DEF[e.type].model : MODELS[e.type])(e);
     R.scene.add(m.g);
     e.view = m;
     return m;
@@ -188,8 +190,8 @@ const Enemies = (() => {
       R.scene.remove(e.view.g);
       Fx.burst(
         e.pos.clone().add(V3(0, 1, 0)),
-        e.type === 'roi' ? '#ffcf8a' : '#ff3a5a',
-        e.type === 'roi' ? 500 : 120,
+        TYPES[e.type].boss ? '#ffcf8a' : TYPES[e.type].dieColor || '#ff3a5a',
+        TYPES[e.type].boss ? 500 : 120,
         8,
         1.4,
         -6,
@@ -201,6 +203,10 @@ const Enemies = (() => {
 
   const api = {
     TYPES,
+    define(type, def) {
+      TYPES[type] = def.stats;
+      DEF[type] = def;
+    },
     list,
     orbs,
     spawn(type, pos, extra = {}) {
@@ -214,7 +220,7 @@ const Enemies = (() => {
         hp: t.hp,
         max: t.hp,
         stun: 0,
-        shield: type !== 'pion',
+        shield: type === 'tour' || type === 'roi',
         atk: 1 + Math.random(),
         home: pos.clone(),
         ...extra,
@@ -230,12 +236,14 @@ const Enemies = (() => {
       orbs.length = 0;
       telegraphs.forEach((t) => R.scene.remove(t.m));
       telegraphs.length = 0;
+      lineTel.forEach((t) => R.scene.remove(t.m));
+      lineTel.length = 0;
     },
     alive(type) {
       return [...list.values()].filter((e) => !type || e.type === type).length;
     },
     boss() {
-      return [...list.values()].find((e) => e.type === 'roi') || null;
+      return [...list.values()].find((e) => TYPES[e.type].boss) || null;
     },
     damage(id, dmg, stun, weak) {
       const e = list.get(id);
@@ -244,6 +252,7 @@ const Enemies = (() => {
       let k = 1;
       if (e.type === 'tour' && e.shield && e.stun <= 0) k = 0;
       if (e.type === 'roi') k = Boss.mult(e, weak);
+      if (DEF[e.type] && DEF[e.type].mult) k = DEF[e.type].mult(e, weak, stun);
       if (k <= 0) {
         Sound.play('deflect');
         return;
@@ -262,6 +271,17 @@ const Enemies = (() => {
       R.scene.add(m);
       telegraphs.push({ m, t, max: t });
     },
+    telegraphLine(from, to, w, t) {
+      const len = Math.hypot(to.x - from.x, to.z - from.z);
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, len).rotateX(-Math.PI / 2),
+        telMat.clone(),
+      );
+      m.position.set((from.x + to.x) / 2, Math.max(from.y, to.y) + 0.06, (from.z + to.z) / 2);
+      m.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      R.scene.add(m);
+      lineTel.push({ m, t, max: t });
+    },
     simulate(dt, players) {
       const targets = players.filter((p) => !p.down && !p.cloak);
       for (const e of list.values()) {
@@ -269,6 +289,10 @@ const Enemies = (() => {
         e.atk -= dt;
         if (e.type === 'roi') {
           Boss.simulate(e, dt, players, targets);
+          continue;
+        }
+        if (DEF[e.type] && DEF[e.type].sim) {
+          DEF[e.type].sim(e, dt, players, targets);
           continue;
         }
         if (e.stun > 0) continue;
@@ -338,30 +362,55 @@ const Enemies = (() => {
           e.phase || 0,
           e.crystal ? 1 : 0,
           e.recover ? 1 : 0,
+          e.st || 0,
+          e.reveal > 0 ? 1 : 0,
+          e.vuln ? 1 : 0,
         ]),
         o: orbs.map((o) => [+o.p.x.toFixed(2), +o.p.y.toFixed(2), +o.p.z.toFixed(2)]),
       };
     },
     unpack(d) {
       const seen = new Set();
-      d.e.forEach(([id, type, x, y, z, yaw, hp, max, stun, shield, phase, crystal, recover]) => {
-        seen.add(id);
-        let e = list.get(id);
-        if (!e) {
-          e = { id, type, pos: V3(x, y, z), yaw, hp, max, stun: 0, shield: !!shield };
-          list.set(id, e);
-        }
-        e.target = V3(x, y, z);
-        e.yawT = yaw;
-        if (hp < e.hp) e.hitT = 0.15;
-        e.hp = hp;
-        e.max = max;
-        e.stun = stun ? 1 : 0;
-        e.shield = !!shield;
-        e.phase = phase;
-        e.crystal = !!crystal;
-        e.recover = !!recover;
-      });
+      d.e.forEach(
+        ([
+          id,
+          type,
+          x,
+          y,
+          z,
+          yaw,
+          hp,
+          max,
+          stun,
+          shield,
+          phase,
+          crystal,
+          recover,
+          st,
+          reveal,
+          vuln,
+        ]) => {
+          seen.add(id);
+          let e = list.get(id);
+          if (!e) {
+            e = { id, type, pos: V3(x, y, z), yaw, hp, max, stun: 0, shield: !!shield };
+            list.set(id, e);
+          }
+          e.target = V3(x, y, z);
+          e.yawT = yaw;
+          if (hp < e.hp) e.hitT = 0.15;
+          e.hp = hp;
+          e.max = max;
+          e.stun = stun ? 1 : 0;
+          e.shield = !!shield;
+          e.phase = phase;
+          e.crystal = !!crystal;
+          e.recover = !!recover;
+          e.st = st || 0;
+          e.reveal = reveal ? 1 : 0;
+          e.vuln = !!vuln;
+        },
+      );
       [...list.values()].forEach((e) => !seen.has(e.id) && kill(e));
       orbs.length = 0;
       d.o.forEach(([x, y, z]) => orbs.push({ p: V3(x, y, z) }));
@@ -386,11 +435,13 @@ const Enemies = (() => {
           m.eye.material.color.setRGB(1, 0.16, 0.23).multiplyScalar(e.stun > 0 ? 0.4 : 2.4);
         e.hitT = Math.max(0, (e.hitT || 0) - dt);
         m.body.scale.setScalar(
-          (e.type === 'pion' ? 0.75 : e.type === 'tour' ? 0.9 : 1) * (1 + (e.hitT || 0) * 1.2),
+          (e.type === 'pion' ? 0.75 : e.type === 'tour' ? 0.9 : m.bodyScale || 1) *
+            (1 + (e.hitT || 0) * (TYPES[e.type].boss ? 0.15 : 1.2)),
         );
         if (e.stun > 0) m.g.rotation.z = Math.sin(t * 20) * 0.05;
         else m.g.rotation.z = 0;
         if (e.type === 'roi') Boss.render(e, m, dt, t);
+        if (DEF[e.type] && DEF[e.type].render) DEF[e.type].render(e, m, dt, t);
       }
       orbMesh.count = Math.min(64, orbs.length);
       const m4 = new THREE.Matrix4();
@@ -399,6 +450,15 @@ const Enemies = (() => {
         orbMesh.setMatrixAt(i, m4);
       }
       orbMesh.instanceMatrix.needsUpdate = true;
+      for (let i = lineTel.length - 1; i >= 0; i--) {
+        const tg = lineTel[i];
+        tg.t -= dt;
+        tg.m.material.opacity = 0.15 + (1 - tg.t / tg.max) * 0.45;
+        if (tg.t <= 0) {
+          R.scene.remove(tg.m);
+          lineTel.splice(i, 1);
+        }
+      }
       for (let i = telegraphs.length - 1; i >= 0; i--) {
         const tg = telegraphs[i];
         tg.t -= dt;
@@ -416,21 +476,23 @@ const Enemies = (() => {
       let weak = false;
       for (const e of list.values()) {
         const T = TYPES[e.type];
+        if (DEF[e.type] && DEF[e.type].hidden && DEF[e.type].hidden(e)) continue;
         const c = e.pos.clone().add(V3(0, e.type === 'pion' ? 1 : T.height * 0.55, 0));
         const oc = c.clone().sub(origin);
         const tca = oc.dot(dir);
         if (tca < 0) continue;
         const d2 = oc.lengthSq() - tca * tca;
-        const r = e.type === 'roi' ? 2.6 : T.radius;
+        const r = e.type === 'roi' ? 2.6 : T.hitR || T.radius;
         if (d2 > r * r || tca > bd) continue;
         bd = tca;
         best = e;
         weak = false;
-        if (e.type === 'roi' && e.view) {
+        if (T.boss && e.view && e.view.heart) {
           const hp = e.view.heart.getWorldPosition(V3());
           const oh = hp.sub(origin);
           const th = oh.dot(dir);
-          if (oh.lengthSq() - th * th < 0.7 * 0.7) weak = true;
+          const wr = T.weakR || 0.7;
+          if (oh.lengthSq() - th * th < wr * wr) weak = true;
         }
       }
       return best ? { e: best, d: bd, weak } : null;

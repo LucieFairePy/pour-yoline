@@ -19,7 +19,8 @@ const Lobby = (() => {
     $('readyText').textContent = `Connecté·e·s · tu joues ${CONFIG.roles[role].name}`;
     if (Net.isHost && progress) {
       const ph = typeof progress === 'object' ? progress.phase : progress;
-      const ch = typeof progress === 'object' ? progress.chapter : progress === 'free' ? 1 : 0;
+      let ch = typeof progress === 'object' ? progress.chapter : progress === 'free' ? 1 : 0;
+      if (typeof progress === 'object' && !(progress.v >= 2)) ch = [0, 1, 3, 5, 6][ch] ?? 8;
       const where =
         ph === 'final'
           ? 'avant la Dame de Cœur'
@@ -27,13 +28,26 @@ const Lobby = (() => {
             ? 'aux Deux mondes'
             : ph === 'act3'
               ? 'à l’Heure dorée'
-              : [
+              : {
+                  soleil: 'à ♠ 3',
+                  donjon: 'à ♠ 7',
+                  garde: 'à ♠ R',
+                  portes: 'à ♦ 9',
+                  balade: 'à ♥ 2',
+                  raid: 'à ♣ R',
+                }[ph] ||
+                [
                   'après les retrouvailles',
                   'après ♥ 10',
+                  'après ♠ 3',
                   'après ♣ 4',
+                  'après ♠ 7',
                   'après ♠ R',
                   'après ♦ 9',
-                ][ch] || 'en ville';
+                  'après ♥ 2',
+                  'après ♣ R',
+                ][ch] ||
+                'en ville';
       $('resumeText').innerHTML =
         'Partie sauvegardée : ' +
         where +

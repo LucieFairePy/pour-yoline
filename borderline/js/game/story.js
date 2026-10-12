@@ -10,7 +10,32 @@ const Story = (() => {
   let beamT = 0;
   const timers = { phase: 0, sync: 0 };
   const local = { phase: null };
-  const CHECKPOINTS = ['prologue', 'city', 'garde', 'portes', 'act3', 'act5', 'final'];
+  const CHECKPOINTS = [
+    'prologue',
+    'city',
+    'soleil',
+    'donjon',
+    'garde',
+    'portes',
+    'balade',
+    'raid',
+    'act3',
+    'act5',
+    'final',
+  ];
+  // saves made before the four new chapters used chapters 0..4 = h10, c4, sK, d9, act3
+  const OLD_CHAPTER = [0, 1, 3, 5, 6];
+  const PHASE_CHAPTER = {
+    soleil: 1,
+    donjon: 3,
+    garde: 4,
+    portes: 5,
+    balade: 6,
+    raid: 7,
+    act3: 8,
+    act5: 8,
+    final: 8,
+  };
 
   const set = (fn) => {
     fn(S);
@@ -33,7 +58,8 @@ const Story = (() => {
     };
     if (p && typeof p === 'object' && CHECKPOINTS.includes(p.phase)) {
       s.phase = p.phase;
-      s.chapter = p.chapter || 0;
+      s.chapter = p.v >= 2 ? p.chapter || 0 : (OLD_CHAPTER[p.chapter || 0] ?? 8);
+      if (PHASE_CHAPTER[s.phase] != null) s.chapter = PHASE_CHAPTER[s.phase];
       s.clues = p.clues || [];
       s.seen = p.seen || [];
     }
@@ -137,7 +163,7 @@ const Story = (() => {
       Net.send('S', S);
       if (CHECKPOINTS.includes(S.phase) && S.phase !== 'prologue')
         save.set({
-          progress: { phase: S.phase, chapter: S.chapter, clues: S.clues, seen: S.seen },
+          progress: { v: 2, phase: S.phase, chapter: S.chapter, clues: S.clues, seen: S.seen },
         });
       apply(S);
     }

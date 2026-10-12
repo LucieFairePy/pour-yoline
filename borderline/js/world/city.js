@@ -104,6 +104,10 @@ const City = (() => {
     '0,-1': 'screen',
     '-1,0': 'cafe',
     '2,-2': 'tower',
+    '1,1': 'door',
+    '-1,1': 'door',
+    '1,-1': 'door',
+    '-1,-1': 'door',
   };
   for (let i = -N; i <= N; i++)
     for (let j = -N; j <= N; j++) {
@@ -465,6 +469,23 @@ const City = (() => {
     V3(-LOT + HALF + 2, 0, -9),
   );
 
+  [
+    ['s3', 1, 24, '♠ 3', 'UN, DEUX, TROIS, SOLEIL', '#ff9ec4'],
+    ['s7', -1, 24, '♠ 7', 'LA CRYPTE', '#b9a6ff'],
+    ['h2', 1, -24, '♥ 2', 'LA RIVIÈRE', '#ffb3c7'],
+    ['cR', -1, -24, '♣ R', 'LE CAVEAU', '#7cf0c8'],
+  ].forEach(([id, sx, z, txt, sub, col]) => {
+    const x = sx * (LOT - HALF - 0.1);
+    doors[id] = makeDoor(
+      V3(x, 0, z),
+      sx > 0 ? 0 : Math.PI,
+      txt,
+      sub,
+      col,
+      V3(sx * (LOT - HALF - 1.5), 0, z),
+    );
+  });
+
   const pillarGeo = new THREE.CylinderGeometry(0.7, 0.7, 60, 12, 1, true).translate(0, 30, 0);
   const pillars = [];
   const makePillar = (pos, color = '#ffcf8a') => {
@@ -570,7 +591,7 @@ const City = (() => {
   const marquee = new THREE.Mesh(
     new THREE.PlaneGeometry(4.6, 2.3),
     new THREE.MeshBasicMaterial({
-      map: signTex('Cinéma', 'SOUVENIR 03', '#ff8fb0'),
+      map: signTex('Cinéma', 'SOUVENIR 05', '#ff8fb0'),
       transparent: true,
       toneMapped: false,
       depthWrite: false,
@@ -624,6 +645,197 @@ const City = (() => {
   }
   danse.position.set(LOT / 2, 0, -LOT / 2);
   addPlace('danse', danse, V3(LOT / 2, 0, -LOT / 2 + 2.6));
+
+  const neonMat = (c, k = 2) => glowMat(c, k);
+  const darkMetal = new THREE.MeshStandardMaterial({
+    color: '#241a2c',
+    roughness: 0.45,
+    metalness: 0.6,
+  });
+  const placeSign = (txt, sub, col, w = 4.4) =>
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(w, w / 2),
+      new THREE.MeshBasicMaterial({
+        map: signTex(txt, sub, col),
+        transparent: true,
+        toneMapped: false,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+
+  // Souvenir 02: a phone booth with a glowing screen and a floating message bubble
+  const message = new THREE.Group();
+  const boothM = new THREE.MeshStandardMaterial({
+    color: '#7a1630',
+    roughness: 0.4,
+    metalness: 0.3,
+    emissive: '#2a0410',
+  });
+  [
+    [-0.75, 0, 0.12, 2.6, 1.5],
+    [0.75, 0, 0.12, 2.6, 1.5],
+    [0, -0.75, 1.5, 2.6, 0.12],
+  ].forEach(([x, z, sx, sy, sz]) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), boothM);
+    m.position.set(x, 1.3, z);
+    message.add(m);
+  });
+  const boothTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.25, 1.7), boothM);
+  boothTop.position.y = 2.72;
+  const phone = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.12), darkMetal);
+  phone.position.set(0, 1.4, -0.62);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.22), neonMat('#9fe6ff', 1.8));
+  scr.position.set(0, 1.55, -0.55);
+  const bubble = new THREE.Group();
+  const bub = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 14), neonMat('#ff8fb0', 1.3));
+  bub.scale.set(1.5, 1, 0.4);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.35, 8), neonMat('#ff8fb0', 1.3));
+  tail.position.set(-0.35, -0.42, 0);
+  tail.rotation.z = 0.6;
+  [-0.3, 0, 0.3].forEach((x) => {
+    const d = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), neonMat('#fff4f8', 2));
+    d.position.set(x, 0, 0.18);
+    bubble.add(d);
+  });
+  bubble.add(bub, tail);
+  bubble.position.set(0, 3.7, 0);
+  bubble.name = 'float';
+  const msgSign = placeSign('Message', 'SOUVENIR 02', '#ff8fb0', 3.2);
+  msgSign.position.set(0, 2.2, 0.8);
+  message.add(boothTop, phone, scr, bubble, msgSign);
+  message.position.set(-LOT / 2, 0, -LOT / 2);
+  addPlace('message', message, V3(-LOT / 2, 0, -LOT / 2 + 2), () =>
+    Phys.box(-LOT / 2, 1.3, -LOT / 2 - 0.4, 1.6, 2.6, 0.9),
+  );
+
+  // Souvenir 04: a bus shelter under its own little rain cloud
+  const pluie = new THREE.Group();
+  const glassM = new THREE.MeshStandardMaterial({
+    color: '#9fd8ff',
+    transparent: true,
+    opacity: 0.25,
+    roughness: 0.05,
+    metalness: 0.2,
+    depthWrite: false,
+  });
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.15, 1.8), darkMetal);
+  roof.position.set(0, 2.6, 0);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.4, 0.06), glassM);
+  back.position.set(0, 1.3, -0.8);
+  [-2.2, 2.2].forEach((x) => {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.6, 0.1), darkMetal);
+    post.position.set(x, 1.3, -0.8);
+    pluie.add(post);
+  });
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 0.45), darkMetal);
+  seat.position.set(0, 0.5, -0.5);
+  const cloud = new THREE.Group();
+  for (let i = 0; i < 7; i++) {
+    const c = new THREE.Mesh(
+      new THREE.SphereGeometry(0.7 + (i % 3) * 0.25, 14, 10),
+      new THREE.MeshStandardMaterial({ color: '#c9b8e8', roughness: 1, emissive: '#3a2a5a' }),
+    );
+    c.position.set(-2 + i * 0.66, (i % 2) * 0.3, (i % 3) * 0.25 - 0.25);
+    cloud.add(c);
+  }
+  cloud.position.y = 5.2;
+  const drops = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.02, 0.35, 0.02),
+    neonMat('#9fd8ff', 1.4),
+    90,
+  );
+  drops.name = 'rain';
+  drops.userData.seeds = [...Array(90)].map(() => [
+    Math.random() * 5 - 2.5,
+    Math.random(),
+    Math.random() * 2 - 0.6,
+  ]);
+  const rainSign = placeSign('Averse', 'SOUVENIR 04', '#9fd8ff', 3.2);
+  rainSign.position.set(0, 3.3, 0.2);
+  pluie.add(roof, back, seat, cloud, drops, rainSign);
+  pluie.position.set(-LOT / 2, 0, LOT + LOT / 2);
+  pluie.rotation.y = Math.PI;
+  addPlace('pluie', pluie, V3(-LOT / 2, 0, LOT + LOT / 2 - 1.6), () =>
+    Phys.box(-LOT / 2, 1.3, LOT + LOT / 2 + 0.8, 4.6, 2.6, 0.3),
+  );
+
+  // Souvenir 06: a brass telescope on a little round stage, pointing at a bright star
+  const etoiles = new THREE.Group();
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 0.4, 32), darkMetal);
+  plinth.position.y = 0.2;
+  const brass = new THREE.MeshStandardMaterial({
+    color: '#d9a85a',
+    roughness: 0.25,
+    metalness: 1,
+    emissive: '#3a2408',
+  });
+  const tri = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.6, 6), brass);
+    const a = (i / 3) * TAU;
+    leg.position.set(Math.cos(a) * 0.35, 0.75, Math.sin(a) * 0.35);
+    leg.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+    tri.add(leg);
+  }
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 1.5, 20), brass);
+  tube.position.set(0, 1.75, 0.2);
+  tube.rotation.x = -0.9;
+  tri.position.y = 0.4;
+  const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), neonMat('#fff2c8', 3));
+  star.position.set(0, 9, 6);
+  star.name = 'gem';
+  const starSign = placeSign('Étoiles', 'SOUVENIR 06', '#fff2c8', 3.4);
+  starSign.position.set(0, 3.2, -1.2);
+  etoiles.add(plinth, tri, tube, star, starSign);
+  etoiles.position.set(LOT + LOT / 2, 0, LOT / 2);
+  etoiles.rotation.y = -Math.PI / 2;
+  addPlace('etoiles', etoiles, V3(LOT + LOT / 2 - 2.2, 0, LOT / 2));
+
+  // Souvenir 07: a juke-box with floating notes
+  const chanson = new THREE.Group();
+  const jb = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.8, 0.8, 0.9, 24, 1, false, 0, Math.PI),
+    new THREE.MeshStandardMaterial({
+      color: '#5a1438',
+      roughness: 0.35,
+      metalness: 0.4,
+      emissive: '#1a0410',
+    }),
+  );
+  jb.rotation.y = -Math.PI / 2;
+  jb.position.y = 1.9;
+  const jbBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.5, 0.9), jb.material);
+  jbBody.position.y = 0.75;
+  const arch = new THREE.Mesh(
+    new THREE.TorusGeometry(0.62, 0.06, 10, 32, Math.PI),
+    neonMat('#ffcf8a', 2),
+  );
+  arch.position.set(0, 1.55, 0.47);
+  const grille = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), neonMat('#ff5f8a', 1.1));
+  grille.position.set(0, 0.7, 0.46);
+  const notes = new THREE.Group();
+  notes.name = 'notes';
+  for (let i = 0; i < 5; i++) {
+    const n = new THREE.Group();
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 10, 8),
+      neonMat(i % 2 ? '#ffcf8a' : '#ff8fb0', 2.2),
+    );
+    head.scale.set(1.3, 1, 0.6);
+    const stem = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.45, 0.03), head.material);
+    stem.position.set(0.13, 0.22, 0);
+    n.add(head, stem);
+    notes.add(n);
+  }
+  const songSign = placeSign('Chanson', 'SOUVENIR 07', '#ffcf8a', 3.2);
+  songSign.position.set(0, 3.6, 0);
+  chanson.add(jb, jbBody, arch, grille, notes, songSign);
+  chanson.position.set(-LOT - LOT / 2, 0, -LOT / 2);
+  chanson.rotation.y = Math.PI / 2;
+  addPlace('chanson', chanson, V3(-LOT - LOT / 2 + 1.8, 0, -LOT / 2), () =>
+    Phys.box(-LOT - LOT / 2, 1, -LOT / 2, 1, 2, 1.7),
+  );
 
   const lantern = (c) => {
     const g = new THREE.Group();
@@ -699,6 +911,7 @@ const City = (() => {
     return { g, pos: p };
   });
 
+  const tmpM = new THREE.Matrix4();
   const mood = { gold: 0, gray: 0, red: 0, dark: 0 };
   const moodNow = { gold: 0, gray: 0, red: 0, dark: 0 };
   const FOGC = new THREE.Color(0.102, 0.043, 0.149);
@@ -764,11 +977,32 @@ const City = (() => {
           pl.t = Math.min(1, pl.t + dt * 0.5);
           pl.group.scale.set(1, 1 - Math.pow(1 - pl.t, 3), 1);
         }
+        if (!pl.shown) return;
         const gem = pl.group.getObjectByName('gem');
         if (gem) {
+          if (gem.userData.y0 == null) gem.userData.y0 = gem.position.y;
           gem.rotation.y = t;
-          gem.position.y = 1.55 + Math.sin(t * 2) * 0.1;
+          gem.position.y = gem.userData.y0 + Math.sin(t * 2) * 0.1;
         }
+        const fl = pl.group.getObjectByName('float');
+        if (fl) fl.position.y = 3.7 + Math.sin(t * 1.6) * 0.15;
+        const rain = pl.group.getObjectByName('rain');
+        if (rain) {
+          rain.userData.seeds.forEach(([x, ph, z], i) => {
+            const y = 5 - ((t * 1.4 + ph) % 1) * 5;
+            tmpM.makeTranslation(x, y, z);
+            rain.setMatrixAt(i, tmpM);
+          });
+          rain.instanceMatrix.needsUpdate = true;
+        }
+        const notes = pl.group.getObjectByName('notes');
+        if (notes)
+          notes.children.forEach((n, i) => {
+            const k = (t * 0.25 + i / 5) % 1;
+            n.position.set(Math.sin(k * 6 + i) * 0.6, 2.3 + k * 2.6, 0.2);
+            n.rotation.z = Math.sin(t * 2 + i) * 0.3;
+            n.scale.setScalar(Math.sin(k * Math.PI));
+          });
       });
       pillars.forEach((m) => {
         const near = clamp((R.camera.position.distanceTo(m.position) - 6) / 20, 0, 1);
