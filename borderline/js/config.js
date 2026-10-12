@@ -33,7 +33,11 @@ const CONFIG = {
       big: '♥',
       title: 'La Balance',
       sub: 'Épreuve de confiance · réussie',
-      lines: ['Tu aurais pu sortir seule.', 'Tu es restée.', 'Retiens ça. Tu en auras besoin.'],
+      lines: [
+        'Vous auriez pu sortir seuls.',
+        'Vous êtes restés.',
+        'Retenez ça. Vous en aurez besoin.',
+      ],
     },
     c4: {
       corner: '4\n♣',
@@ -41,8 +45,8 @@ const CONFIG = {
       title: 'Le Labyrinthe noir',
       sub: 'Épreuve de communication · réussie',
       lines: [
-        'Dans le noir, tu as suivi sa voix.',
-        'Il a suivi la tienne.',
+        'Dans le noir, chacun a suivi la voix de l’autre.',
+        'Et aucun ne s’est perdu.',
         'Deux cartes. Le Borderland commence à vous reconnaître.',
       ],
     },
@@ -98,7 +102,7 @@ const CONFIG = {
       dame: 'À toi le noir, maintenant. Il voit les pièges d’en haut. Écoute-le.',
       valet: 'À toi de guider. Elle est dans le noir. Les pièges rouges, toi seul les vois.',
     },
-    card: 'La carte vous attend. Ensemble.',
+    cardLine: 'La carte vous attend. Ensemble.',
     manual: {
       title: 'Manuel de la bombe à cœurs',
       intro: 'Demande-lui le symbole et le nombre sur l’écran. Puis dis-lui quel fil couper.',
@@ -131,8 +135,10 @@ const CONFIG = {
     intro: 'Vous êtes séparés. Ce que l’un fait ouvre le chemin de l’autre.',
     dame: [
       'Allume les 9 dalles. Chaque dalle change aussi ses voisines.',
-      'Une porte s’est ouverte : il a trouvé l’interrupteur.',
-      'Active les symboles dans le bon ordre. Lui seul le connaît.',
+      'Un pont est apparu dans son monde. Attends qu’il trouve l’interrupteur.',
+      'Ta porte s’est ouverte. Active les symboles dans le bon ordre : lui seul le connaît.',
+      '',
+      'Son second pont est là. Attends qu’il actionne le dernier interrupteur.',
       'La dernière porte est ouverte. Va au bout.',
     ],
     valet: [

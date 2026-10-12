@@ -100,8 +100,8 @@ const Player = (() => {
         tmp.normalize();
         v.lerp(tmp.multiplyScalar(21), 1 - Math.exp(-10 * dt));
         if (d < 2.4 || Input.pressed('jump')) {
-          const hz = V3(v.x, 0, v.z).normalize().multiplyScalar(15);
-          v.set(hz.x, 7, hz.z);
+          const hz = V3(v.x, 0, v.z).normalize().multiplyScalar(16);
+          v.set(hz.x, 7.5, hz.z);
           P.mode = 'walk';
           P.target = -1;
           P.jumps = 1;
@@ -185,7 +185,7 @@ const Player = (() => {
 
   P.render = (dt, t) => {
     const a = P.avatar;
-    a.visible = Cam.cur > 1.1;
+    a.visible = !Cam.fp;
     a.root.position.copy(body.p);
     a.root.rotation.y = P.yaw;
     const gy = Phys.groundAt(body.p.x, body.p.y + 0.1, body.p.z);

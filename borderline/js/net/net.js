@@ -98,19 +98,25 @@ const Net = (() => {
       return new Promise((res, rej) => {
         if (typeof Peer === 'undefined') return rej(new Error('Réseau indisponible.'));
         const attempt = (n) => {
-          code = makeCode();
+          const kept = n === 0 && save.get().room;
+          code = kept || makeCode();
           peer = newPeer(PREFIX + code);
-          peer.on('open', () => res(code));
+          peer.on('open', () => {
+            save.set({ room: code });
+            res(code);
+          });
           peer.on('connection', (c) => {
-            if (conn && conn.open) {
-              c.on('open', () => c.close());
-              return;
-            }
+            const old = conn;
             bind(c);
+            if (old && old !== c) {
+              try {
+                old.close();
+              } catch (e) {}
+            }
           });
           peer.on('disconnected', () => !peer.destroyed && peer.reconnect());
           peer.on('error', (e) => {
-            if (e.type === 'unavailable-id' && n < 3) {
+            if (e.type === 'unavailable-id' && n < 4) {
               peer.destroy();
               attempt(n + 1);
             } else if (!code || e.type === 'network' || e.type === 'server-error') {
@@ -159,11 +165,10 @@ const Net = (() => {
       bc.onmessage = (e) => {
         const m = e.data;
         if (!m || m.from === me) return;
-        if (m.t === '__hi') {
-          if (!connected) {
-            status(true);
-            bc.postMessage({ from: me, t: '__hi' });
-          }
+        if (m.t === '__hi' || m.t === '__ack') {
+          if (m.t === '__hi') bc.postMessage({ from: me, t: '__ack' });
+          if (connected && m.t === '__hi') emit('connect');
+          status(true);
           return;
         }
         emit(m.t, m.d);

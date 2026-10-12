@@ -49,10 +49,20 @@
       HUD.manual(null);
     }
     if (st === 4) {
-      HUD.objective(A.card);
+      HUD.objective(A.cardLine);
       Maze.screen.show('♣ 4', 'Le Labyrinthe noir', '#7ce0ff');
       Sound.play('reveal');
     }
+  };
+
+  const onBoom = (c) => {
+    Sound.play('boom');
+    Fx.hearts(Maze.P(Maze.BOMB.x, 1.5, Maze.BOMB.z));
+    HUD.say(A.bomb.boom, T.master, 2000);
+  };
+  const onOk = () => {
+    Sound.play('reveal');
+    HUD.say(A.bomb.ok, T.master, 1600);
   };
 
   Story.register('act2', {
@@ -60,15 +70,8 @@
     voice: () => 1,
     net: {
       trap: (c) => Sound.play('trap'),
-      boom: (c, p) => {
-        Sound.play('boom');
-        Fx.hearts(Maze.P(Maze.BOMB.x, 1.5, Maze.BOMB.z));
-        if (c.role === 'valet') HUD.say(A.bomb.boom, T.master, 2000);
-      },
-      bombok: (c) => {
-        Sound.play('reveal');
-        HUD.say(A.bomb.ok, T.master, 1600);
-      },
+      boom: (c) => onBoom(c),
+      bombok: (c) => onOk(c),
     },
     async enter(c, first) {
       if (!first) await fadeTo(true);
@@ -104,8 +107,9 @@
       if (!Maze.built) return;
       const x = c.S.x;
       if (x.stage !== local.stage) stageEnter(c, x.stage);
-      if (x.stage === 2 && x.bomb.round !== local.round) {
-        local.round = x.bomb.round;
+      const key = x.bomb.round + '/' + x.booms;
+      if (x.stage === 2 && key !== local.round) {
+        local.round = key;
         Maze.cutWire(0, false);
         Maze.cutWire(1, false);
         Maze.cutWire(2, false);
@@ -127,12 +131,11 @@
         }
         if (x.bomb.t > 45) {
           c.send('boom');
+          onBoom(c);
           c.set((s) => {
             s.x.bomb = { round: s.x.bomb.round, ...combo() };
             s.x.booms++;
           });
-          Sound.play('boom');
-          Fx.hearts(Maze.P(Maze.BOMB.x, 1.5, Maze.BOMB.z));
         }
       }
       if (x.stage === 3 && Maze.exited(qd, 'm2')) c.set((s) => (s.x.stage = 4));
@@ -146,7 +149,7 @@
         if (ok) {
           const round = x.bomb.round + 1;
           c.send('bombok');
-          Sound.play('reveal');
+          onOk(c);
           if (round >= 3)
             c.set((s) => {
               s.x.stage = 3;
@@ -154,8 +157,7 @@
           else c.set((s) => (s.x.bomb = { round, ...combo() }));
         } else {
           c.send('boom');
-          Sound.play('boom');
-          Fx.hearts(Maze.P(Maze.BOMB.x, 1.5, Maze.BOMB.z));
+          onBoom(c);
           c.set((s) => {
             s.x.bomb = { round: s.x.bomb.round, ...combo() };
             s.x.booms++;

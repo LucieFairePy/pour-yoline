@@ -3,7 +3,7 @@ const Lobby = (() => {
   let role = null;
   let peerRole = null;
   let onStart = null;
-  const progress = save.get().progress || null;
+  let progress = save.get().progress || null;
 
   const step = (id) => {
     ['stepStart', 'stepRole', 'stepWait', 'stepReady'].forEach((s) => ($(s).hidden = s !== id));
@@ -38,6 +38,7 @@ const Lobby = (() => {
       rs.onclick = (e) => {
         e.preventDefault();
         save.set({ progress: null });
+        progress = null;
         $('resumeText').textContent = 'La partie recommencera depuis le début.';
       };
   };

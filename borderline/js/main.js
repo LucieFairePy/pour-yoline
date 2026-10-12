@@ -7,6 +7,7 @@ const Game = (() => {
   let frames = 0;
   let fps = 60;
   let role = 'dame';
+  let lastStart = false;
   const clock = { t: 0 };
 
   const showPause = (v) => {
@@ -31,6 +32,12 @@ const Game = (() => {
     const t = clock.t;
     Input.poll();
 
+    const startBtn = Input.rawPad([9]);
+    if (paused && startBtn && !lastStart) {
+      showPause(false);
+      Input.lock();
+    }
+    lastStart = startBtn;
     if (!paused && Input.pressed('pause') && !overlay()) {
       Input.unlock();
       showPause(true);

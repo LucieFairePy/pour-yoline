@@ -16,7 +16,26 @@
   };
   const press = (lights, i) => NEIGH(i).forEach((k) => (lights[k] = !lights[k]));
 
-  const lineIndex = (x) => (x.s2 ? 3 : x.p2 ? 3 : x.s1 ? 2 : x.p1 ? 1 : 0);
+  const lineIndex = (x, r) =>
+    r === 'dame'
+      ? x.s2
+        ? 5
+        : x.p2
+          ? 4
+          : x.s1
+            ? 2
+            : x.p1
+              ? 1
+              : 0
+      : x.s2
+        ? 3
+        : x.p2
+          ? 3
+          : x.s1
+            ? 2
+            : x.p1
+              ? 1
+              : 0;
   const voiceLevel = (x) =>
     x.stage !== 'worlds' ? 1 : x.p2 && x.s2 ? 0.7 : x.p1 && x.s1 ? 0.35 : 0;
 
@@ -131,7 +150,7 @@
         }
       }
       if (x.stage === 'worlds') {
-        const li = lineIndex(x);
+        const li = lineIndex(x, c.role);
         if (li !== local.line) {
           if (local.line >= 0) Sound.play('reveal');
           local.line = li;
@@ -155,7 +174,10 @@
         const now = c.phaseT;
         if (Worlds.inZone(pd)) local.last.dame = now;
         if (Worlds.inZone(pv)) local.last.valet = now;
-        if (Math.abs(local.last.dame - local.last.valet) < 2 && now - local.last.dame < 0.2) {
+        if (
+          Math.abs(local.last.dame - local.last.valet) < 2 &&
+          now - Math.max(local.last.dame, local.last.valet) < 0.2
+        ) {
           c.set((s) => (s.x.stage = 'caught'));
           local.caughtT = 0;
         }

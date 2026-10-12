@@ -22,7 +22,35 @@ const HUD = (() => {
   let lastObj = '';
   let lastPrompt = '';
   let lastClues = '';
+  let letterDone = null;
   const proj = V3();
+
+  const dismiss = (btn) =>
+    new Promise((res) => {
+      let done = false;
+      const t0 = performance.now();
+      const key = (e) => {
+        if (['Enter', 'Space', 'KeyE', 'Escape'].includes(e.code)) {
+          e.preventDefault();
+          finish();
+        }
+      };
+      const finish = () => {
+        if (done) return;
+        done = true;
+        removeEventListener('keyup', key);
+        btn.removeEventListener('click', finish);
+        res();
+      };
+      const pad = () => {
+        if (done) return;
+        if (performance.now() - t0 > 700 && Input.rawPad([0, 2, 9])) finish();
+        else requestAnimationFrame(pad);
+      };
+      btn.addEventListener('click', finish);
+      setTimeout(() => !done && addEventListener('keyup', key), 700);
+      requestAnimationFrame(pad);
+    });
 
   const runQueue = async () => {
     if (typing) return;
@@ -155,8 +183,18 @@ const HUD = (() => {
       $('manOutro').textContent = spec.outro;
       m.hidden = false;
     },
+    closeLetter() {
+      if (letterDone) letterDone();
+    },
     letter(lines, sig) {
       return new Promise(async (res) => {
+        let over = false;
+        letterDone = () => {
+          over = true;
+          $('letter').hidden = true;
+          letterDone = null;
+          res();
+        };
         const box = $('letterLines');
         box.innerHTML = '';
         $('letterSig').textContent = '';
@@ -164,6 +202,7 @@ const HUD = (() => {
         $('letter').hidden = false;
         Input.unlock();
         for (const [suit, text] of lines) {
+          if (over) return;
           const li = document.createElement('p');
           li.innerHTML = `<span class="suit">${suit}</span><span class="txt"></span>`;
           box.appendChild(li);
@@ -176,11 +215,10 @@ const HUD = (() => {
         }
         $('letterSig').textContent = sig;
         $('letterBtn').hidden = false;
-        $('letterBtn').onclick = () => {
-          $('letter').hidden = true;
-          Input.lock();
-          res();
-        };
+        await dismiss($('letterBtn'));
+        if (over) return;
+        Input.lock();
+        letterDone && letterDone();
       });
     },
     credits(lines, note) {
@@ -202,14 +240,12 @@ const HUD = (() => {
         $('memory').hidden = false;
         Input.unlock();
         Input.enabled = false;
-        const close = () => {
+        dismiss($('memClose')).then(() => {
           $('memory').hidden = true;
-          $('memClose').removeEventListener('click', close);
           Input.enabled = true;
           Input.lock();
           res();
-        };
-        $('memClose').addEventListener('click', close);
+        });
       });
     },
   };

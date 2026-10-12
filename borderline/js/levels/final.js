@@ -32,6 +32,7 @@
     async apply(c) {
       const x = c.S.x;
       if (x.step === local.step) return;
+      if (local.step === 'letter') HUD.closeLetter();
       local.step = x.step;
       if (x.step === 'joker') {
         HUD.say(F.joker, T.joker, 2600);
@@ -57,7 +58,7 @@
         local.letter = true;
         Player.mode = 'frozen';
         await HUD.letter(F.letter, F.signature);
-        Player.mode = 'walk';
+        if (Story.S.phase === 'final') Player.mode = 'walk';
         c.act({ a: 'letter' });
       }
       if (x.step === 'visa') {

@@ -215,9 +215,9 @@ const Worlds = (() => {
     { z: 149, sz: 8, at: V3(0, 0, 149) },
   ];
   const SEGS = [
-    { from: 3, to: 36, start: -6, cp: 0 },
-    { from: 60, to: 88, start: 52, cp: 2 },
-    { from: 114, to: 145, start: 106, cp: 4 },
+    { from: 3, to: 36, start: -12, cp: 0 },
+    { from: 60, to: 88, start: 48, cp: 2 },
+    { from: 114, to: 145, start: 102, cp: 4 },
   ];
 
   const buildParkour = () => {
@@ -455,7 +455,7 @@ const Worlds = (() => {
       }
       V.wall.visible = seg >= 0;
       if (seg >= 0) {
-        V.wallZ += dt * 2.0;
+        V.wallZ += dt * 1.4;
         V.wall.position.set(OV.x, OV.y, OV.z + V.wallZ);
         if (V.wallZ > q.z - 0.4) {
           V.seg = -1;

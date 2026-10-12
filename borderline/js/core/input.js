@@ -77,6 +77,13 @@ const Input = (() => {
       return enabled;
     },
     sim,
+    rawPad(buttons) {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const p of pads)
+        if (p && p.connected && buttons.some((b) => p.buttons[b] && p.buttons[b].pressed))
+          return true;
+      return false;
+    },
     lock() {
       const c = $('gl');
       if (c.requestPointerLock && !locked) {

@@ -5,6 +5,7 @@ const Sky = (() => {
     uFog: { value: R.FOG },
     uRed: { value: 0 },
     uGold: { value: 0 },
+    uGray: { value: 0 },
   };
 
   const dome = new THREE.Mesh(
@@ -26,6 +27,7 @@ const Sky = (() => {
         uniform vec3 uFog;
         uniform float uRed;
         uniform float uGold;
+        uniform float uGray;
         varying vec3 vDir;
         float h(vec3 p) {
           p = fract(p * 0.3183099 + 0.1);
@@ -46,6 +48,7 @@ const Sky = (() => {
           float band = exp(-pow((d.x * 0.6 + d.y - 0.45) * 3.0, 2.0));
           col += vec3(0.35, 0.12, 0.4) * band * 0.25 * smoothstep(0.0, 0.3, y);
           col = mix(col, col * vec3(1.6, 0.35, 0.4), uRed * 0.6);
+          col = mix(col, vec3(dot(col, vec3(0.3, 0.59, 0.11))) * 0.8, uGray);
           gl_FragColor = vec4(col, 1.0);
         }
       `,

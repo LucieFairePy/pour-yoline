@@ -14,7 +14,7 @@
     Player.checkpoint = () => City.hubSpawn[c.role];
     City.mood({});
     Sound.mood('calm');
-    for (let ch = 1; ch <= c.S.chapter; ch++)
+    for (let ch = 1; ch < c.S.chapter; ch++)
       if (PLACE_BY_CHAPTER[ch]) City.showPlace(PLACE_BY_CHAPTER[ch], true);
   };
 
@@ -67,7 +67,7 @@
   const objective = (c) => {
     const ch = c.S.chapter;
     const place = PLACE_BY_CHAPTER[ch];
-    if (place && !c.S.seen.includes(place)) return ch === 1 ? T.city.memory1 : T.city.memory2;
+    if (place && !seen.has(place)) return ch === 1 ? T.city.memory1 : T.city.memory2;
     if (DOOR_BY_CHAPTER[ch]) return ch === 0 ? T.city.door1 : T.city.door2;
     return '';
   };
@@ -75,6 +75,8 @@
   Story.register('city', {
     async enter(c, first, prev) {
       HUD.hideCard();
+      c.S.seen.forEach((id) => seen.add(id));
+      c.local.banc = 0;
       const fromAct = prev && prev !== 'welcome' && prev !== 'prologue';
       if (fromAct && !first) await fadeTo(true);
       cityBase(c);
@@ -87,7 +89,7 @@
       const place = PLACE_BY_CHAPTER[ch];
       if (place) {
         City.showPlace(place, first);
-        City.pillar(place, !c.S.seen.includes(place));
+        City.pillar(place, !seen.has(place));
       }
       const cards = ['', '♥ 10', '♥ 10 · ♣ 4'][ch] || '';
       HUD.visa('Visa · 3 jours' + (cards ? ' · ' + cards : ''));
@@ -111,7 +113,7 @@
     apply(c) {
       HUD.objective(objective(c));
       const place = PLACE_BY_CHAPTER[c.S.chapter];
-      if (place && c.S.seen.includes(place)) City.pillar(place, false);
+      if (place && seen.has(place)) City.pillar(place, false);
     },
     host(c, dt) {
       const ch = c.S.chapter;
@@ -121,10 +123,15 @@
         if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5))
           c.goto(ACT_BY_DOOR[id]);
       }
-      if (ch === 2 && c.S.seen.includes('banc') && c.phaseT > 3) {
+      if (ch === 2 && c.S.seen.includes('banc')) {
         c.local.banc = (c.local.banc || 0) + dt;
-        if (c.local.banc > 4) c.goto('act3');
+        const both = (c.S.x.seenBy || []).length >= 2;
+        if ((both && c.local.banc > 4) || c.local.banc > 30) c.goto('act3');
       }
+    },
+    action(c, who, d) {
+      if (d.a === 'seen' && !(c.S.x.seenBy || []).includes(who))
+        c.set((s) => (s.x.seenBy = [...(s.x.seenBy || []), who]));
     },
     update(c) {
       const p = Player.body.p;
@@ -139,6 +146,8 @@
           seen.add(place);
           const pl = T.places.find((x) => x.id === place);
           c.act({ a: 'seen', id: place });
+          City.pillar(place, false);
+          HUD.objective(objective(c));
           HUD.memory(pl.tag, pl.name, pl.text);
         }
         return ['E', 'Regarder'];

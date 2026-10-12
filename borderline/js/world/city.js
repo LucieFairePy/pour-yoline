@@ -700,6 +700,7 @@ const City = (() => {
       MOOD.uRed.value = moodNow.red;
       Sky.U.uGold.value = moodNow.gold * 0.8;
       Sky.U.uRed.value = moodNow.red;
+      Sky.U.uGray.value = moodNow.gray;
       const dim = 1 - moodNow.gray * 0.75;
       nMesh.material.color.setRGB(
         dim + moodNow.red * 0.5,

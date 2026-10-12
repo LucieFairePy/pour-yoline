@@ -368,7 +368,7 @@ const Arena = (() => {
     },
     onA: (q) => q.z < 12.2 && q.y > -1,
     onB: (q) => q.z > 41.8 && q.z < 52.3 && q.y > -1 && Math.abs(q.x) < 9.3,
-    onC: (q) => q.z > 81.8 && q.y > -1 && Math.abs(q.x) < 11.3,
+    onC: (q) => q.z > 81.2 && q.y > -1 && Math.abs(q.x) < 11.3,
     inCabin: (q, who) =>
       Math.abs(q.x - CAB[who]) < 1.45 &&
       q.z > CAB_Z0 + 0.8 &&

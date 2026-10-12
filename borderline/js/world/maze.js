@@ -8,7 +8,7 @@ const Maze = (() => {
   const TOWER1 = V3(-23, 16, 14.4);
   const TOWER2 = V3(19, 14, 61.2);
   const BOMB = V3(0, 0, 38);
-  const WIRE_X = [-1.2, -0.4, 0.4, 1.2];
+  const WIRE_X = [1.2, 0.4, -0.4, -1.2];
   const WIRES = ['#ff5f8a', '#ffcf8a', '#6c8cff', '#f4eef6'];
   const CARD = V3(0, 1.6, 81);
 

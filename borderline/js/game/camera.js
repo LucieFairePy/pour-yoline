@@ -24,13 +24,16 @@ const Cam = (() => {
     const hit = Phys.ray(origin, dir, C.dist + 0.4);
     const target = Math.max(0.8, hit - 0.35);
     C.cur = dt ? (target < C.cur ? target : damp(C.cur, target, 5, dt)) : target;
-    want.copy(origin).addScaledVector(dir, C.cur);
+    C.fp = C.cur < 1.5;
+    if (C.fp) want.copy(pivot).addScaledVector(dir, -0.25);
+    else want.copy(origin).addScaledVector(dir, C.cur);
     cam.position.copy(want);
     if (C.shake > 0) {
       cam.position.x += (Math.random() - 0.5) * C.shake;
       cam.position.y += (Math.random() - 0.5) * C.shake;
     }
-    cam.lookAt(origin.x, origin.y + 0.1, origin.z);
+    if (C.fp) cam.lookAt(want.x - dir.x, want.y - dir.y, want.z - dir.z);
+    else cam.lookAt(origin.x, origin.y + 0.1, origin.z);
   };
 
   C.update = (dt, p, sprinting) => {
