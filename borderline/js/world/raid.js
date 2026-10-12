@@ -211,6 +211,33 @@ const Raid = (() => {
     );
     K.deco(new THREE.ConeGeometry(AR * 0.9, 16, 36), dark, 0, FLOOR - 9, ARENA.z).rotation.x =
       Math.PI;
+    // parapet + faint energy curtain around the arena (opening on the bridge side)
+    const SEG = 56;
+    const curtain = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#7cf0c8').multiplyScalar(1.2),
+      transparent: true,
+      opacity: 0.07,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    });
+    const segLen = ((TAU * AR) / SEG) * 1.04;
+    const wallG = new THREE.BoxGeometry(segLen, 1.1, 0.6);
+    const curtG = new THREE.PlaneGeometry(segLen, 3);
+    for (let i = 0; i < SEG; i++) {
+      const a = (i / SEG) * TAU;
+      const x = Math.sin(a) * (AR + 0.3);
+      const z = -Math.cos(a) * (AR + 0.3);
+      // bridge enters from -z (a = 0)
+      if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.16) continue;
+      const w = K.deco(wallG, stone, x, FLOOR + 0.55, ARENA.z + z);
+      w.rotation.y = -a;
+      const c = K.deco(curtG, curtain, x, FLOOR + 2.6, ARENA.z + z);
+      c.rotation.y = -a;
+      // collider boxes are axis aligned: a short column per segment
+      K.collider(x, FLOOR + 2, ARENA.z + z, 2.6, 4, 2.6);
+    }
     // symbol pillars at N/E/S/W
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * TAU + Math.PI / 4;

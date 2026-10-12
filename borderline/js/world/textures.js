@@ -448,7 +448,8 @@ const Tex = (() => {
           `#include <normal_fragment_maps>
           {
             // bump from the height channel through screen-space derivatives
-            float h = triD.r * triBump;
+            // fade the relief with distance: avoids sparkling at grazing angles far away
+            float h = triD.r * triBump * clamp(1.6 - length(vViewPosition) / 40.0, 0.0, 1.0);
             vec3 dpx = dFdx(-vViewPosition);
             vec3 dpy = dFdy(-vViewPosition);
             float dhx = dFdx(h);
