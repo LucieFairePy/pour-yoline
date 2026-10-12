@@ -238,13 +238,14 @@ const Balade = (() => {
   const bench = (x, z, yaw) => {
     const g = new THREE.Group();
     const woodM = mats().wood;
+    // seat top at 0.5 m like every bench (Benches seats the avatar at that height)
     const seat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 0.7), woodM);
-    seat.position.y = 0.48;
+    seat.position.y = 0.44;
     const back = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 0.1), woodM);
-    back.position.set(0, 0.85, -0.32);
+    back.position.set(0, 0.82, -0.36);
     [-1.3, 1.3].forEach((lx) => {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.48, 0.6), woodM);
-      leg.position.set(lx, 0.24, 0);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.38, 0.6), woodM);
+      leg.position.set(lx, 0.19, 0);
       g.add(leg);
     });
     g.add(seat, back);
@@ -253,6 +254,9 @@ const Balade = (() => {
     group.add(g);
     const along = Math.abs(Math.sin(yaw)) > 0.5;
     K.collider(x, 0.25, z, along ? 0.8 : 3, 0.5, along ? 3 : 0.8, { tag: 'bench' });
+    const bx = x - Math.sin(yaw) * 0.36;
+    const bz = z - Math.cos(yaw) * 0.36;
+    K.collider(bx, 0.81, bz, along ? 0.12 : 3, 0.62, along ? 3 : 0.12, { tag: 'bench' });
     const b = { pos: P(x, 0, z), yaw, g };
     benches.push(b);
     return b;
@@ -471,7 +475,8 @@ const Balade = (() => {
     mist.scale.set(14, 4, 1);
     group.add(mist);
     LvKit.light(group, P(0, 6, LEN - 6), '#b8c8ff', 2.2, 26);
-    bench(-RW - 4, LEN - 14, Math.PI * 0.85);
+    // facing the waterfall, square to the axes so its collider matches what you see
+    bench(-RW - 4, LEN - 14, 0);
     card = LvKit.card('2', '♥', true);
     card.position.copy(P(-3, -0.6, LEN - 10));
     group.add(card);

@@ -1314,3 +1314,335 @@ body.rec #cine .cskip {
 .brand .suit.black {
   color: var(--paper);
 }
+
+/* ---------- cards: HUD counter, toast, deck menu ---------- */
+.deckcount {
+  color: var(--paper);
+}
+
+.deckcount kbd,
+.deck-foot kbd {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid rgba(251, 239, 230, 0.4);
+  border-radius: 0.3rem;
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+}
+
+#cardToast {
+  position: fixed;
+  top: 5.2rem;
+  right: 1.6rem;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 1.1rem 0.7rem 0.7rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(120deg, rgba(43, 12, 32, 0.92), rgba(13, 6, 18, 0.92));
+  box-shadow:
+    0 0 0 1px rgba(232, 189, 132, 0.35),
+    0 10px 40px rgba(216, 50, 79, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(30px);
+  transition:
+    opacity 0.4s,
+    transform 0.6s var(--expo);
+}
+
+#cardToast.on {
+  opacity: 1;
+  transform: none;
+}
+
+#cardToast i {
+  width: 52px;
+  aspect-ratio: 5 / 7;
+  border-radius: 0.35rem;
+  background-size: cover;
+  box-shadow: 0 0 24px rgba(255, 207, 138, 0.5);
+}
+
+#cardToast p {
+  font-size: 1.5rem;
+  font-style: italic;
+  line-height: 1.1;
+}
+
+#cardToast .label {
+  color: var(--gold);
+}
+
+#deck {
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background: radial-gradient(circle at 50% 30%, rgba(43, 12, 32, 0.88), rgba(13, 6, 18, 0.96));
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.deck-in {
+  width: min(1100px, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+
+.deck-head {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  margin-bottom: 0.8rem;
+}
+
+#deckHeart {
+  width: 120px;
+  height: auto;
+  flex: none;
+}
+
+.deck-title h2 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 400;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.deck-title h2 em {
+  color: var(--gold);
+}
+
+.deck-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  list-style: none;
+}
+
+.deck-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(196, 149, 166, 0.25);
+  opacity: 0.55;
+}
+
+.deck-steps li.now {
+  opacity: 1;
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(232, 189, 132, 0.25);
+}
+
+.deck-steps li.done {
+  opacity: 1;
+  border-color: var(--teal);
+}
+
+.deck-steps b {
+  font-family: var(--f-mono);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.dk-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+}
+
+.dk-suit {
+  width: 1.6rem;
+  font-size: 1.3rem;
+  text-align: center;
+  flex: none;
+}
+
+.dk-row.red .dk-suit {
+  color: var(--wax-hot);
+}
+
+.dk-row.black .dk-suit {
+  color: var(--paper);
+}
+
+.dk-row.joker .dk-suit {
+  color: var(--gold);
+}
+
+.dk-row ul {
+  display: grid;
+  grid-template-columns: repeat(13, minmax(0, 1fr));
+  gap: 0.35rem;
+  flex: 1;
+  list-style: none;
+}
+
+
+.deck-grid {
+  width: min(100%, calc((100vh - 300px) * 2.3 + 2.2rem));
+  margin: 0 auto;
+}
+
+.deck-joker {
+  list-style: none;
+  width: 64px;
+  margin-left: auto;
+  flex: none;
+}
+
+.dk-note {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.dk {
+  position: relative;
+  aspect-ratio: 5 / 7;
+}
+
+.dk i {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.3rem;
+  background-size: cover;
+  background-position: center;
+}
+
+.dk.got i {
+  box-shadow: 0 0 14px rgba(255, 207, 138, 0.35);
+}
+
+.dk.miss i {
+  filter: saturate(0.7) brightness(0.55);
+}
+
+.dk.lock i {
+  filter: grayscale(1) brightness(0.3);
+}
+
+.dk.face.got {
+  outline: 1px solid rgba(232, 189, 132, 0.7);
+  outline-offset: 2px;
+  border-radius: 0.3rem;
+}
+
+.dk b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(1rem, 2.4vw, 1.8rem);
+  font-weight: 400;
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(255, 207, 138, 0.8);
+}
+
+.dk b em {
+  display: grid;
+  place-items: center;
+  width: 54%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-style: normal;
+  background: rgba(13, 6, 18, 0.82);
+  border: 1px solid rgba(232, 189, 132, 0.6);
+}
+
+.dk b .ic {
+  width: 55%;
+  height: auto;
+}
+
+.dk span {
+  position: absolute;
+  left: 0.2rem;
+  top: 0.1rem;
+  font-family: var(--f-mono);
+  font-size: 0.6rem;
+  color: rgba(251, 239, 230, 0.75);
+}
+
+.dk.got span {
+  display: none;
+}
+
+.deck-where {
+  list-style: none;
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.deck-where li {
+  display: flex;
+  gap: 0.8rem;
+  align-items: baseline;
+}
+
+.deck-where li span {
+  min-width: 15rem;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.deck-where li b {
+  font-weight: 400;
+  color: var(--paper);
+}
+
+.deck-foot {
+  margin-top: 0.8rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.teaser {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1.6rem;
+  animation: rise 1.6s var(--expo) both;
+}
+
+.teaser i {
+  width: 90px;
+  aspect-ratio: 5 / 7;
+  border-radius: 0.5rem;
+  background-size: cover;
+  box-shadow: 0 0 40px rgba(255, 42, 58, 0.55);
+  animation: cardIn 1.6s var(--expo) both;
+}
+
+.teaser p {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.teaser h3 {
+  font-family: var(--f-mono);
+  font-weight: 500;
+  letter-spacing: 0.4em;
+  color: var(--wax-hot);
+}
+
+.deck-in {
+  scrollbar-width: none;
+}
+
+.deck-in::-webkit-scrollbar {
+  display: none;
+}

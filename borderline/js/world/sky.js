@@ -57,49 +57,15 @@ const Sky = (() => {
   dome.renderOrder = -10;
   group.add(dome);
 
-  const N = 7000;
-  const pos = new Float32Array(N * 3);
-  const col = new Float32Array(N * 3);
-  const r = rng(7);
-  const c1 = new THREE.Color('#ff7a9a');
-  const c2 = new THREE.Color('#ffe2c4');
-  const c3 = new THREE.Color('#b07cff');
-  const tmp = new THREE.Color();
-  for (let i = 0; i < N; i++) {
-    const t = r() * TAU;
-    const hx = 16 * Math.pow(Math.sin(t), 3);
-    const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-    const k = Math.pow(r(), 0.6);
-    const spread = (1 - k) * 4 + 0.6;
-    pos[i * 3] = hx * k + (r() - 0.5) * spread;
-    pos[i * 3 + 1] = hy * k + (r() - 0.5) * spread;
-    pos[i * 3 + 2] = (r() - 0.5) * 4;
-    tmp
-      .copy(c1)
-      .lerp(c2, Math.pow(1 - k, 2))
-      .lerp(c3, r() * 0.35);
-    col.set([tmp.r, tmp.g, tmp.b], i * 3);
-  }
-  const gg = new THREE.BufferGeometry();
-  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  gg.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const galaxy = new THREE.Points(
-    gg,
-    new THREE.PointsMaterial({
-      size: 0.55,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      fog: false,
-    }),
-  );
+  // the voyage heart-galaxy, frozen above the roofs: the Oui the Veilleurs took
+  const heart = Heart.galaxy(42000, 4, 9);
+  const galaxy = heart.group;
   const gal = new THREE.Group();
   gal.add(galaxy);
   gal.position.set(-120, 260, -520);
-  gal.scale.setScalar(9);
+  gal.scale.setScalar(2.3);
   gal.lookAt(0, 0, 0);
+  heart.core.material.opacity = 0.32;
   group.add(gal);
 
   R.scene.add(group);
@@ -107,11 +73,23 @@ const Sky = (() => {
   return {
     U,
     galaxy,
+    heart,
     update(t, cam) {
       U.uTime.value = t;
       group.position.copy(cam.position);
       galaxy.rotation.z = Math.sin(t * 0.05) * 0.05;
-      galaxy.material.opacity = 0.75 + 0.1 * Math.sin(t * 0.7);
+      const H = heart.U;
+      H.uTime.value = t;
+      // star size in px scales with the distance (the voyage saw it from ~190 m)
+      H.uPx.value = 3.1 * R.renderer.getPixelRatio();
+      H.uRed.value = U.uRed.value;
+      H.uGray.value = U.uGray.value;
+      // the Oui fills up again card by card
+      if (typeof Cards !== 'undefined' && typeof Story !== 'undefined' && Story.S) {
+        H.uFill.value += (Cards.count(Cards.IDS) / 53 + 0.04 - H.uFill.value) * 0.02;
+        H.uDim.value = 0.22;
+      }
+      H.uBeat.value = Math.pow(Math.max(0, Math.sin(t * 2.2)), 12) * 0.6;
     },
   };
 })();

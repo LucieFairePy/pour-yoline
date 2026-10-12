@@ -549,6 +549,299 @@ const Tex = (() => {
       [2, 6],
     ],
   };
+  // classic French court portrait, drawn twice (the bottom half is the top one turned over)
+  const court = (g, box, rank, suit, col) => {
+    const RD = '#c8102e';
+    const BL = '#1f3a93';
+    const GD = '#e3b23c';
+    const SK = '#f4d6b4';
+    const red = isRed(suit);
+    const main = red ? RD : BL;
+    const alt = red ? BL : RD;
+    const cx = box.x + box.w / 2;
+    const top = box.y;
+    const mid = box.y + box.h / 2;
+    const ln = (w = 4) => {
+      g.lineWidth = w;
+      g.strokeStyle = '#111';
+      g.lineJoin = g.lineCap = 'round';
+    };
+    const path = (pts) => {
+      g.beginPath();
+      pts.forEach(([x, y], i) => (i ? g.lineTo(cx + x, top + y) : g.moveTo(cx + x, top + y)));
+      g.closePath();
+    };
+    const shape = (pts, fill) => {
+      path(pts);
+      g.fillStyle = fill;
+      g.fill();
+      ln();
+      g.stroke();
+    };
+    const heart = (x0, y0, k) => {
+      g.save();
+      g.translate(x0, y0);
+      g.beginPath();
+      for (let i = 0; i <= 60; i++) {
+        const t = (i / 60) * Math.PI * 2;
+        const s3 = Math.sin(t);
+        const x = 16 * s3 * s3 * s3 * k;
+        const y =
+          -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * k;
+        if (i) g.lineTo(x, y);
+        else g.moveTo(x, y);
+      }
+      g.fillStyle = '#ff5f8a';
+      g.fill();
+      ln(3);
+      g.stroke();
+      g.restore();
+    };
+    const half = () => {
+      g.save();
+      g.beginPath();
+      g.rect(box.x, box.y, box.w, box.h / 2);
+      g.clip();
+      // prop behind the shoulder
+      if (rank === 'R') {
+        shape(
+          [
+            [-120, 40],
+            [-108, 40],
+            [-108, 380],
+            [-120, 380],
+          ],
+          '#d9dde6',
+        );
+        shape(
+          [
+            [-150, 150],
+            [-78, 150],
+            [-78, 166],
+            [-150, 166],
+          ],
+          GD,
+        );
+      } else if (rank === 'V') {
+        shape(
+          [
+            [116, 10],
+            [128, 10],
+            [128, 380],
+            [116, 380],
+          ],
+          '#8a5a2b',
+        );
+        shape(
+          [
+            [122, -20],
+            [146, 30],
+            [122, 50],
+            [98, 30],
+          ],
+          '#d9dde6',
+        );
+      }
+      // robe: bands of colour like the classic court cards
+      const robe = [
+        [-160, 372],
+        [-150, 250],
+        [-95, 205],
+        [-40, 190],
+        [40, 190],
+        [95, 205],
+        [150, 250],
+        [160, 372],
+      ];
+      shape(robe, main);
+      g.save();
+      path(robe);
+      g.clip();
+      for (let i = -4; i < 7; i++) {
+        g.fillStyle = i % 2 ? alt : GD;
+        g.beginPath();
+        g.moveTo(cx - 200 + i * 60, top + 372);
+        g.lineTo(cx - 172 + i * 60, top + 372);
+        g.lineTo(cx - 32 + i * 60, top + 190);
+        g.lineTo(cx - 60 + i * 60, top + 190);
+        g.closePath();
+        g.fill();
+      }
+      g.restore();
+      path(robe);
+      ln();
+      g.stroke();
+      // collar
+      shape(
+        [
+          [-62, 196],
+          [0, 262],
+          [62, 196],
+          [40, 186],
+          [0, 226],
+          [-40, 186],
+        ],
+        GD,
+      );
+      // long hair behind the Dame's head
+      if (rank === 'D')
+        shape(
+          [
+            [-62, 70],
+            [-80, 200],
+            [-40, 214],
+            [40, 214],
+            [80, 200],
+            [62, 70],
+          ],
+          GD,
+        );
+      // head and face
+      g.beginPath();
+      g.ellipse(cx, top + 128, 48, 58, 0, 0, Math.PI * 2);
+      g.fillStyle = SK;
+      g.fill();
+      ln();
+      g.stroke();
+      g.fillStyle = '#111';
+      [-18, 18].forEach((dx) => {
+        g.beginPath();
+        g.ellipse(cx + dx, top + 122, 6, 4, 0, 0, Math.PI * 2);
+        g.fill();
+      });
+      ln(3);
+      g.beginPath();
+      g.moveTo(cx, top + 126);
+      g.lineTo(cx - 5, top + 146);
+      g.lineTo(cx + 3, top + 148);
+      g.stroke();
+      g.strokeStyle = RD;
+      g.beginPath();
+      g.moveTo(cx - 12, top + 162);
+      g.quadraticCurveTo(cx, top + 168, cx + 12, top + 162);
+      g.stroke();
+      if (rank === 'R')
+        shape(
+          [
+            [-44, 150],
+            [-30, 200],
+            [0, 214],
+            [30, 200],
+            [44, 150],
+            [20, 172],
+            [-20, 172],
+          ],
+          '#e8e2d6',
+        );
+      if (rank === 'V')
+        [-1, 1].forEach((d) =>
+          shape(
+            [
+              [d * 46, 92],
+              [d * 56, 150],
+              [d * 40, 140],
+            ],
+            GD,
+          ),
+        );
+      // headwear
+      if (rank === 'R') {
+        shape(
+          [
+            [-54, 80],
+            [-60, 22],
+            [-32, 50],
+            [-16, 4],
+            [0, 40],
+            [16, 4],
+            [32, 50],
+            [60, 22],
+            [54, 80],
+          ],
+          GD,
+        );
+        [-30, 0, 30].forEach((dx) => {
+          g.beginPath();
+          g.arc(cx + dx, top + 68, 7, 0, Math.PI * 2);
+          g.fillStyle = dx ? BL : RD;
+          g.fill();
+        });
+      } else if (rank === 'D') {
+        shape(
+          [
+            [-46, 76],
+            [-40, 44],
+            [-18, 58],
+            [0, 30],
+            [18, 58],
+            [40, 44],
+            [46, 76],
+          ],
+          GD,
+        );
+      } else {
+        shape(
+          [
+            [-58, 84],
+            [-50, 52],
+            [0, 40],
+            [50, 52],
+            [62, 84],
+          ],
+          main,
+        );
+        g.beginPath();
+        g.moveTo(cx + 30, top + 50);
+        g.quadraticCurveTo(cx + 90, top, cx + 110, top + 40);
+        g.quadraticCurveTo(cx + 70, top + 20, cx + 40, top + 56);
+        g.closePath();
+        g.fillStyle = '#f7f2e8';
+        g.fill();
+        ln(3);
+        g.stroke();
+      }
+      // hearts court cards hold the voyage heart, the other Dames a flower
+      if (suit === '♥') heart(cx + (rank === 'V' ? -70 : 70), top + 300, 1.9);
+      else if (rank === 'D') {
+        const hx = cx + 70;
+        const hy = top + 300;
+        ln(4);
+        g.strokeStyle = '#2e7d32';
+        g.beginPath();
+        g.moveTo(hx, hy + 60);
+        g.lineTo(hx, hy);
+        g.stroke();
+        g.beginPath();
+        g.arc(hx, hy - 6, 16, 0, Math.PI * 2);
+        g.fillStyle = RD;
+        g.fill();
+        ln(3);
+        g.stroke();
+      }
+      // suit beside the head
+      g.fillStyle = col;
+      Icons.draw(g, Icons.of(suit), box.x + 52, box.y + 64, 64);
+      g.restore();
+    };
+    g.fillStyle = '#fffaf0';
+    g.fillRect(box.x, box.y, box.w, box.h);
+    half();
+    g.save();
+    g.translate(cx, mid);
+    g.rotate(Math.PI);
+    g.translate(-cx, -mid);
+    half();
+    g.restore();
+    // frame + the line between the two heads
+    g.lineWidth = 5;
+    g.strokeStyle = col;
+    g.strokeRect(box.x, box.y, box.w, box.h);
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(box.x, mid);
+    g.lineTo(box.x + box.w, mid);
+    g.stroke();
+  };
   const cardCache = new Map();
   /** rank: 'A', '2'..'10', 'V', 'D', 'R', 'J' (joker). suit: ♥ ♠ ♦ ♣ or '' for joker. */
   const card = (rank, suit) => {
@@ -631,21 +924,9 @@ const Tex = (() => {
         g.restore();
       });
     } else {
-      // court card: framed panel, big letter, crown or sword, suit
-      g.strokeStyle = col;
-      g.lineWidth = 6;
-      rr(box.x, box.y, box.w, box.h, 24);
-      g.stroke();
-      g.lineWidth = 2;
-      rr(box.x + 16, box.y + 16, box.w - 32, box.h - 32, 16);
-      g.stroke();
-      const sym = rank === 'D' ? 'crown' : rank === 'R' ? 'crown' : 'chevrons-up';
-      g.globalAlpha = 0.9;
-      Icons.draw(g, sym, W / 2, box.y + 150, 170);
-      g.globalAlpha = 1;
-      g.font = 'bold 300px Georgia, serif';
-      g.fillText(rank, W / 2, H / 2 + 30);
-      Icons.draw(g, Icons.of(suit), W / 2, box.y + box.h - 150, 170);
+      // court card: a double-headed portrait like a real deck (Roi = crown, beard and sword,
+      // Dame = tiara, long hair and a flower, Valet = feathered cap and pike), mirrored below
+      court(g, box, rank, suit, col);
     }
     const t = new THREE.CanvasTexture(c);
     t.anisotropy = R_ANISO();

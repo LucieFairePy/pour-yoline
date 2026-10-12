@@ -102,6 +102,13 @@ const Arena = (() => {
   let screen;
   let card;
   let dust;
+  let bridgeFx = null;
+  const blind = [];
+  const own = [];
+  const pq = V3();
+  let tileTex;
+  let glassMat;
+  let lit;
 
   const build = (myRole, seed) => {
     if (built) return;
@@ -125,31 +132,109 @@ const Arena = (() => {
       }
     }
 
+    // ---- the two bridges ----
+    // Glass tiles with a glowing frame and a painted "row + lane" label so the one who sees
+    // can guide by voice ("rangée 4, à gauche"). The blind side gets a designed void:
+    // girders, pylons, a cloud sea far below, and every tile lights up once stepped on.
+    const LANE = ['G', 'M', 'D'];
+    const KCOL = { seen: '#ff5f8a', plain: '#ffcf8a', real: '#6cc8ff', fake: '#ff3a4a' };
+    const texCache = {};
+    tileTex = (row, lane, kind) => {
+      const key = row + lane + kind;
+      if (texCache[key]) return texCache[key];
+      const W = 192;
+      const H = 280;
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      const g = c.getContext('2d');
+      const col = KCOL[kind];
+      const gr = g.createLinearGradient(0, 0, W, H);
+      gr.addColorStop(0, 'rgba(255,255,255,0.22)');
+      gr.addColorStop(0.45, 'rgba(255,255,255,0.03)');
+      gr.addColorStop(0.55, 'rgba(255,255,255,0.10)');
+      gr.addColorStop(1, 'rgba(255,255,255,0.04)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, W, H);
+      g.shadowColor = col;
+      g.shadowBlur = 18;
+      g.strokeStyle = col;
+      g.lineWidth = 9;
+      g.strokeRect(10, 10, W - 20, H - 20);
+      g.lineWidth = 2;
+      g.globalAlpha = 0.6;
+      g.strokeRect(26, 26, W - 52, H - 52);
+      g.globalAlpha = 1;
+      if (kind === 'fake') {
+        g.lineWidth = 14;
+        g.beginPath();
+        g.moveTo(44, 64);
+        g.lineTo(W - 44, H - 64);
+        g.moveTo(W - 44, 64);
+        g.lineTo(44, H - 64);
+        g.stroke();
+      } else {
+        g.fillStyle = col;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.font = 'bold 96px Georgia, serif';
+        g.fillText(String(row), W / 2, H / 2 - 30);
+        g.font = 'bold 56px "IBM Plex Mono", monospace';
+        g.fillText(lane, W / 2, H / 2 + 62);
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.anisotropy = 4;
+      texCache[key] = t;
+      return t;
+    };
     const tileGeo = new THREE.BoxGeometry(1.8, 0.3, 2.6);
-    const tMat = {
-      seen: Tex.mat('metal', {
-        color: '#6a4a78',
-        rough: 0.7,
-        metal: 0.4,
-        scale: 1.8,
-        emissive: '#ff4f86',
-        emissiveIntensity: 0.32,
-      }),
-      plain: Tex.mat('metal', { color: '#6a5a78', rough: 0.8, metal: 0.4, scale: 1.8 }),
-      real: Tex.mat('metal', {
-        color: '#3a4a70',
-        rough: 0.7,
-        metal: 0.4,
-        scale: 1.8,
-        emissive: '#6cc8ff',
-        emissiveIntensity: 0.3,
-      }),
-      ghost: new THREE.MeshBasicMaterial({
-        color: '#6cc8ff',
+    const edgeGeo = new THREE.EdgesGeometry(tileGeo);
+    const topGeo = new THREE.PlaneGeometry(1.74, 2.54).rotateX(-Math.PI / 2).rotateY(Math.PI);
+    const glass = {};
+    glassMat = (kind) =>
+      glass[kind] ||
+      (glass[kind] = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(KCOL[kind]).multiplyScalar(0.35),
+        emissive: KCOL[kind],
+        emissiveIntensity: kind === 'fake' ? 0.08 : 0.14,
+        roughness: 0.08,
+        metalness: 0.5,
         transparent: true,
-        opacity: 0.06,
+        opacity: kind === 'fake' ? 0.3 : 0.5,
         depthWrite: false,
-      }),
+      }));
+    const makeTile = (x, z, row, lane, kind) => {
+      const t = new THREE.Group();
+      t.position.copy(P(x, -0.15, z));
+      const body = new THREE.Mesh(tileGeo, glassMat(kind));
+      const top = new THREE.Mesh(
+        topGeo,
+        new THREE.MeshBasicMaterial({
+          map: tileTex(row, lane, kind),
+          transparent: true,
+          depthWrite: false,
+          color: new THREE.Color().setScalar(kind === 'plain' ? 0.55 : 0.75),
+        }),
+      );
+      top.position.y = 0.156;
+      const lines = new THREE.LineSegments(
+        edgeGeo,
+        new THREE.LineBasicMaterial({
+          color: new THREE.Color(KCOL[kind]).multiplyScalar(kind === 'fake' ? 1 : 1.5),
+          toneMapped: false,
+          transparent: true,
+        }),
+      );
+      t.add(body, top, lines);
+      t.userData = { top, lines, body, k: 1, kind, x, z };
+      group.add(t);
+      return t;
+    };
+    lit = (t, k) => {
+      t.visible = k > 0.01;
+      t.userData.top.material.opacity = k;
+      t.userData.lines.material.opacity = k;
+      t.scale.setScalar(0.85 + 0.15 * Math.min(1, k));
     };
 
     for (let i = 0; i < ROWS; i++) {
@@ -157,29 +242,28 @@ const Arena = (() => {
       COLS.valet.forEach((x, c) => {
         const real = path.valet[i] === c;
         if (!real) return;
-        if (role === 'valet')
+        if (role === 'valet') {
           Phys.box(O.x + x, O.y - 0.15, O.z + z, 1.8, 0.3, 2.6, { tag: 'tile' });
-        if (role === 'dame') {
-          const m = new THREE.Mesh(tileGeo, tMat.seen);
-          m.position.copy(P(x, -0.15, z));
-          group.add(m);
+          // blind: invisible until the Valet stands on it, then it stays lit (a footprint)
+          const t = makeTile(x, z, i + 1, LANE[c], 'real');
+          t.userData.k = 0;
+          lit(t, 0);
+          blind.push(t);
         }
+        if (role === 'dame') makeTile(x, z, i + 1, LANE[c], 'seen');
       });
       COLS.dame.forEach((x, c) => {
         const real = path.dame[i] === c;
         if (role === 'dame') {
-          const m = new THREE.Mesh(tileGeo, tMat.plain);
-          m.position.copy(P(x, -0.15, z));
-          group.add(m);
+          // all three look the same for her: she has to trust the other one's voice
+          const t = makeTile(x, z, i + 1, LANE[c], 'plain');
+          t.userData.real = real;
+          own.push(t);
           if (real) Phys.box(O.x + x, O.y - 0.15, O.z + z, 1.8, 0.3, 2.6, { tag: 'tile' });
-        } else {
-          const m = new THREE.Mesh(tileGeo, real ? tMat.real : tMat.ghost);
-          m.position.copy(P(x, -0.15, z));
-          group.add(m);
-        }
+        } else makeTile(x, z, i + 1, LANE[c], real ? 'real' : 'fake');
       });
       const n = sprite(String(i + 1), 1.3, '#e8bd84');
-      n.position.copy(P(0, 0.9, z));
+      n.position.copy(P(0, 1.2, z));
       group.add(n);
       for (const s of [-1, 1]) {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 6), gold);
@@ -187,6 +271,78 @@ const Arena = (() => {
         group.add(post);
       }
     }
+
+    // structure of the void: girders under both bridges, a central spine of pylons
+    const girder = edge('#ff4f86', 0.9);
+    const gold2 = edge('#ffcf8a', 0.4);
+    [-7.6, -0.6, 0.6, 7.6].forEach((x) => {
+      const g = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 30), girder);
+      g.position.copy(P(x, -0.55, 27));
+      group.add(g);
+    });
+    const pylonMat = Tex.mat('metal', { color: '#3a2c48', rough: 0.5, metal: 0.6, scale: 2 });
+    for (let i = 0; i < ROWS; i += 2) {
+      const z = rowZ(i) + 1.5;
+      const py = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.5, 40, 8), pylonMat);
+      py.position.copy(P(0, -20.6, z));
+      group.add(py);
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(15.4, 0.12, 0.12), gold2);
+      cross.position.copy(P(0, -0.62, z));
+      group.add(cross);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), edge('#ffcf8a', 2.4));
+      lamp.position.copy(P(0, -0.45, z));
+      group.add(lamp);
+    }
+    // entrance and exit gates over each bridge (solid posts, on the platforms)
+    for (const z of [11.7, 42.3]) {
+      for (const x of [-7.4, -0.75, 0.75, 7.4]) solid(x, 1.75, z, 0.3, 3.5, 0.3, metal);
+      for (const sx of [-1, 1]) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(6.95, 0.1, 0.1), sx < 0 ? rose : edge('#6cc8ff', 2));
+        bar.position.copy(P(sx * 4.075, 3.5, z));
+        group.add(bar);
+      }
+    }
+    // cloud sea far below: makes the drop feel deep instead of a black hole
+    const cloudU = { uTime: { value: 0 } };
+    const clouds = new THREE.Mesh(
+      new THREE.PlaneGeometry(260, 220).rotateX(-Math.PI / 2),
+      new THREE.ShaderMaterial({
+        uniforms: cloudU,
+        transparent: true,
+        depthWrite: false,
+        fog: false,
+        vertexShader: `
+          varying vec2 vP;
+          void main() {
+            vP = position.xz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          varying vec2 vP;
+          float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float n(vec2 p) {
+            vec2 i = floor(p), f = fract(p);
+            f = f * f * (3. - 2. * f);
+            return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + 1.), f.x), f.y);
+          }
+          void main() {
+            vec2 p = vP * 0.035;
+            float v = 0.;
+            float a = 0.5;
+            for (int i = 0; i < 5; i++) { v += a * n(p + uTime * 0.02 * float(i + 1)); p *= 2.03; a *= 0.5; }
+            float edgeF = 1. - smoothstep(60., 110., length(vP));
+            vec3 c = mix(vec3(0.16, 0.05, 0.22), vec3(0.85, 0.35, 0.6), smoothstep(0.45, 0.85, v));
+            gl_FragColor = vec4(c, smoothstep(0.3, 0.75, v) * 0.75 * edgeF);
+          }
+        `,
+      }),
+    );
+    clouds.position.copy(P(0, -32, 50));
+    group.add(clouds);
+    bridgeFx = { cloudU };
+
     ['G', 'M', 'D'].forEach((l, c) => {
       for (const who of ['valet', 'dame']) {
         const s = sprite(l, 0.9, '#c495a6');
@@ -195,9 +351,9 @@ const Arena = (() => {
       }
     });
     const tagV = sprite('♠', 1.6, '#6cc8ff');
-    tagV.position.copy(P(4, 2.2, 10));
+    tagV.position.copy(P(4, 4.6, 11.7));
     const tagD = sprite('♥', 1.6, '#ff5f8a');
-    tagD.position.copy(P(-4, 2.2, 10));
+    tagD.position.copy(P(-4, 4.6, 11.7));
     group.add(tagV, tagD);
 
     solid(-5, 0.6, 49.5, 0.5, 1.2, 0.5, metal);
@@ -384,6 +540,39 @@ const Arena = (() => {
       if (!built) return;
       screen.update(dt, t);
       dust.rotation.y = Math.sin(t * 0.02) * 0.02;
+      if (bridgeFx) bridgeFx.cloudU.uTime.value = t;
+      // footprints: a tile under my feet lights up and stays lit; a fake one I fell through turns red
+      if ((S.a || {}).stage === 1 || blind.some((b) => b.userData.k > 0 && b.userData.k < 1)) {
+        const p = Player.body.p;
+        pq.set(p.x - O.x, p.y - O.y, p.z - O.z);
+        const over = (u) => Math.abs(pq.x - u.x) < 0.95 && Math.abs(pq.z - u.z) < 1.35;
+        blind.forEach((b) => {
+          const u = b.userData;
+          if (u.k === 0 && Player.body.grounded && pq.y > -0.3 && pq.y < 0.4 && over(u)) {
+            u.k = 0.001;
+            Sound.play('step');
+            Fx.burst(b.position.clone().add(V3(0, 0.3, 0)), '#6cc8ff', 26, 2.5, 0.5, 0);
+          }
+          if (u.k > 0 && u.k < 1) {
+            u.k = Math.min(1, u.k + dt * 2.5);
+            lit(b, u.k);
+          }
+        });
+        own.forEach((b) => {
+          const u = b.userData;
+          if (u.done || !over(u)) return;
+          if (u.real && Player.body.grounded && pq.y > -0.3 && pq.y < 0.4) {
+            u.done = true;
+            u.lines.material.color.set('#7cf0c8').multiplyScalar(2.2);
+            Fx.burst(b.position.clone().add(V3(0, 0.3, 0)), '#7cf0c8', 20, 2.2, 0.45, 0);
+          } else if (!u.real && pq.y < -0.6 && pq.y > -3) {
+            u.done = true;
+            u.top.material.map = tileTex(0, '', 'fake');
+            u.lines.material.color.set('#ff3a4a').multiplyScalar(1.6);
+            u.body.material = glassMat('fake');
+          }
+        });
+      }
       const a = S.a || {};
       const h = S.h || { t: 0 };
       harnessPos(h.t, harness.position);

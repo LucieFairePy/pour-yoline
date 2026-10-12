@@ -10,6 +10,7 @@ const Donjon = (() => {
   let screen = null;
   let card = null;
   let chest = null;
+  let chestB = null;
   let lid = null;
   const gates = {};
   const torches = [];
@@ -267,7 +268,9 @@ const Donjon = (() => {
     chest.position.copy(P(0, 0, 182));
     chest.visible = false;
     group.add(chest);
-    Phys.box(O.x, O.y + 0.6, O.z + 182, 2, 1.2, 1.3);
+    // the chest only blocks once it has appeared (after the boss)
+    chestB = Phys.box(O.x, O.y + 0.6, O.z + 182, 2, 1.2, 1.3);
+    chestB.on = false;
     card = LvKit.card('7', '♠', false);
     card.position.copy(P(0, 2.8, 182));
     group.add(card);
@@ -393,6 +396,7 @@ const Donjon = (() => {
       ring.visible = st === 3;
       ring.rotation.y = t;
       chest.visible = st >= 12;
+      chestB.on = st >= 12;
       lid.rotation.x = damp(lid.rotation.x, st >= 13 ? -1.9 : 0, 3, dt);
       card.visible = st >= 13;
       card.rotation.y = t * 1.4;

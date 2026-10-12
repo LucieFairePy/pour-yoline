@@ -3,7 +3,6 @@
   const A = T.balade;
   const local = {
     stage: 0,
-    line: null,
     signs: new Set(),
     carry: null,
     carryR: null,
@@ -12,19 +11,6 @@
     bridgeHint: false,
   };
   const tm = { win: 0, sit: 0, far: 0 };
-
-  const handLine = () => {
-    const l = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#ffcf8a').multiplyScalar(2),
-        toneMapped: false,
-      }),
-    );
-    l.visible = false;
-    R.scene.add(l);
-    return l;
-  };
 
   const objective = (c) => {
     const st = c.S.x.stage;
@@ -74,7 +60,6 @@
       c.fog(0.011);
       Sound.mood('gold');
       HUD.visa(A.card + ' · ' + A.title);
-      if (!local.line) local.line = handLine();
       if (!first) {
         await sleep(300);
         fadeTo(false);
@@ -85,7 +70,7 @@
       this.apply(c);
     },
     exit() {
-      if (local.line) local.line.visible = false;
+      Avatar.together(0, false);
       [local.carry, local.carryR].forEach((l) => l && R.scene.remove(l));
       local.carry = local.carryR = null;
       Player.handPose = false;
@@ -152,19 +137,7 @@
       const q = Balade.rel(p);
       const close = Math.hypot(p.x - rp.x, p.z - rp.z) < 1.8;
       Balade.update(dt, t, x, !!x.hand);
-      Player.handPose = x.hand && close;
-      Remote.handPose = x.hand && close;
-      const l = local.line;
-      if (l) {
-        l.visible = x.hand;
-        if (x.hand) {
-          const a = V3(p.x, p.y + 0.95, p.z);
-          const b = V3(rp.x, rp.y + 0.95, rp.z);
-          l.position.copy(a);
-          l.lookAt(b);
-          l.scale.set(1, 1, Math.max(0.01, a.distanceTo(b)));
-        }
-      }
+      Avatar.together(dt, x.hand);
       // carried lanterns float above each player's hand until released
       const carrying = (who) => x.lan[who] && !x.released;
       const mine = carrying(c.role);

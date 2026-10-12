@@ -1,4 +1,5 @@
 // Extra enemy types for La Crypte (♠ 7) and Le Caveau (♣ R), registered into Enemies.
+// Their visual models (except the Oracle's) are in enemy-models.js.
 (() => {
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
@@ -8,98 +9,12 @@
     roughness: 0.28,
     emissive: '#0a0612',
   });
-  const steel = new THREE.MeshStandardMaterial({
-    color: '#3a3448',
-    metalness: 0.95,
-    roughness: 0.22,
-    emissive: '#0c0814',
-  });
-  const blackSteel = new THREE.MeshStandardMaterial({
-    color: '#4a4058',
-    metalness: 0.9,
-    roughness: 0.3,
-    emissive: '#2a0a18',
-  });
   const gold = new THREE.MeshStandardMaterial({
     color: '#d6ad5e',
     metalness: 1,
     roughness: 0.22,
     emissive: '#3a2608',
   });
-
-  const pedestal = (r = 0.6) =>
-    new THREE.LatheGeometry(
-      [
-        [0.001, 0],
-        [r, 0],
-        [r, 0.1],
-        [r * 0.85, 0.16],
-        [r * 0.78, 0.3],
-        [r * 0.55, 0.4],
-        [r * 0.5, 0.62],
-        [r * 0.62, 0.7],
-        [r * 0.001, 0.72],
-      ].map(([x, y]) => new THREE.Vector2(x, y)),
-      40,
-    );
-
-  const horseGeo = (() => {
-    const s = new THREE.Shape();
-    const pts = [
-      [-0.36, -0.5],
-      [0.34, -0.5],
-      [0.3, -0.12],
-      [0.5, 0.08],
-      [0.62, 0.26],
-      [0.58, 0.38],
-      [0.36, 0.52],
-      [0.24, 0.74],
-      [0.16, 0.96],
-      [0.04, 0.78],
-      [-0.12, 0.7],
-      [-0.32, 0.5],
-      [-0.46, 0.14],
-      [-0.42, -0.2],
-    ];
-    s.moveTo(...pts[0]);
-    for (let i = 1; i < pts.length; i++) s.lineTo(...pts[i]);
-    s.lineTo(...pts[0]);
-    return new THREE.ExtrudeGeometry(s, {
-      depth: 0.34,
-      bevelEnabled: true,
-      bevelSize: 0.05,
-      bevelThickness: 0.06,
-      bevelSegments: 3,
-    })
-      .center()
-      .rotateY(-Math.PI / 2);
-  })();
-
-  const knight = (scale, eyeCol, maneCol, mat = metal) => {
-    const g = new THREE.Group();
-    const body = new THREE.Group();
-    const base = new THREE.Mesh(pedestal(0.62), mat);
-    const head = new THREE.Mesh(horseGeo, mat);
-    head.position.y = 1.18;
-    head.scale.setScalar(1.25);
-    const collar = new THREE.Mesh(
-      new THREE.TorusGeometry(0.42, 0.05, 8, 32).rotateX(Math.PI / 2),
-      steel,
-    );
-    collar.position.y = 0.66;
-    const eyes = [-1, 1].map((sx) => {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), glow(eyeCol, 2.6));
-      e.position.set(sx * 0.25, 1.5, 0.42);
-      return e;
-    });
-    const mane = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 0.06), glow(maneCol, 1.6));
-    mane.position.set(0, 1.35, -0.5);
-    mane.rotation.x = 0.45;
-    body.add(base, head, collar, ...eyes, mane);
-    body.scale.setScalar(scale);
-    g.add(body);
-    return { g, body, eye: eyes[0], eyes, head };
-  };
 
   // ---------- generic chase helper ----------
   const nearest = (e, targets, max = 60) => {
@@ -175,11 +90,6 @@
   // ---------- Cavalier: charges in a straight line ----------
   Enemies.define('cavalier', {
     stats: { hp: 80, speed: 2.2, radius: 0.85, hitR: 0.95, height: 2.2, dieColor: '#b9a6ff' },
-    model: () => {
-      const k = knight(1.05, '#ff3a5a', '#b9a6ff');
-      k.bodyScale = 1.05;
-      return k;
-    },
     sim(e, dt, players, targets) {
       e.t = (e.t || 0) - dt;
       e.vuln = e.st === 3;
@@ -248,52 +158,8 @@
   });
 
   // ---------- Spectre: invisible to the Valet until the Dame reveals it ----------
-  const ghostMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color('#c8f4ff').multiplyScalar(0.9),
-    transparent: true,
-    opacity: 0.42,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    toneMapped: false,
-  });
-  const ghostGeo = new THREE.LatheGeometry(
-    [
-      [0.001, 1.75],
-      [0.28, 1.68],
-      [0.36, 1.5],
-      [0.3, 1.25],
-      [0.42, 0.9],
-      [0.55, 0.45],
-      [0.6, 0.1],
-      [0.001, 0.25],
-    ].map(([x, y]) => new THREE.Vector2(x, y)),
-    28,
-  );
   Enemies.define('spectre', {
     stats: { hp: 45, speed: 3.2, radius: 0.7, height: 1.6, dieColor: '#c8f4ff' },
-    model: () => {
-      const g = new THREE.Group();
-      const body = new THREE.Group();
-      const shell = new THREE.Mesh(ghostGeo, ghostMat.clone());
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), glow('#9fe6ff', 1.8));
-      core.position.y = 1.0;
-      const eyes = [-1, 1].map((sx) => {
-        const ey = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), glow('#ffffff', 3));
-        ey.position.set(sx * 0.12, 1.5, 0.28);
-        return ey;
-      });
-      const tails = [0, 1, 2].map((i) => {
-        const tl = new THREE.Mesh(
-          new THREE.ConeGeometry(0.16, 0.6, 8).rotateX(Math.PI),
-          shell.material,
-        );
-        tl.position.set(Math.cos(i * 2.1) * 0.35, 0.05, Math.sin(i * 2.1) * 0.35);
-        return tl;
-      });
-      body.add(shell, core, ...eyes, ...tails);
-      g.add(body);
-      return { g, body, eye: eyes[0], shell, tails };
-    },
     hidden: (e) => Story.role === 'valet' && !(e.reveal > 0),
     sim(e, dt, players, targets) {
       e.reveal = Math.max(0, (e.reveal || 0) - dt);
@@ -339,42 +205,6 @@
       reach: 4.2,
       stunP: 0,
       weakR: 0.8,
-    },
-    model: () => {
-      const k = knight(2.6, '#ff2a3a', '#ff4f6a', blackSteel);
-      const rim = new THREE.Mesh(
-        new THREE.TorusGeometry(0.62 * 2.6, 0.05, 8, 64).rotateX(Math.PI / 2),
-        glow('#ff4f6a', 1.8),
-      );
-      rim.position.y = 0.3;
-      k.g.add(rim);
-      const heart = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), glow('#ff5f8a', 2.5));
-      heart.position.set(0, 2.7, 1.2);
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.18), steel);
-      plate.position.set(0, 2.7, 1.28);
-      const lance = new THREE.Group();
-      const shaft = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.14, 5.5, 10).rotateX(Math.PI / 2),
-        gold,
-      );
-      shaft.position.z = 2.4;
-      const tip = new THREE.Mesh(
-        new THREE.ConeGeometry(0.22, 1.1, 10).rotateX(Math.PI / 2),
-        glow('#c9c2ff', 1.6),
-      );
-      tip.position.z = 5.6;
-      const guard = new THREE.Mesh(
-        new THREE.ConeGeometry(0.5, 0.8, 16, 1, true).rotateX(-Math.PI / 2),
-        steel,
-      );
-      guard.position.z = 0.4;
-      lance.add(shaft, tip, guard);
-      lance.position.set(1.3, 2.4, 0);
-      const crest = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.06, 8, 40), glow('#ff4f6a', 1.4));
-      crest.position.y = 4.6;
-      crest.rotation.x = Math.PI / 2;
-      k.g.add(heart, plate, lance, crest);
-      return { ...k, heart, plate, lance, crest, bodyScale: 2.6 };
     },
     sim(e, dt, players, targets) {
       e.t = (e.t || 0) - dt;

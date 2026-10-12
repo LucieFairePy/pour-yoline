@@ -1,4 +1,5 @@
-// ♣ R · Le Caveau: an ascent split by roles, then the Oracle's circular arena.
+// ♣ R · Le Caveau: an ascent split by roles, the Galerie des Sceaux (each player raises the
+// other's bridge), then the Oracle's circular arena.
 const Raid = (() => {
   const O = V3(-1400, 80, 0);
   const group = new THREE.Group();
@@ -7,44 +8,74 @@ const Raid = (() => {
   const K = LvKit.builder(O, group);
   const { P } = K;
   const FLOOR = 6.6;
-  const ARENA = V3(0, FLOOR, 96);
+  const ARENA = V3(0, FLOOR, 155);
   const AR = 22;
   const SYMS = ['♥', '♣', '♦', '♠'];
   // real card colours: hearts and diamonds red, clubs and spades black (lit silver)
   const SCOL = ['#ff2a48', '#dfe6f2', '#ff5a2a', '#dfe6f2'];
   const INK = ['#e0102e', '#0c0c10', '#e8202a', '#0c0c10'];
+  // Galerie des Sceaux: landing A, island, far landing (z ranges)
+  const GAL = { a: [68, 76], island: [92, 100], far: [116, 124] };
+  const LANE_X = { d: -4.5, v: 4.5 };
+  const TILE_Z = { 1: [79, 84, 89], 2: [103, 108, 113] };
+  // seal plates: which lane each one raises, and the kit that can hold it
+  const SEALS = {
+    door: { d: [-4, 61], v: [4, 61] },
+    v1: { who: 'dame', at: [-4.5, 73] },
+    d1: { who: 'valet', at: [4.5, 94] },
+    v2: { who: 'dame', at: [-4.5, 98] },
+    d2: { who: 'valet', at: [4.5, 118] },
+  };
   let built = false;
   let screen = null;
   let card = null;
   let door = null;
   let doorB = null;
+  let door2 = null;
+  let door2B = null;
   let dome = null;
   let glyphs = null;
+  let sentinel = null;
+  let sweepM = null;
+  let sweepT = 0;
+  let warnT = 0;
   const pillars = [];
   const PADS = [P(7, 0, 4.2), P(7, 3.3, 9.4)];
   const PAD_TO = [P(7, 3.3, 7.9), P(7, 6.6, 12.6)];
   const padM = [];
   const rings = [];
   const motes = [];
+  const tiles = {};
+  const seals = {};
+  const lights = [];
 
   const runeTex = LvKit.tex(
-    512,
-    512,
+    1024,
+    1024,
     (g, w, h) => {
-      LvKit.grain(g, w, h, '#1c2a2a', 0.1, 8000);
+      LvKit.grain(g, w, h, '#1c2a2a', 0.1, 30000);
       g.strokeStyle = 'rgba(124,240,200,0.35)';
-      g.lineWidth = 3;
-      for (let i = 0; i < 8; i++) {
+      g.lineWidth = 5;
+      for (let i = 0; i < 9; i++) {
         g.beginPath();
-        g.arc(w / 2, h / 2, 40 + i * 28, 0, TAU);
+        g.arc(w / 2, h / 2, 80 + i * 50, 0, TAU);
         g.stroke();
       }
-      g.font = '40px Georgia';
+      g.lineWidth = 2;
+      for (let i = 0; i < 48; i++) {
+        const a = (i / 48) * TAU;
+        g.beginPath();
+        g.moveTo(w / 2 + Math.cos(a) * 130, h / 2 + Math.sin(a) * 130);
+        g.lineTo(w / 2 + Math.cos(a) * 480, h / 2 + Math.sin(a) * 480);
+        g.stroke();
+      }
       g.fillStyle = 'rgba(124,240,200,0.5)';
-      g.textAlign = 'center';
-      for (let i = 0; i < 24; i++) {
-        const a = (i / 24) * TAU;
-        Icons.fillText(g, SYMS[i % 4], w / 2 + Math.cos(a) * 230, h / 2 + Math.sin(a) * 230 + 14);
+      for (let i = 0; i < 32; i++) {
+        const a = (i / 32) * TAU;
+        g.save();
+        g.translate(w / 2 + Math.cos(a) * 455, h / 2 + Math.sin(a) * 455);
+        Icons.draw(g, Icons.of(SYMS[i % 4]), 0, 0, 44);
+        g.restore();
       }
     },
     1,
@@ -52,6 +83,7 @@ const Raid = (() => {
   );
   // 1024² procedural surfaces, triplanar in world space (js/world/textures.js)
   const stone = Tex.mat('stone', { color: '#a2aeb2', scale: 3.5, bump: 1.2 });
+  const marble = Tex.mat('marble', { color: '#d8e2e0', scale: 3, rough: 0.5 });
   const trim = Tex.mat('metal', {
     color: '#e0b868',
     metal: 1,
@@ -59,10 +91,18 @@ const Raid = (() => {
     scale: 1.5,
     emissive: '#2a1a04',
   });
+  // the other player's bridge: you see it, but it does not hold you
+  const ghostMarble = new THREE.MeshStandardMaterial({
+    color: '#bfe6ff',
+    transparent: true,
+    opacity: 0.22,
+    roughness: 0.3,
+    depthWrite: false,
+  });
   const dark = Tex.mat('rock', { color: '#3a4448', scale: 8, metal: 0.2, emissive: '#04100c' });
 
-  const plat = (x, y, z, sx, sz, edge = '#7cf0c8') => {
-    K.solid(x, y - 0.5, z, sx, 1, sz, stone);
+  const plat = (x, y, z, sx, sz, edge = '#7cf0c8', mat = stone) => {
+    K.solid(x, y - 0.5, z, sx, 1, sz, mat);
     K.deco(new THREE.BoxGeometry(sx + 0.1, 0.06, sz + 0.1), LvKit.glow(edge, 0.9), x, y - 0.97, z);
     const under = K.deco(new THREE.ConeGeometry(Math.min(sx, sz) * 0.5, 3, 6), dark, x, y - 2.5, z);
     under.rotation.x = Math.PI;
@@ -92,6 +132,62 @@ const Raid = (() => {
       g.fillStyle = INK[i];
       Icons.draw(g, Icons.of(SYMS[i]), 128, 128, 176);
     });
+  const symCache = [];
+  const symTexC = (i) => symCache[i] || (symCache[i] = symTex(i));
+  const suitSprite = (s, size) =>
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.MeshBasicMaterial({
+        map: symTexC(SYMS.indexOf(s)),
+        transparent: true,
+        toneMapped: false,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+
+  // a round seal plate on the floor, with its suit floating above
+  const seal = (name, x, z, who) => {
+    const col = who === 'dame' ? '#ff5f8a' : '#6cc8ff';
+    const m = K.deco(
+      new THREE.CylinderGeometry(1.15, 1.25, 0.12, 36),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(0.5), toneMapped: false }),
+      x,
+      FLOOR + 0.06,
+      z,
+    );
+    K.deco(new THREE.TorusGeometry(1.3, 0.06, 8, 48).rotateX(Math.PI / 2), trim, x, FLOOR + 0.1, z);
+    const s = suitSprite(who === 'dame' ? '♥' : '♠', 1.1);
+    s.position.copy(P(x, FLOOR + 1.6, z));
+    group.add(s);
+    seals[name] = { m, s, col: new THREE.Color(col), pos: P(x, FLOOR, z), who };
+  };
+
+  // bridge tile raised by the other player's seal; a faint outline shows where it will appear
+  const tile = (lane, n, z) => {
+    const x = LANE_X[lane];
+    const col = lane === 'd' ? '#ff5f8a' : '#6cc8ff';
+    const m = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 3), marble);
+    m.position.copy(P(x, FLOOR - 0.3, z));
+    group.add(m);
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(3.08, 0.05, 3.08), LvKit.glow(col, 1.4));
+    edge.position.copy(P(x, FLOOR - 0.6, z));
+    group.add(edge);
+    const ghost = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(3, 0.6, 3)),
+      new THREE.LineBasicMaterial({
+        color: new THREE.Color(col).multiplyScalar(1.4),
+        transparent: true,
+        opacity: 0.35,
+        toneMapped: false,
+      }),
+    );
+    ghost.position.copy(m.position);
+    group.add(ghost);
+    const b = Phys.box(O.x + x, O.y + FLOOR - 0.3, O.z + z, 3, 0.6, 3, { dyn: true });
+    b.on = false;
+    (tiles[lane + n] = tiles[lane + n] || []).push({ m, edge, ghost, b, k: 0, who: lane === 'd' ? 'dame' : 'valet' });
+  };
 
   const build = () => {
     if (built) return;
@@ -124,60 +220,117 @@ const Raid = (() => {
       );
       padM.push({ m, ar });
     });
-    // door platform
+    // door platform + the two seals that open the vault
     plat(0, FLOOR, 57, 26, 18);
+    seal('doorD', SEALS.door.d[0], SEALS.door.d[1], 'dame');
+    seal('doorV', SEALS.door.v[0], SEALS.door.v[1], 'valet');
     // signs: suits on each route start
     [
-      [-7, '♥', '#e0102e'],
-      [7, '♠', '#0c0c10'],
-    ].forEach(([x, s, c]) => {
-      const sp = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.6, 1.6),
-        new THREE.MeshBasicMaterial({
-          map: LvKit.tex(256, 256, (g) => {
-            g.shadowColor = '#ffffff';
-            g.shadowBlur = 24;
-            g.fillStyle = '#ffffff';
-            Icons.draw(g, Icons.of(s), 128, 128, 190);
-            g.shadowBlur = 0;
-            g.fillStyle = c;
-            Icons.draw(g, Icons.of(s), 128, 128, 170);
-          }),
-          transparent: true,
-          toneMapped: false,
-          depthWrite: false,
-        }),
-      );
+      [-7, '♥'],
+      [7, '♠'],
+    ].forEach(([x, s]) => {
+      const sp = suitSprite(s, 1.6);
       sp.position.copy(P(x, 2.4, 5));
       sp.rotation.y = Math.PI;
       group.add(sp);
     });
-    // vault door
-    door = new THREE.Group();
-    const disc = new THREE.Mesh(
-      new THREE.CylinderGeometry(5, 5, 0.8, 64).rotateX(Math.PI / 2),
-      new THREE.MeshStandardMaterial({
-        map: runeTex,
-        color: '#c8d8d8',
-        metalness: 0.7,
-        roughness: 0.35,
-        emissive: '#0a3a2a',
-        emissiveMap: runeTex,
-        emissiveIntensity: 1.2,
+    const vaultDoor = (z) => {
+      const d = new THREE.Group();
+      const disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(5, 5, 0.8, 64).rotateX(Math.PI / 2),
+        new THREE.MeshStandardMaterial({
+          map: runeTex,
+          color: '#c8d8d8',
+          metalness: 0.7,
+          roughness: 0.35,
+          emissive: '#0a3a2a',
+          emissiveMap: runeTex,
+          emissiveIntensity: 1.2,
+        }),
+      );
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(5.1, 0.35, 12, 64), trim);
+      d.add(disc, rim);
+      d.position.copy(P(0, FLOOR + 5, z));
+      group.add(d);
+      K.solid(-9, FLOOR + 6, z + 0.3, 8, 12, 1.4, stone);
+      K.solid(9, FLOOR + 6, z + 0.3, 8, 12, 1.4, stone);
+      K.solid(0, FLOOR + 11, z + 0.3, 10, 2, 1.4, stone);
+      return { d, b: Phys.box(O.x, O.y + FLOOR + 5, O.z + z, 10, 10, 1, { dyn: true }) };
+    };
+    const d1 = vaultDoor(66.2);
+    door = d1.d;
+    doorB = d1.b;
+    // ---- Galerie des Sceaux ----
+    plat(0, FLOOR, 72, 14, 8);
+    plat(0, FLOOR, 96, 14, 8);
+    plat(0, FLOOR, 120, 14, 8);
+    // landing rails: low walls on the outer sides so nobody slips off the landings
+    [72, 96, 120].forEach((z) =>
+      [-7.3, 7.3].forEach((x) => K.solid(x, FLOOR + 0.6, z, 0.6, 1.2, 8, trim)),
+    );
+    seal('v1', SEALS.v1.at[0], SEALS.v1.at[1], 'dame');
+    seal('d1', SEALS.d1.at[0], SEALS.d1.at[1], 'valet');
+    seal('v2', SEALS.v2.at[0], SEALS.v2.at[1], 'dame');
+    seal('d2', SEALS.d2.at[0], SEALS.d2.at[1], 'valet');
+    [1, 2].forEach((n) =>
+      ['d', 'v'].forEach((lane) => TILE_Z[n].forEach((z) => tile(lane, n, z))),
+    );
+    // lane markers at each landing edge
+    [
+      [-4.5, 76.6, '♥'],
+      [4.5, 76.6, '♠'],
+      [-4.5, 100.6, '♥'],
+      [4.5, 100.6, '♠'],
+    ].forEach(([x, z, s]) => {
+      const sp = suitSprite(s, 0.9);
+      sp.rotation.x = -Math.PI / 2;
+      sp.position.copy(P(x, FLOOR + 0.03, z - 1));
+      group.add(sp);
+    });
+    // colonnade along the galerie
+    for (let z = 70; z <= 124; z += 9)
+      [-11, 11].forEach((x) => {
+        K.deco(new THREE.CylinderGeometry(0.8, 1, 18, 16), marble, x, FLOOR + 3, z);
+        K.deco(new THREE.BoxGeometry(2.4, 0.6, 2.4), trim, x, FLOOR + 12.2, z);
+        K.deco(new THREE.BoxGeometry(2.4, 0.6, 2.4), trim, x, FLOOR - 6, z);
+      });
+    [-11, 11].forEach((x) =>
+      K.deco(new THREE.BoxGeometry(1.2, 1, 58), trim, x, FLOOR + 12.8, 97),
+    );
+    // the island's sentinel: an eye that sweeps the island when you both stand on it
+    sentinel = new THREE.Group();
+    const sEye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.9, 32, 20),
+      new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#7cf0c8', emissiveIntensity: 0.6, roughness: 0.2 }),
+    );
+    const sLid = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.16, 12, 48), trim);
+    const sPupil = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), LvKit.glow('#0c1414', 1));
+    sPupil.position.z = 0.65;
+    sentinel.add(sEye, sLid, sPupil);
+    sentinel.userData = { eye: sEye };
+    sentinel.position.copy(P(0, FLOOR + 7.5, 96));
+    group.add(sentinel);
+    sweepM = new THREE.Mesh(
+      new THREE.BoxGeometry(14, 3, 8),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#ff2a5a').multiplyScalar(1.6),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
       }),
     );
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(5.1, 0.35, 12, 64), trim);
-    door.add(disc, rim);
-    door.position.copy(P(0, FLOOR + 5, 66.2));
-    group.add(door);
-    doorB = Phys.box(O.x, O.y + FLOOR + 5, O.z + 66.2, 10, 10, 1, { dyn: true });
-    K.solid(-9, FLOOR + 6, 66.5, 8, 12, 1.4, stone);
-    K.solid(9, FLOOR + 6, 66.5, 8, 12, 1.4, stone);
-    K.solid(0, FLOOR + 11, 66.5, 10, 2, 1.4, stone);
+    sweepM.position.copy(P(0, FLOOR + 1.5, 96));
+    group.add(sweepM);
+    const d2 = vaultDoor(125.6);
+    door2 = d2.d;
+    door2B = d2.b;
     // bridge to the arena
-    plat(0, FLOOR, 70.5, 6, 8);
+    plat(0, FLOOR, 130, 6, 8);
+    [-3.3, 3.3].forEach((x) => K.solid(x, FLOOR + 0.5, 130, 0.5, 1, 8, trim));
     // arena: a round platform made of rings of boxes
-    const floorG = new THREE.CylinderGeometry(AR, AR * 0.92, 1, 72);
+    const floorG = new THREE.CylinderGeometry(AR, AR * 0.92, 1, 96);
     const fl = K.deco(
       floorG,
       new THREE.MeshStandardMaterial({
@@ -203,13 +356,21 @@ const Raid = (() => {
         else if (Math.hypot(cx, cz) < AR - 0.6) K.collider(cx, FLOOR - 0.5, ARENA.z + cz, 2, 1, 2);
       }
     K.deco(
-      new THREE.TorusGeometry(AR, 0.12, 8, 128).rotateX(Math.PI / 2),
+      new THREE.TorusGeometry(AR, 0.12, 8, 160).rotateX(Math.PI / 2),
       LvKit.glow('#7cf0c8', 1.4),
       0,
       FLOOR + 0.02,
       ARENA.z,
     );
-    K.deco(new THREE.ConeGeometry(AR * 0.9, 16, 36), dark, 0, FLOOR - 9, ARENA.z).rotation.x =
+    // inner ring of the arena floor under the Oracle
+    K.deco(
+      new THREE.TorusGeometry(7.2, 0.1, 8, 96).rotateX(Math.PI / 2),
+      LvKit.glow('#ffcf8a', 1.6),
+      0,
+      FLOOR + 0.04,
+      ARENA.z,
+    );
+    K.deco(new THREE.ConeGeometry(AR * 0.9, 16, 48), dark, 0, FLOOR - 9, ARENA.z).rotation.x =
       Math.PI;
     // parapet + faint energy curtain around the arena (opening on the bridge side)
     const SEG = 56;
@@ -238,13 +399,14 @@ const Raid = (() => {
       // collider boxes are axis aligned: a short column per segment
       K.collider(x, FLOOR + 2, ARENA.z + z, 2.6, 4, 2.6);
     }
-    // symbol pillars at N/E/S/W
+    // four pillar slots at N/E/S/W; the suit on each slot can move (x.perm)
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * TAU + Math.PI / 4;
       const x = Math.sin(a) * 15;
       const z = ARENA.z - Math.cos(a) * 15;
-      K.solid(x, FLOOR + 3, z, 2, 6, 2, stone);
-      K.deco(new THREE.BoxGeometry(2.2, 0.3, 2.2), trim, x, FLOOR + 6.1, z);
+      K.solid(x, FLOOR + 3, z, 2, 6, 2, marble);
+      K.deco(new THREE.BoxGeometry(2.4, 0.3, 2.4), trim, x, FLOOR + 6.1, z);
+      K.deco(new THREE.BoxGeometry(2.4, 0.3, 2.4), trim, x, FLOOR + 0.15, z);
       const glyph = new THREE.Mesh(
         new THREE.PlaneGeometry(2.4, 2.4),
         new THREE.MeshBasicMaterial({
@@ -257,20 +419,19 @@ const Raid = (() => {
       );
       glyph.position.copy(P(x, FLOOR + 8, z));
       group.add(glyph);
+      const px = x * 0.82;
+      const pz = ARENA.z + (z - ARENA.z) * 0.82;
       const plate = K.deco(
         new THREE.CylinderGeometry(1.2, 1.2, 0.1, 28),
-        new THREE.MeshBasicMaterial({
-          color: new THREE.Color(SCOL[i]).multiplyScalar(0.4),
-          toneMapped: false,
-        }),
-        x * 0.82,
+        new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }),
+        px,
         FLOOR + 0.05,
-        ARENA.z + (z - ARENA.z) * 0.82,
+        pz,
       );
       const beam = K.deco(
         new THREE.CylinderGeometry(0.5, 0.5, 30, 12, 1, true),
         new THREE.MeshBasicMaterial({
-          color: new THREE.Color(SCOL[i]).multiplyScalar(1.5),
+          color: '#ffffff',
           transparent: true,
           opacity: 0,
           blending: THREE.AdditiveBlending,
@@ -287,8 +448,10 @@ const Raid = (() => {
         glyph,
         plate,
         beam,
-        pos: P(x * 0.82, FLOOR, ARENA.z + (z - ARENA.z) * 0.82),
-        col: new THREE.Color(SCOL[i]),
+        top: P(x, FLOOR + 8, z),
+        pos: P(px, FLOOR, pz),
+        sym: i,
+        cur: P(x, FLOOR + 8, z),
       });
     }
     // sequence glyphs above the Oracle (seer only)
@@ -311,29 +474,31 @@ const Raid = (() => {
     R.scene.add(dome);
     // floating motes
     const r = rng(52);
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 90; i++) {
       const m = K.deco(
         new THREE.OctahedronGeometry(0.08 + r() * 0.12),
         LvKit.glow(r() < 0.5 ? '#7cf0c8' : '#ffcf8a', 2),
         (r() - 0.5) * 60,
         r() * 30,
-        r() * 130,
+        r() * 190,
       );
       motes.push({ m, y0: m.position.y, ph: r() * 10 });
     }
     // distant monoliths
-    for (let i = 0; i < 18; i++) {
-      const a = (i / 18) * TAU;
-      const rr = 60 + r() * 30;
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * TAU;
+      const rr = 70 + r() * 30;
       const h = 20 + r() * 40;
       K.deco(
         new THREE.BoxGeometry(4 + r() * 4, h, 4 + r() * 4),
         dark,
         Math.cos(a) * rr,
         h / 2 - 20,
-        60 + Math.sin(a) * rr,
+        95 + Math.sin(a) * rr * 1.3,
       );
     }
+    lights.push(LvKit.light(group, P(0, FLOOR + 6, 96), '#7cf0c8', 1.2, 30));
+    lights.push(LvKit.light(group, P(0, FLOOR + 10, 140), '#ffcf8a', 1.2, 40));
     card = LvKit.card('R', '♣', false);
     card.position.copy(P(0, FLOOR + 2.2, ARENA.z));
     group.add(card);
@@ -349,7 +514,7 @@ const Raid = (() => {
       for (let i = 0; i < 4; i++)
         glyphCache.push(
           new THREE.MeshBasicMaterial({
-            map: symTex(i),
+            map: symTexC(i),
             transparent: true,
             toneMapped: false,
             depthWrite: false,
@@ -365,13 +530,21 @@ const Raid = (() => {
       const m = glyphs.children[k];
       m.material = glyphCache[s];
       m.position.copy(
-        P((k - (seq.length - 1) / 2) * 3, FLOOR + 15.5 + Math.sin(t * 2 + k) * 0.2, ARENA.z),
+        P((k - (seq.length - 1) / 2) * 3, FLOOR + 18.5 + Math.sin(t * 2 + k) * 0.2, ARENA.z),
       );
       m.quaternion.copy(R.camera.quaternion);
       m.scale.setScalar(k === prog ? 1.25 + Math.sin(t * 6) * 0.08 : k < prog ? 0.7 : 1);
       m.material.opacity = k < prog ? 0.35 : 1;
     });
   };
+
+  const onSeal = (name, q) => {
+    const sl = seals[name];
+    const lq = K.rel(sl.pos);
+    return Math.hypot(q.x - lq.x, q.z - lq.z) < 1.4 && Math.abs(q.y - FLOOR) < 0.7;
+  };
+  const inZ = (q, r) => q.z > r[0] && q.z < r[1] && Math.abs(q.x) < 7.2 && q.y > FLOOR - 0.6;
+  const tmpC = new THREE.Color();
 
   return {
     O,
@@ -396,13 +569,30 @@ const Raid = (() => {
     padTo: (i) => PAD_TO[i].clone(),
     spawn(stage, who) {
       const s = who === 'dame' ? -1.5 : 1.5;
-      if (stage >= 2) return P(s, FLOOR, 72);
+      if (stage >= 3) return P(s, FLOOR, 130);
+      if (stage === 2) return P(who === 'dame' ? -4.5 : 4.5, FLOOR, 70);
       return P(who === 'dame' ? -4 : 4, 0, 1);
     },
+    // stage-2 checkpoints: the last landing you stood on
+    zoneOf(q) {
+      if (inZ(q, GAL.far)) return 'far';
+      if (inZ(q, GAL.island)) return 'island';
+      if (inZ(q, GAL.a)) return 'a';
+      return null;
+    },
+    zoneSpawn(z, who) {
+      const zz = { a: 70.5, island: 95, far: 121 }[z];
+      return P(who === 'dame' ? -2.5 : 2.5, FLOOR, zz);
+    },
+    onSeal,
+    sealOf: (lane) => SEALS[lane],
     onDoor: (q) => q.z > 48.5 && q.z < 66 && Math.abs(q.x) < 13 && q.y > FLOOR - 0.6,
+    onFar: (q) => inZ(q, GAL.far),
+    onIsland: (q) => inZ(q, GAL.island),
     inArena: (q) => Math.hypot(q.x, q.z - ARENA.z) < AR - 1 && q.y > FLOOR - 0.6,
     arenaPos: (x, z) => P(x, FLOOR, ARENA.z + z),
     oraclePos: () => P(0, FLOOR, ARENA.z),
+    // returns the SLOT index; the suit on it is x.perm[slot]
     nearPillar(q) {
       for (const p of pillars) {
         const lq = K.rel(p.pos);
@@ -418,13 +608,30 @@ const Raid = (() => {
     domeCovers(pos, center) {
       return Math.hypot(pos.x - center.x, pos.z - center.z) < 3.4;
     },
+    // island sentinel: warn (charge) then sweep
+    warn() {
+      warnT = 2.2;
+    },
+    sweep() {
+      sweepT = 0.6;
+      warnT = 0;
+    },
     update(dt, t, x, seer) {
       if (!built) return;
       screen.update(dt, t);
+      // the screen follows the players: above the vault door, then behind the Oracle
+      if (x.stage >= 3) {
+        screen.mesh.position.copy(P(0, FLOOR + 17, ARENA.z + 24));
+        screen.mesh.rotation.y = Math.PI;
+      } else screen.mesh.position.copy(P(0, FLOOR + 14, 66));
       const open = x.stage >= 2;
       door.position.y = damp(door.position.y, O.y + FLOOR + (open ? 15 : 5), 1.5, dt);
       door.rotation.z += dt * (open ? 0.6 : 0.05);
       doorB.on = !open;
+      const open2 = x.stage >= 3;
+      door2.position.y = damp(door2.position.y, O.y + FLOOR + (open2 ? 15 : 5), 1.5, dt);
+      door2.rotation.z += dt * (open2 ? 0.6 : 0.05);
+      door2B.on = !open2;
       padM.forEach((pm, i) => {
         pm.ar.position.y = PADS[i].y + 1 + Math.sin(t * 3 + i) * 0.2;
         pm.ar.rotation.y = t * 2;
@@ -434,15 +641,62 @@ const Raid = (() => {
         m.rotation.y = t * 1.2 + i;
         m.visible = x.stage < 2;
       });
+      // seals: lit while held (x.held) or done (x.latch)
+      const held = x.held || [];
+      const latch = x.latch || [];
+      Object.entries(seals).forEach(([name, sl]) => {
+        const on = held.includes(name) || latch.includes(name) || (name.startsWith('door') && x.stage >= 2);
+        sl.m.material.color.copy(sl.col).multiplyScalar(on ? 1.3 : 0.35 + Math.sin(t * 3) * 0.1);
+        sl.s.rotation.y = t * 1.5;
+        sl.s.position.y = O.y + FLOOR + 1.6 + Math.sin(t * 2) * 0.12;
+      });
+      // tiles: solid while their seal is held, or once the lane has been crossed
+      Object.entries(tiles).forEach(([lane, list]) => {
+        const on = held.includes(lane) || latch.includes(lane) || x.stage >= 3;
+        list.forEach((tl, k) => {
+          // a short stagger so the bridge visibly builds itself toward the walker
+          tl.k = damp(tl.k, on ? 1 : 0, on ? 9 - k * 2 : 14, dt);
+          // each lane only carries its own walker (Phys is local to each player)
+          const mine = tl.who === Story.role;
+          tl.b.on = on && mine;
+          tl.m.material = mine ? marble : ghostMarble;
+          tl.m.visible = tl.k > 0.02;
+          tl.m.scale.set(1, Math.max(0.05, tl.k), 1);
+          tl.edge.visible = tl.k > 0.02;
+          tl.ghost.material.opacity = (1 - tl.k) * (0.25 + Math.sin(t * 3 + k) * 0.1);
+        });
+      });
+      // sentinel tracks the camera; charge glow and sweep flash
+      if (sentinel) {
+        sentinel.lookAt(R.camera.position);
+        warnT = Math.max(0, warnT - dt);
+        sweepT = Math.max(0, sweepT - dt);
+        const e = sentinel.userData.eye.material;
+        e.emissive.set(warnT > 0 ? '#ff2a5a' : '#7cf0c8');
+        e.emissiveIntensity = warnT > 0 ? 1 + (2.2 - warnT) * 1.6 + Math.sin(t * 30) * 0.3 : 0.6;
+        sweepM.material.opacity = warnT > 0 ? 0.06 + Math.sin(t * 12) * 0.04 : sweepT > 0 ? sweepT : 0;
+        sweepM.scale.x = sweepT > 0 ? 1 : 1;
+        sentinel.visible = x.stage === 2;
+      }
+      // pillars: each slot shows the suit x.perm[slot]; glyphs glide when the suits move
+      const perm = x.perm || [0, 1, 2, 3];
       pillars.forEach((p) => {
-        const lit = (x.lit || []).includes(p.i);
-        p.plate.material.color
-          .copy(p.col)
-          .multiplyScalar(lit ? 2 : 0.45 + Math.sin(t * 2 + p.i) * 0.1);
+        const sym = perm[p.i];
+        if (p.sym !== sym) {
+          p.sym = sym;
+          p.glyph.material.map = symTexC(sym);
+          p.glyph.material.needsUpdate = true;
+          p.glyph.scale.setScalar(0.01);
+        }
+        p.glyph.scale.setScalar(damp(p.glyph.scale.x, 1, 5, dt));
+        const lit = (x.lit || []).includes(sym);
+        tmpC.set(SCOL[sym]);
+        p.plate.material.color.copy(tmpC).multiplyScalar(lit ? 2 : 0.45 + Math.sin(t * 2 + p.i) * 0.1);
+        p.beam.material.color.copy(tmpC).multiplyScalar(1.5);
         p.beam.material.opacity = damp(p.beam.material.opacity, lit ? 0.35 : 0, 5, dt);
         p.glyph.rotation.y = t * 0.8 + p.i;
       });
-      showSeq(x.seq || [], x.prog || 0, !!seer && x.ritual && x.stage === 3, t);
+      showSeq(x.seq || [], x.prog || 0, !!seer && x.ritual && x.stage === 4, t);
       motes.forEach((mo) => (mo.m.position.y = mo.y0 + Math.sin(t * 0.6 + mo.ph) * 0.6));
       card.visible = x.stage >= 5;
       card.rotation.y = t * 1.3;

@@ -4,12 +4,14 @@
 //
 // The relay publishes to two public brokers at once (measured: ~15 ms, no loss at 40 msg/s;
 // broker.emqx.io drops most messages above ~10/s, so it is not used). Outgoing messages are
-// batched at 20 Hz: "latest only" streams (positions, full state, enemies) keep their newest
-// value, everything else is numbered, acknowledged and resent until the other side has it.
+// batched at 20 Hz: "latest only" streams (full state, enemies) keep their newest value,
+// positions keep every snapshot (each packet also repeats the previous ones, so a lost packet
+// leaves no hole), everything else is numbered, acknowledged and resent until the other side
+// has it.
 const Net = (() => {
   const PREFIX = 'brdl-yo-';
   const BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
-  const LATEST = new Set(['p', 'S', 'en', 'h']);
+  const LATEST = new Set(['S', 'en', 'h']);
   const handlers = {};
   let peer = null;
   let conn = null;
@@ -34,8 +36,20 @@ const Net = (() => {
     if (was !== s) emit(s ? 'connect' : 'disconnect');
   };
 
+  // ?netsim=jitter (test only): inbound messages get 0-120 ms of random delay and are held
+  // back in bursts, like a congested broker
+  const SIM = new URLSearchParams(location.search).get('netsim');
+  let simT = 0;
+  const rxSim = (t, d) => {
+    const now = performance.now();
+    let at = now + Math.random() * 120;
+    if (now % 1000 < 250) at = Math.max(at, now - (now % 1000) + 250);
+    simT = Math.max(simT, at);
+    setTimeout(() => rxNow(t, d), simT - now);
+  };
+  const rx = (t, d) => (SIM ? rxSim(t, d) : rxNow(t, d));
   // every message from the other side lands here
-  const rx = (t, d) => {
+  const rxNow = (t, d) => {
     if (t === '__rtt') return send('__rtt2', d);
     if (t === '__rtt2') {
       rtt = Math.round(performance.now() - d);
@@ -63,6 +77,8 @@ const Net = (() => {
     seq: 0,
     pend: [],
     latest: new Map(),
+    pos: [],
+    posNew: 0,
     n: 0,
     hello: true,
     // incoming
@@ -72,7 +88,11 @@ const Net = (() => {
   };
   const topic = (from) => 'brdl-yo/v2/' + code + '/' + from;
   const relayQueue = (t, d) => {
-    if (LATEST.has(t)) RL.latest.set(t, d);
+    if (t === 'p') {
+      RL.pos.push(d);
+      RL.posNew++;
+      if (RL.pos.length > 6) RL.pos.shift();
+    } else if (LATEST.has(t)) RL.latest.set(t, d);
     else {
       RL.pend.push([++RL.seq, t, d]);
       if (RL.pend.length > 400) RL.pend.splice(0, RL.pend.length - 400);
@@ -80,7 +100,7 @@ const Net = (() => {
   };
   const relayFlush = () => {
     if (!RL.up) return;
-    const idle = !RL.pend.length && !RL.latest.size && !RL.ackDue && !RL.hello;
+    const idle = !RL.pend.length && !RL.latest.size && !RL.posNew && !RL.ackDue && !RL.hello;
     if (idle) return;
     const pkt = { f: me, st: BORN, n: ++RL.n, a: RL.rxSeq };
     if (RL.hello) pkt.h = 1;
@@ -88,6 +108,11 @@ const Net = (() => {
     if (RL.latest.size) {
       pkt.l = [...RL.latest];
       RL.latest.clear();
+    }
+    if (RL.posNew) {
+      // new snapshots plus the two before them
+      pkt.p = RL.pos.slice(-Math.min(RL.pos.length, RL.posNew + 2));
+      RL.posNew = 0;
     }
     RL.ackDue = false;
     RL.hello = false;
@@ -135,6 +160,8 @@ const Net = (() => {
         }
       RL.ackDue = true;
     }
+    // snapshots carry their own clock: the receiver sorts out duplicates and order
+    if (m.p) for (const d of m.p) rx('p', d);
     // packets arrive from both brokers: only the newest "latest" values count
     if (m.n > RL.rxN) {
       RL.rxN = m.n;

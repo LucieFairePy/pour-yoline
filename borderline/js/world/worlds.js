@@ -159,6 +159,7 @@ const Worlds = (() => {
     );
     arch.position.set(o.x, o.y, o.z + 41.5);
     group.add(arch);
+    [-2.6, 2.6].forEach((x) => Phys.box(o.x + x, o.y + 0.9, o.z + 41.5, 0.3, 1.8, 0.3));
     const lampMat = glow('#ffcf8a', 1.5);
     for (let z = 3; z < 42; z += 7) {
       const l = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), lampMat);
@@ -252,6 +253,8 @@ const Worlds = (() => {
       );
       s.position.set(o.x + (i ? 0 : 3), o.y, o.z + z);
       group.add(s);
+      // the switch post is solid (you used to walk through it)
+      Phys.box(o.x + (i ? 0 : 3), o.y + 0.6, o.z + z, 0.6, 1.2, 0.6);
       V.switches.push({ m: s, x: i ? 0 : 3, z });
     });
     V.wall = new THREE.Mesh(

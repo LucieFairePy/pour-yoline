@@ -253,6 +253,42 @@ const Avatar = (() => {
     }),
   };
   const SCALE = 0.9;
+  // seated HQ hips correction (negative = up), measured so the seat of the suit rests on a 0.5 m
+  // bench top instead of sinking into it
+  const HQ_SIT = -0.25;
+  // shared point both inner hands reach for when holding hands (feet level, + HOLD_Y)
+  const hold = { on: false, p: V3() };
+  const HOLD_Y = 0.86;
+  // The partner is drawn ~0.1-0.3 s in the past, so walking hand in hand they would trail a
+  // step behind. While holding hands and walking, draw them level with you (only the
+  // along-the-walk lag is removed; standing still, nothing moves).
+  const slot = V3();
+  const remoteSlot = () => {
+    const p = Player.body.p;
+    slot.copy(Remote.pos);
+    const m = clamp((Player.speed || 0) / 2.5, 0, 1);
+    if (m <= 0) return slot;
+    const fx = Math.sin(Player.yaw);
+    const fz = Math.cos(Player.yaw);
+    const along = (slot.x - p.x) * fx + (slot.z - p.z) * fz;
+    slot.x -= fx * along * m;
+    slot.z -= fz * along * m;
+    return slot;
+  };
+  // levels that only raise handPose (flying together at the end) get the hold point here
+  const holdPoint = () => {
+    if (typeof Player === 'undefined' || !Remote.has) return false;
+    if (!hold.on) {
+      if (!Player.handPose || !Remote.handPose) return false;
+      const p = Player.body.p;
+      const rp = Remote.pos;
+      if (Math.hypot(p.x - rp.x, p.y - rp.y, p.z - rp.z) > 3.2) return false;
+    }
+    const p = Player.body.p;
+    const rp = remoteSlot();
+    hold.p.set((p.x + rp.x) / 2, (p.y + rp.y) / 2, (p.z + rp.z) / 2);
+    return true;
+  };
 
   // The HQ suit is ~200 small meshes. Merge static sibling meshes that share a material into one
   // draw call, leaving every part the rig moves (limbs, rings, knees, boots, helmet, fingers).
@@ -367,6 +403,13 @@ const Avatar = (() => {
     const A = animState();
     const pose = HQRig.P.zero();
     const legOf = rig.A.legs.map((Lg) => (Lg.s > 0 ? 1 : 0));
+    const inv = new THREE.Matrix4();
+    const ikT = V3();
+    const ik = {};
+    const noHand = {};
+    let holdK = 0;
+    let holdArm = 0;
+    const holdLast = V3();
 
     return {
       role,
@@ -375,6 +418,7 @@ const Avatar = (() => {
       shadow,
       glow,
       hq: true,
+      rig,
       ghost: ghostable(root),
       hand(out = V3()) {
         return rig.handWorld(0, out);
@@ -388,8 +432,16 @@ const Avatar = (() => {
       },
       update(dt, s, t) {
         HQ.time.value = t;
-        const o = animate(A, dt, s, t);
-        hips.position.y = base - 0.3 * SCALE + (o.bodyY + 0.95);
+        // holding hands: the inner arm reaches the shared hold point (IK), the other one swings
+        const holding = !!(s.hand && holdPoint());
+        holdK = damp(holdK, holding ? 1 : 0, 7, dt);
+        if (holdK > 0.01 && Player.avatar && Player.avatar.root !== root) {
+          remoteSlot();
+          root.position.lerp(slot, holdK);
+        }
+        const st = holding || holdK > 0.01 ? Object.assign(noHand, s, { hand: false }) : s;
+        const o = animate(A, dt, st, t);
+        hips.position.y = base - 0.3 * SCALE + (o.bodyY + 0.95) - A.sit * HQ_SIT;
         hips.rotation.x = o.torsoX;
         hips.rotation.y = o.torsoY;
         // HQ arms: [0] = left (+x) = original arm 1, [1] = right (-x) = original arm 0
@@ -403,6 +455,23 @@ const Avatar = (() => {
           P.g =
             src === 1 && o.punch > 0 ? lerp(0.6, 1, o.punch) : s.hand && src === 1 ? 0.75 : 0.55;
         });
+        if (holdK > 0.01) {
+          root.updateMatrixWorld(true);
+          inv.copy(rig.A.body.matrixWorld).invert();
+          if (holding) holdLast.copy(hold.p);
+          ikT.copy(holdLast);
+          ikT.y += HOLD_Y;
+          ikT.applyMatrix4(inv);
+          if (holding) holdArm = ikT.x > 0 ? 0 : 1;
+          // stop a few cm short so the two gloves clasp instead of passing through each other
+          ikT.x -= (holdArm ? -1 : 1) * 0.035;
+          rig.reach(holdArm, ikT, ik);
+          const P = pose.arms[holdArm];
+          P.p = lerp(P.p, ik.p, holdK);
+          P.a = lerp(P.a, ik.a, holdK);
+          P.e = lerp(P.e, Math.max(0.05, ik.e), holdK);
+          P.g = lerp(P.g, 0.92, holdK);
+        }
         rig.A.legs.forEach((Lg, k) => {
           const l = o.legs[legOf[k]];
           const P = pose.legs[k];
@@ -410,6 +479,9 @@ const Avatar = (() => {
           P.a = 0.05;
           P.k = Math.max(0.03, l.knee);
           P.f = -0.15 * o.sit;
+          // seated: thighs level on the seat, shins straight down to the floor
+          P.p = lerp(P.p, 1.5, o.sit);
+          P.k = lerp(P.k, 1.55, o.sit);
         });
         pose.head.p = o.headX;
         pose.head.y = 0;
@@ -593,7 +665,8 @@ const Avatar = (() => {
       },
       update(dt, s, t) {
         const o = animate(A, dt, s, t);
-        body.position.y = o.bodyY;
+        // seated: lift so the pelvis rests on the 0.5 m seat
+        body.position.y = o.bodyY + A.sit * 0.16;
         torso.rotation.x = o.torsoX;
         torso.rotation.y = o.torsoY;
         head.rotation.x = o.headX;
@@ -622,5 +695,38 @@ const Avatar = (() => {
     SETTINGS.quality !== 'low' &&
     !/[?&]lowav\b/.test(location.search);
 
-  return { build: (role) => (useHQ() ? buildHQ(role) : build(role)), LOOK };
+  // Holding hands (balade, golden hour): no link drawn, the two inner hands really meet halfway.
+  // Each screen aims both avatars at the midpoint it sees, so it lines up despite the lag, and
+  // a soft side spring keeps the two walkers at arm's length.
+  const together = (dt, on) => {
+    const p = Player.body.p;
+    const rp = Remote.pos;
+    const dx = rp.x - p.x;
+    const dz = rp.z - p.z;
+    const d = Math.hypot(dx, dz);
+    const near = !!on && Remote.has && d < 3.2 && Math.abs(rp.y - p.y) < 1.5;
+    Player.handPose = near;
+    Remote.handPose = near;
+    hold.on = near;
+    if (!near) return false;
+    if (Player.mode !== 'walk' || d < 1e-3) return true;
+    const err = d - 1.05;
+    if (Math.abs(err) < 0.12) return true;
+    let nx = dx / d;
+    let nz = dz / d;
+    // only correct sideways while walking: the partner is drawn slightly in the past
+    const v = Player.body.v;
+    const sp = Math.hypot(v.x, v.z);
+    if (sp > 0.6) {
+      const k = (nx * v.x + nz * v.z) / sp;
+      nx -= (k * v.x) / sp;
+      nz -= (k * v.z) / sp;
+    }
+    const mv = clamp(err, -0.6, 0.6) * 2.4 * dt;
+    p.x += nx * mv;
+    p.z += nz * mv;
+    return true;
+  };
+
+  return { build: (role) => (useHQ() ? buildHQ(role) : build(role)), LOOK, hold, together };
 })();

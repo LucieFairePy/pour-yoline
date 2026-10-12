@@ -1,7 +1,9 @@
 (() => {
   const T = CONFIG;
   const seen = new Set();
-  const ORDER = ['h10', 's3', 'c4', 's7', 'sK', 'd9', 'h2', 'cR'];
+  // numbers first (♥ 10 … ♥ 2), then the faces (♠ and ♣ figures) once all 40 numbers are found
+  const ORDER = ['h10', 's3', 'c4', 's7', 'd9', 'h2', 'sK', 'cR'];
+  const FIRST_FACE = ORDER.indexOf('sK');
   const DOOR_BY_CHAPTER = Object.fromEntries(ORDER.map((id, i) => [i, id]));
   const PLACES = ['cafe', 'message', 'banc', 'pluie', 'kino', 'etoiles', 'chanson', 'danse'];
   const PLACE_BY_CHAPTER = Object.fromEntries(PLACES.map((id, i) => [i + 1, id]));
@@ -21,10 +23,10 @@
     s3: '♠ 3',
     c4: '♣ 4',
     s7: '♠ 7',
-    sK: '♠ R',
+    sK: '♠ V · D · R',
     d9: '♦ 9',
     h2: '♥ 2',
-    cR: '♣ R',
+    cR: '♣ V · D · R',
   };
   const COLOR = {
     h10: '#ff5f8a',
@@ -109,13 +111,21 @@
     },
   });
 
+  // the face doors stay shut until every number card is found
+  const doorOpen = (ch) => !!DOOR_BY_CHAPTER[ch] && (ch < FIRST_FACE || Cards.numbersDone());
   const objective = (c) => {
     const ch = c.S.chapter;
     const place = PLACE_BY_CHAPTER[ch];
     if (place && !seen.has(place)) return ch === LAST ? T.city.memoryLast : T.city.memory;
+    if (DOOR_BY_CHAPTER[ch] && !doorOpen(ch))
+      return T.city.hunt.replace('{n}', Cards.numbersLeft());
     if (DOOR_BY_CHAPTER[ch]) return T.city.doors[DOOR_BY_CHAPTER[ch]];
     return '';
   };
+  const lightDoors = (c) =>
+    Object.keys(City.doors).forEach((id) =>
+      City.door(id, id === DOOR_BY_CHAPTER[c.S.chapter] && doorOpen(c.S.chapter) ? 1 : 0.15),
+    );
 
   Story.register('city', {
     async enter(c, first, prev) {
@@ -130,39 +140,52 @@
         c.spawn(sp, Math.PI);
       }
       const ch = c.S.chapter;
-      Object.keys(City.doors).forEach((id) => City.door(id, id === DOOR_BY_CHAPTER[ch] ? 1 : 0.15));
+      lightDoors(c);
       const place = PLACE_BY_CHAPTER[ch];
       if (place) {
         City.showPlace(place, first);
         City.pillar(place, !seen.has(place));
       }
       const door = DOOR_BY_CHAPTER[ch];
-      HUD.visa('Visa · 3 jours · ' + (ch ? ch + (ch > 1 ? ' cartes' : ' carte') : 'aucune carte'));
-      BigScreen.show(
-        door ? LABEL[door] : cardsWon(ch) || '?',
-        door ? 'Une porte s’est allumée' : 'Toutes les cartes du jeu',
-        door ? COLOR[door] : '#ff5f8a',
-      );
+      const n = Cards.count(Cards.IDS);
+      HUD.visa('Visa · 3 jours · ' + (n ? n + (n > 1 ? ' cartes' : ' carte') : 'aucune carte'));
+      if (door && !doorOpen(ch))
+        BigScreen.show(Cards.numbersLeft() + ' / 40', 'Chiffres cachés dans la ville', '#ffcf8a');
+      else
+        BigScreen.show(
+          door ? LABEL[door] : cardsWon(ch) || '?',
+          door ? 'Une porte s’est allumée' : 'Toutes les cartes du jeu',
+          door ? COLOR[door] : '#ff5f8a',
+        );
       HUD.objective(objective(c));
       if (fromAct && !first) {
         await sleep(400);
         fadeTo(false);
         Sound.play('reveal');
         if (place) HUD.say(T.city.memoryLine, T.master);
+        if (door && !doorOpen(ch)) HUD.say(T.city.huntLine, T.master, 4200);
+      }
+      if (!c.local.tuto) {
+        c.local.tuto = true;
+        setTimeout(() => HUD.say(T.deck.tuto, T.master, 3800), fromAct ? 6000 : 2500);
       }
     },
     apply(c) {
       HUD.objective(objective(c));
-      Object.keys(City.doors).forEach((id) =>
-        City.door(id, id === DOOR_BY_CHAPTER[c.S.chapter] ? 1 : 0.15),
-      );
+      lightDoors(c);
+      const n = Cards.count(Cards.IDS);
+      HUD.visa('Visa · 3 jours · ' + (n ? n + (n > 1 ? ' cartes' : ' carte') : 'aucune carte'));
+      const door = DOOR_BY_CHAPTER[c.S.chapter];
+      if (door && doorOpen(c.S.chapter) && c.local.gate === false)
+        BigScreen.show(LABEL[door], 'Une porte s’est allumée', COLOR[door]);
+      c.local.gate = door ? doorOpen(c.S.chapter) : null;
       const place = PLACE_BY_CHAPTER[c.S.chapter];
       if (place && seen.has(place)) City.pillar(place, false);
     },
     host(c, dt) {
       const ch = c.S.chapter;
       const id = DOOR_BY_CHAPTER[ch];
-      if (id) {
+      if (id && doorOpen(ch)) {
         const e = City.doors[id].entry;
         if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5))
           c.goto(ACT_BY_DOOR[id]);
@@ -213,12 +236,14 @@
         if (Story.S.phase !== 'reward') return;
         HUD.say(l, T.master, 1400);
       }
+      HUD.say(Cards.count(Cards.IDS) + ' cartes sur 52.', T.master, 1600);
     },
     exit() {
       HUD.hideCard();
       Player.mode = 'walk';
     },
     host(c) {
+      Cards.award(c, Cards.REWARD[c.S.x.card] || []);
       if (c.phaseT > 9.5) c.goto('city', (s) => (s.chapter += 1));
     },
   });

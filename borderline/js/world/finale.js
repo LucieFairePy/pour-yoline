@@ -18,6 +18,7 @@ const Finale = (() => {
   let broken = false;
   let heart = null;
   let column = null;
+  let sky = null;
 
   const build = () => {
     if (built) return;
@@ -42,8 +43,26 @@ const Finale = (() => {
     );
     ring.position.copy(P(0, 0.02, 0));
     group.add(ring);
+    // the Oui itself, hanging over the place where you met: the voyage heart-galaxy
+    sky = Heart.galaxy(36000, 4, 11);
+    sky.group.position.copy(P(0, 34, 95));
+    sky.group.lookAt(P(0, 6, -12));
+    sky.U.uForm.value = 0.72;
+    group.add(sky.group);
+    // the meeting circle is drawn as the voyage heart, outline only
+    const heartShape = (k) => {
+      const sh = new THREE.Shape();
+      for (let i = 0; i <= 120; i++) {
+        const [x, y] = Heart.curve((i / 120) * Math.PI * 2);
+        if (i) sh.lineTo(x * k, (y - 2.5) * k);
+        else sh.moveTo(x * k, (y - 2.5) * k);
+      }
+      return sh;
+    };
+    const outer = heartShape(0.27);
+    outer.holes.push(new THREE.Path(heartShape(0.255).getPoints(120).reverse()));
     heart = new THREE.Mesh(
-      new THREE.RingGeometry(RING - 0.22, RING, 72).rotateX(-Math.PI / 2),
+      new THREE.ShapeGeometry(outer, 120).rotateX(-Math.PI / 2),
       glow('#ff5f8a', 1),
     );
     heart.position.copy(P(0, 0.03, 0));
@@ -174,6 +193,12 @@ const Finale = (() => {
         joker.material.opacity = 0.75 + Math.random() * 0.25;
         if (Math.random() < dt * 6) Fx.burst(joker.position.clone(), '#ff2a3a', 6, 3, 0.8, 0);
       }
+      const U = sky.U;
+      U.uTime.value = t;
+      U.uPx.value = R.renderer.getPixelRatio() * 1.2;
+      U.uForm.value = damp(U.uForm.value, step === 'joker' ? 0.72 + inside * 0.08 : 1, 0.6, dt);
+      U.uRed.value = damp(U.uRed.value, step === 'joker' ? 0.5 : 0, 1, dt);
+      U.uBeat.value = Math.pow(Math.max(0, Math.sin(t * 2.4)), 10) * (step === 'joker' ? 0.2 : 0.8);
       const lit = step === 'joker' ? 0.25 : 1.5 + Math.sin(t * 2) * 0.2;
       queen.material.color.setScalar(damp(queen.material.color.r, lit, 2, dt));
     },

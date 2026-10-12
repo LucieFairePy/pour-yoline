@@ -156,6 +156,24 @@ const HQRig = (() => {
       handWorld(i, out = V3()) {
         return world(live.hands[i], out);
       },
+      // analytic 2-bone IK: arm angles (p, a, e) that put hand i on T (body-local)
+      reach(i, T, out = {}) {
+        const s = arms[i].s;
+        const D = tmp.set(T.x - s * shX, T.y - 0.3, T.z);
+        const len = D.length() || 1e-4;
+        const d = clamp(len, 0.05, ARM * 2 * 0.995);
+        D.multiplyScalar(1 / len);
+        const e = Math.PI - Math.acos(clamp(1 - (d * d) / (2 * ARM * ARM), -1, 1));
+        const c = Math.cos(e / 2);
+        const th = Math.asin(clamp(D.x / c, -1, 1));
+        let p = Math.atan2(Math.sin(e / 2), -c * Math.cos(th)) - Math.atan2(D.z, D.y);
+        while (p > Math.PI) p -= TAU;
+        while (p < -Math.PI) p += TAU;
+        out.p = p;
+        out.a = th / s;
+        out.e = e;
+        return out;
+      },
     };
   };
 

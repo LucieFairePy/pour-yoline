@@ -67,7 +67,7 @@
         Finale.screen.show(F.visa, 'BORDERLINE', '#ff5f8a');
         HUD.visa(F.visa);
         HUD.say(F.visa, T.master, 3000);
-        if (!allClues()) HUD.say(F.missing, T.master, 3500);
+        HUD.say(F.last, T.master, 3500);
         for (let i = 0; i < 5; i++)
           setTimeout(
             () => Fx.firework(Finale.P((Math.random() - 0.5) * 30, 0, 10 + Math.random() * 10), 30),
@@ -101,7 +101,8 @@
         c.set((s) => (s.x.step = 'visa'));
         tm.step = 0;
       }
-      if (x.step === 'visa' && tm.step > 8) c.goto(allClues() ? 'epilogue' : 'credits');
+      // the Joker is always the last card: 52 cards found, one left without a colour
+      if (x.step === 'visa' && tm.step > 8) c.goto('epilogue');
     },
     action(c, who, d) {
       if (d.a === 'letter' && !c.S.x.done.includes(who)) c.set((s) => s.x.done.push(who));
@@ -150,11 +151,30 @@
       HUD.say(T.epilogue.intro, T.master, 3200);
       HUD.objective(T.epilogue.sit);
     },
-    apply(c) {
-      if (c.S.x.step >= 1 && !local.fw) {
-        local.fw = true;
+    async apply(c) {
+      if (c.S.x.step >= 1 && !local.joker) {
+        // the Joker speaks, then gives the Oui back
+        local.joker = true;
         HUD.objective('');
         Cam.focus = V3(City.TOWER.x - 120, City.TOWER.y + 200, City.TOWER.z - 520);
+        Sound.mood('tense');
+        Sound.play('glitch');
+        HUD.card('J', '\u{1F0CF}', T.joker, T.deck.toastJoker);
+        await sleep(2400);
+        HUD.hideCard();
+        for (const l of T.epilogue.joker) {
+          if (Story.S.phase !== 'epilogue') return;
+          HUD.say(l, T.joker, 1500);
+        }
+        while (HUD.talking) await sleep(200);
+        if (Story.S.phase !== 'epilogue') return;
+        Sound.mood('gold');
+        Sound.play('reveal');
+        Sky.heart.U.uFill.value = 1;
+        HUD.say(T.epilogue.back, T.master, 3000);
+      }
+      if (c.S.x.step >= 2 && !local.fw) {
+        local.fw = true;
         for (let i = 0; i < 14; i++)
           setTimeout(
             () =>
@@ -181,7 +201,7 @@
         tm.step = 0;
       }
       tm.step += dt;
-      if (x.step === 1 && tm.step > 9) {
+      if (x.step === 1 && tm.step > 30) {
         c.set((s) => (s.x.step = 2));
         tm.step = 0;
       }
@@ -208,7 +228,7 @@
 
   Story.register('credits', {
     partner: () => false,
-    enter(c) {
+    async enter(c) {
       Player.mode = 'frozen';
       HUD.objective('');
       Sound.mood('gold');
@@ -216,6 +236,17 @@
         T.credits,
         allClues() ? null : F.missing + ' (' + Story.S.clues.length + '/' + TOTAL + ')',
       );
+      // after the roll: the Joker card turns over
+      await sleep(26000);
+      if (Story.S.phase !== 'credits') return;
+      Sound.play('glitch');
+      const box = document.createElement('div');
+      box.className = 'teaser';
+      box.innerHTML =
+        `<i style="background-image:url(${Cards.dataUrl('J')})"></i>` +
+        T.epilogue.teaser.map((l) => `<p>${Icons.rich(l)}</p>`).join('') +
+        `<h3>${Icons.rich(T.epilogue.sequel)}</h3>`;
+      $('credits').querySelector('.credits-in').prepend(box);
     },
     update() {
       return null;

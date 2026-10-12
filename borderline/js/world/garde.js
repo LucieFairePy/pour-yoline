@@ -107,6 +107,9 @@ const Garde = (() => {
       group.add(c);
     }
     solid(0, 0.4, 94, 12, 0.8, 4, trim);
+    // a step up to the throne dais (0.8 m was a jump-only ledge right where the fight happens)
+    solid(0, 0.2, 91.5, 12, 0.4, 1, trim);
+    solid(0, 0.2, 96.5, 12, 0.4, 1, trim);
     solid(-6.3, 2, 100.5, 0.6, 4, 8, trim);
     solid(6.3, 2, 100.5, 0.6, 4, 8, trim);
     solid(0, 2, 104.8, 13.2, 4, 0.6, trim);

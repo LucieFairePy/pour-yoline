@@ -16,13 +16,14 @@ const Input = (() => {
     ability: { k: ['KeyF'], m: [2], b: [5] },
     attack: { k: [], m: [0], b: [7] },
     call: { k: ['KeyC'], b: [3] },
-    pause: { k: ['Escape', 'KeyP'], b: [9] },
+    pause: { k: ['Escape'], b: [9] },
+    deck: { k: ['KeyP', 'Tab'], b: [8] },
   };
 
   addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     keys.add(e.code);
-    if (enabled && ['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+    if (enabled && ['Space', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.code)) e.preventDefault();
   });
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => {

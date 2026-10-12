@@ -3,6 +3,7 @@ const Game = (() => {
   let paused = false;
   let last = 0;
   let sendT = 0;
+  let tpN = 0;
   let fpsT = 0;
   let frames = 0;
   let fps = 60;
@@ -60,10 +61,16 @@ const Game = (() => {
       Player.lockTarget >= 0,
     );
 
+    // 30 snapshots a second, stamped with our clock (the other side plays them back on our
+    // timeline) and a teleport counter (so respawns snap instead of sliding)
     sendT += dt;
-    if (sendT > 0.05) {
-      sendT = 0;
-      Net.send('p', Player.snapshot());
+    if (sendT >= 1 / 30) {
+      sendT = Math.min(sendT - 1 / 30, 1 / 30);
+      const s = Player.snapshot();
+      // the frame time the physics stepped to, not the moment we send
+      s[19] = Math.round(now * 10) / 10;
+      s[20] = tpN;
+      Net.send('p', s);
     }
     frames++;
     fpsT += dt;
@@ -87,6 +94,11 @@ const Game = (() => {
       await Intro.play();
     }
     Player.init(role);
+    const tp = Player.teleport;
+    Player.teleport = (...a) => {
+      tpN = (tpN + 1) % 1000;
+      return tp(...a);
+    };
     Remote.init(role === 'yoline' ? 'william' : 'yoline');
     Net.on('p', (s) => Remote.push(s));
     Story.init(role, progress);

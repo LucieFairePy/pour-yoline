@@ -36,7 +36,7 @@ setTimeout(function () {
 <div id="hud" hidden>
   <div class="hud-top">
     <div class="brand"><span class="mono">BORDERLINE</span><span class="suit" id="hudSuit"><i data-ic="heart"></i></span></div>
-    <div class="hud-right"><div class="visa label" id="hudVisa">Visa · 3 jours</div><div class="label clues" id="hudClues"></div></div>
+    <div class="hud-right"><div class="visa label" id="hudVisa">Visa · 3 jours</div><div class="label deckcount" id="hudCards"></div><div class="label clues" id="hudClues"></div></div>
   </div>
   <div class="objective" id="objective"><span class="label">Objectif</span><p id="objText"></p></div>
   <div class="partner" id="partner"><i class="arrow"></i><span id="partnerDist"></span></div>
@@ -61,6 +61,33 @@ setTimeout(function () {
   <div class="card-face"><span class="corner" id="cardCorner"></span><span class="big" id="cardBig"></span><span class="corner flip" id="cardCorner2"></span></div>
   <p class="card-title" id="cardTitle"></p>
   <p class="card-sub" id="cardSub"></p>
+</div>
+
+<div id="cardToast" hidden>
+  <i id="ctImg"></i>
+  <div><span class="label">Carte récupérée</span><p id="ctName"></p><span class="label" id="ctSub"></span></div>
+</div>
+
+<div id="deck" hidden>
+  <div class="deck-in">
+    <header class="deck-head">
+      <canvas id="deckHeart" width="220" height="200" aria-hidden="true"></canvas>
+      <div class="deck-title">
+        <span class="label">Le Oui · brisé en 52 cartes</span>
+        <h2>Votre jeu <em id="deckCount">0 / 52</em></h2>
+        <ol class="deck-steps" id="deckSteps">
+          <li><span class="label">1 · Les chiffres</span><b id="deckNums">0 / 40</b></li>
+          <li><span class="label">2 · Les figures</span><b id="deckFaces">fermé</b></li>
+          <li><span class="label">3 · Le Joker</span><b id="deckJoker">fermé</b></li>
+        </ol>
+        <p class="dk-note" id="deckNote"></p>
+      </div>
+      <ul class="deck-joker" id="deckJokerCard"></ul>
+    </header>
+    <div class="deck-grid" id="deckGrid"></div>
+    <ul class="deck-where" id="deckWhere"></ul>
+    <p class="label deck-foot"><kbd>P</kbd> ou <kbd>Tab</kbd> pour fermer</p>
+  </div>
 </div>
 
 <div id="memory" hidden>
@@ -192,6 +219,7 @@ setTimeout(function () {
 <script src="js/world/physics.js"></script>
 <script src="js/world/renderer.js"></script>
 <script src="js/world/textures.js"></script>
+<script src="js/world/heart.js"></script>
 <script src="js/world/sky.js"></script>
 <script src="js/world/city.js"></script>
 <script src="js/world/screen.js"></script>
@@ -217,9 +245,12 @@ setTimeout(function () {
 <script src="js/game/benches.js"></script>
 <script src="js/game/enemies.js"></script>
 <script src="js/game/foes.js"></script>
+<script src="js/game/enemy-models.js"></script>
 <script src="js/game/boss.js"></script>
+<script src="js/game/oracle.js"></script>
 <script src="js/game/weapons.js"></script>
 <script src="js/game/combat.js"></script>
+<script src="js/game/cards.js"></script>
 <script src="js/game/story.js"></script>
 <script src="js/game/lobby.js"></script>
 <script src="js/levels/city.js"></script>

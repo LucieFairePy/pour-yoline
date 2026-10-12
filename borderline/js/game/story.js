@@ -55,12 +55,14 @@ const Story = (() => {
   ];
   // saves made before the four new chapters used chapters 0..4 = h10, c4, sK, d9, act3
   const OLD_CHAPTER = [0, 1, 3, 5, 6];
+  // v2 order was h10 s3 c4 s7 sK d9 h2 cR; v3 plays the numbers first: h10 s3 c4 s7 d9 h2 sK cR
+  const V2_CHAPTER = [0, 1, 2, 3, 4, 4, 5, 6, 8];
   const PHASE_CHAPTER = {
     soleil: 1,
     donjon: 3,
-    garde: 4,
-    portes: 5,
-    balade: 6,
+    portes: 4,
+    balade: 5,
+    garde: 6,
     raid: 7,
     act3: 8,
     act5: 8,
@@ -84,14 +86,20 @@ const Story = (() => {
       chapter: 0,
       clues: [],
       seen: [],
+      cards: [],
       x: {},
     };
     if (p && typeof p === 'object' && CHECKPOINTS.includes(p.phase)) {
       s.phase = p.phase;
-      s.chapter = p.v >= 2 ? p.chapter || 0 : (OLD_CHAPTER[p.chapter || 0] ?? 8);
+      let ch = p.chapter || 0;
+      if (!(p.v >= 2)) ch = OLD_CHAPTER[ch] ?? 8;
+      if (!(p.v >= 3)) ch = V2_CHAPTER[ch] ?? 8;
+      s.chapter = ch;
       if (PHASE_CHAPTER[s.phase] != null) s.chapter = PHASE_CHAPTER[s.phase];
       s.clues = p.clues || [];
       s.seen = p.seen || [];
+      // every card of the épreuves already played, plus what was found on the way
+      s.cards = [...new Set([...(p.cards || []), ...Cards.upTo(s.chapter)])];
     }
     s.x = PH[s.phase] && PH[s.phase].init ? PH[s.phase].init(s) : {};
     return s;
@@ -189,6 +197,7 @@ const Story = (() => {
     if (!S) return;
     if (d.a === 'clue' && !S.clues.includes(d.id)) set((s) => s.clues.push(d.id));
     if (d.a === 'seen' && !S.seen.includes(d.id)) set((s) => s.seen.push(d.id));
+    if (d.a === 'card' && Cards.valid(d.id) && !Cards.has(d.id)) Cards.award(ctx, [d.id]);
     const def = PH[S.phase];
     if (def && def.action) def.action(ctx, who, d);
   };
@@ -201,6 +210,7 @@ const Story = (() => {
     timers.phase += dt;
     const def = PH[S.phase];
     if (def && def.host && local.phase === S.phase) def.host(ctx, dt);
+    if (local.phase === S.phase) Cards.host(ctx);
     timers.sync += dt;
     if (dirty || timers.sync > 2) {
       dirty = false;
@@ -208,7 +218,14 @@ const Story = (() => {
       Net.send('S', S);
       if (CHECKPOINTS.includes(S.phase) && S.phase !== 'prologue')
         save.set({
-          progress: { v: 2, phase: S.phase, chapter: S.chapter, clues: S.clues, seen: S.seen },
+          progress: {
+            v: 3,
+            phase: S.phase,
+            chapter: S.chapter,
+            clues: S.clues,
+            seen: S.seen,
+            cards: S.cards,
+          },
         });
       apply(S);
     }
@@ -227,7 +244,9 @@ const Story = (() => {
     }
     lastClues = S.clues.slice();
     Clues.sync(S.clues);
+    if (!S.cards) S.cards = [];
     if (S.phase !== local.phase) enter(S.phase, first);
+    Cards.sync(S);
     const def = PH[S.phase];
     if (def && def.apply) def.apply(ctx);
   };
@@ -322,6 +341,7 @@ const Story = (() => {
       City.update(t, dt);
       BigScreen.update(dt, t);
       Clues.update(dt, t);
+      Cards.update(dt, t);
       Fx.update(dt);
     },
   };

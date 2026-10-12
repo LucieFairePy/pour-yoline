@@ -25,7 +25,7 @@ const CONFIG = {
     s7b: 'Cette nuit, ils ont pris votre Oui.',
     planet: 'Terre 39',
     planetSub: 'De l’eau, de l’air, des arbres. Presque chez nous.',
-    s9: 'Pour récupérer votre Oui, il faudra jouer à leur jeu.',
+    s9: 'Ils l’ont brisé en 52 cartes. Pour le reprendre, il faudra jouer à leur jeu.',
     tagline: 'On ne gagne jamais seul.',
   },
   roles: {
@@ -38,7 +38,7 @@ const CONFIG = {
     welcome: [
       'Bienvenue, Yoline. Bienvenue, William.',
       'Joueurs : 2. Visa : 3 jours.',
-      'Réunissez les cartes pour rentrer.',
+      'Votre Oui a été brisé en 52 cartes. Réunissez-les toutes.',
       'Une seule règle : ici, on ne gagne jamais seul.',
     ],
     abilities: {
@@ -53,14 +53,16 @@ const CONFIG = {
       s3: 'Une porte s’est allumée : ♠ 3. Un jeu d’enfant… en apparence.',
       c4: 'Une nouvelle porte s’est allumée : ♣ 4. Allez-y ensemble.',
       s7: 'Une porte de pierre s’est ouverte : ♠ 7. Une crypte. Descendez armés.',
-      sK: 'Sous l’écran géant, une porte noire : ♠ R. Préparez-vous à vous battre.',
       d9: 'Une arche s’est allumée près du café : ♦ 9.',
       h2: 'Une porte fleurie s’est ouverte : ♥ 2. Pas d’épreuve, cette fois. Juste une balade.',
-      cR: 'La dernière porte s’est allumée : ♣ R. Le Caveau des Veilleurs. Un vrai raid.',
+      sK: 'Les figures. Sous l’écran géant, une porte noire : ♠ Valet, Dame, Roi. Préparez-vous à vous battre.',
+      cR: 'Une porte de jade s’est allumée : ♣ Valet, Dame, Roi. Le Caveau des Veilleurs. Un vrai raid.',
     },
     memory: 'Un nouveau souvenir s’est allumé. Suivez la colonne de lumière.',
     memoryLast: 'Le dernier souvenir s’est allumé, près de la place.',
-    memoryLine: 'Chaque carte gagnée fait revenir un souvenir.',
+    memoryLine: 'Chaque carte gagnée rend un morceau du Oui. Et un souvenir revient.',
+    hunt: 'Il manque {n} chiffre(s). Ils sont cachés dans la ville : suivez les colonnes dorées.',
+    huntLine: 'Les Veilleurs ont caché le reste des chiffres dans la ville. Tant qu’ils manquent, les figures restent fermées.',
   },
   portes: {
     title: 'Les Portes',
@@ -251,7 +253,7 @@ const CONFIG = {
       lines: [
         'L’un voyait le danger.',
         'L’autre se mettait devant.',
-        'Deux cartes. Le Borderland commence à vous craindre un peu.',
+        'Le Borderland commence à vous craindre un peu.',
       ],
     },
     s7: {
@@ -262,7 +264,7 @@ const CONFIG = {
       lines: [
         'Dans le noir, l’un voyait.',
         'L’autre frappait là où il fallait.',
-        'Quatre cartes. Le Oui reprend des couleurs.',
+        'Le pique est presque complet. Le Oui reprend des couleurs.',
       ],
     },
     h2: {
@@ -273,7 +275,7 @@ const CONFIG = {
       lines: [
         'Pas d’épreuve. Juste vous deux.',
         'C’était peut-être ça, la plus difficile à gagner.',
-        'Sept cartes. Le Oui bat presque tout seul.',
+        'Deux cartes d’un coup : l’As et le 2 de cœur. Une paire.',
       ],
     },
     cR: {
@@ -284,7 +286,7 @@ const CONFIG = {
       lines: [
         'Un œil, un bouclier.',
         'Aucun monstre n’est assez grand pour vous deux.',
-        'Huit cartes. Le Oui est presque entier.',
+        'Le trèfle est complet. Il reste les carreaux et les cœurs.',
       ],
     },
     h10: {
@@ -306,7 +308,7 @@ const CONFIG = {
       lines: [
         'L’un ouvrait les chemins.',
         'L’autre les traversait sans hésiter.',
-        'Six cartes. Le Oui se souvient de vous.',
+        'Le Oui se souvient de vous.',
       ],
     },
     sK: {
@@ -317,7 +319,7 @@ const CONFIG = {
       lines: [
         'Un fusil, une épée.',
         'Et chacun son tour. Personne n’a su dire qui portait l’autre.',
-        'Cinq cartes. Le Oui recommence à briller.',
+        'Valet, Dame, Roi : le pique est complet.',
       ],
     },
     c4: {
@@ -328,7 +330,7 @@ const CONFIG = {
       lines: [
         'Dans le noir, chacun a suivi la voix de l’autre.',
         'Et aucun ne s’est perdu.',
-        'Trois cartes. Le Borderland commence à vous reconnaître.',
+        'Le Borderland commence à vous reconnaître.',
       ],
     },
   },
@@ -449,20 +451,80 @@ const CONFIG = {
       ['♠ 3', 'Quand le monde nous regarde, je me mets devant toi.'],
       ['♣ 4', 'Dans le noir, c’est ta voix que je suis.'],
       ['♠ 7', 'Dans les couloirs les plus sombres, je ne lâche pas ta main.'],
-      ['♦', 'Avec toi, même les casse-têtes ont un sens.'],
+      ['♦ 9', 'Avec toi, même les casse-têtes ont un sens.'],
       ['♥ 2', 'Mes endroits préférés, ce sont ceux où l’on marche à deux.'],
+      ['♠ R', 'Je me battrai à tes côtés. Et parfois, c’est toi qui me protégeras.'],
       ['♣ R', 'Aucun monstre n’est assez grand pour nous deux.'],
-      ['♠', 'Je courrai toujours, tant que c’est vers toi.'],
+      ['♦ R', 'Je courrai toujours, tant que c’est vers toi.'],
       ['\u{1F0CF}', 'Et quand la peur arrive, je saute quand même.'],
       ['♛', 'Tu es ma Dame de Cœur, Yoline.'],
     ],
     signature: '— Moi',
     visa: 'Visa : illimité.',
-    missing: 'Il manque des cassettes… Le vrai Joker se cache encore.',
+    missing: 'Il manque des cassettes… Le Maître du jeu avait encore des choses à dire.',
+    last: 'Cinquante-deux cartes. Il en reste une, qui n’a pas de couleur.',
   },
   epilogue: {
-    intro: 'Le vrai Joker : finir la balade qui avait été interrompue.',
+    intro: 'Le toit, intact. La balade qui avait été interrompue. Et une dernière carte.',
     sit: 'Asseyez-vous. Cette fois, rien ne s’effondre.',
+    joker: [
+      'Cinquante-deux cartes. Votre Oui est entier.',
+      'Il ne reste que moi. La carte sans couleur.',
+      'J’aurais pu le garder. J’aurais pu vous faire rejouer pour toujours.',
+      'Mais on ne gagne jamais seul… et vous, vous n’avez jamais été seuls.',
+      'Reprenez-le.',
+    ],
+    back: 'Le Oui vous appartient. Il rentre là d’où il venait.',
+    teaser: [
+      'Le Joker s’est retourné.',
+      'Au dos de la carte, quelque chose est écrit :',
+      '« À la prochaine partie. »',
+    ],
+    sequel: 'BORDERLINE 2',
+  },
+  deck: {
+    hud: 'Cartes',
+    toastJoker: 'La carte sans couleur',
+    locked: 'fermé',
+    lockedHint: 'Les figures s’ouvrent quand les 40 chiffres sont réunis.',
+    jokerHint: 'Le Joker : la dernière carte, quand les 52 sont réunies.',
+    numbersNote: 'D’abord les chiffres : de l’As au 10, dans les quatre couleurs. Les figures viendront après.',
+    facesNote: 'Les figures : Valet, Dame et Roi de chaque couleur. Le Joker viendra en dernier.',
+    figuresTitle: 'Les figures',
+    figures: 'Les quarante chiffres sont à vous. Les figures se réveillent : Valets, Dames et Rois.',
+    tuto: 'P : ton jeu de cartes. Les cartes manquantes sont des points d’interrogation.',
+    where: {
+      act1: 'Épreuve ♥ 10 · La Balance',
+      soleil: 'Épreuve ♠ 3 · Un, deux, trois, Soleil',
+      act2: 'Épreuve ♣ 4 · Le Labyrinthe noir',
+      donjon: 'Épreuve ♠ 7 · La Crypte',
+      portes: 'Épreuve ♦ 9 · Les Portes',
+      balade: 'Balade ♥ 2 · La Rivière',
+      garde: 'Figures ♠ · Le Roi de Pique',
+      raid: 'Figures ♣ · Le Caveau',
+      act5: 'Figures ♦ · Deux mondes',
+      final: 'Figures ♥ · Dame de Cœur',
+      epilogue: 'Le vrai Joker',
+      city: 'Cachée dans la ville',
+    },
+    // hidden in the city: [card, x, y, z, revealed after this many épreuves, hint]
+    city: [
+      ['d1', 0, 0.78, 2.6, 1, 'au bord de la fontaine'],
+      ['d2', -135, 0, -15, 1, 'au bout d’une rue, à l’ouest'],
+      ['c5', 8.55, 2.46, -7.6, 2, 'sur le toit d’un kiosque, place centrale'],
+      ['c6', -37.5, 3.6, -10.4, 2, 'en haut d’une pile de caisses, près du café'],
+      ['s8', 1.93, 0, 60, 2, 'au fond d’une ruelle étroite, au sud'],
+      ['d3', 105, 0, 135, 3, 'dans une rue lointaine, au sud-est'],
+      ['c7', -124, 10.53, 63, 3, 'sur un toit : prenez l’escalier'],
+      ['s9', -35.05, 2.46, 8.5, 4, 'sur le kiosque près du café'],
+      ['c8', -34, 10.12, 93, 4, 'sur un toit au sud : prenez l’escalier'],
+      ['d4', 30, 0, -60.49, 4, 'au fond d’une ruelle, au nord'],
+      ['d5', -23.9, 3.6, 10, 5, 'en haut d’une pile de caisses'],
+      ['c9', 127.83, 13.04, 56, 5, 'sur un toit à l’est : prenez l’escalier'],
+      ['s10', 146, 12.97, -147, 6, 'sur un toit au nord-est'],
+      ['c10', -61.43, 0, 0, 6, 'au fond d’une ruelle, à l’ouest'],
+      ['d10', -165, 0, 105, 6, 'tout au bout de la ville, au sud-ouest'],
+    ],
   },
   clues: {
     c1: 'Cassette 1 · Une voix déformée : « Elle reconnaîtra cette ville. Je l’ai construite de mémoire. »',
@@ -552,5 +614,7 @@ const CONFIG = {
     ['name', 'Alice in Borderland · Split Fiction · Big Walk · Valorant · Squid Game · Destiny'],
     ['role', 'Merci d’avoir joué'],
     ['name', 'Visa : illimité'],
+    ['role', 'Le Joker reviendra'],
+    ['name', 'BORDERLINE 2'],
   ],
 };

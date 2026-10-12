@@ -340,24 +340,66 @@ const City = (() => {
         [1, 1],
       ])
         lamps.push([i * LOT + ox * 11.8, j * LOT + oz * 11.8]);
+  // merge simple geometries into one (position/normal/uv), for instanced props
+  const mergeGeos = (list) => {
+    const parts = list.map((g) => (g.index ? g.toNonIndexed() : g));
+    const n = parts.reduce((a, g) => a + g.attributes.position.count, 0);
+    const out = new THREE.BufferGeometry();
+    ['position', 'normal', 'uv'].forEach((nm) => {
+      const size = nm === 'uv' ? 2 : 3;
+      const arr = new Float32Array(n * size);
+      let o = 0;
+      parts.forEach((g) => {
+        const a = g.attributes[nm];
+        if (a) arr.set(a.array, o);
+        o += g.attributes.position.count * size;
+      });
+      out.setAttribute(nm, new THREE.BufferAttribute(arr, size));
+    });
+    out.computeBoundingSphere();
+    return out;
+  };
+  // thin rods skip their end caps (never seen), anything wider keeps them
+  const cyl = (r0, r1, h, seg = 8) =>
+    new THREE.CylinderGeometry(r0, r1, h, seg, 1, Math.max(r0, r1) < 0.09);
+  // arm points along +z: the lantern hangs over the street
+  const lampGeo = mergeGeos([
+    cyl(0.2, 0.26, 0.5).translate(0, 0.25, 0),
+    cyl(0.15, 0.2, 0.18).translate(0, 0.59, 0),
+    cyl(0.055, 0.085, 5.3).translate(0, 3.3, 0),
+    cyl(0.1, 0.1, 0.12).translate(0, 1.6, 0),
+    cyl(0.1, 0.07, 0.25).translate(0, 5.98, 0),
+    cyl(0.035, 0.035, 0.9, 6).rotateX(-1.1).translate(0, 6.3, 0.4),
+    cyl(0.035, 0.035, 0.7, 6).rotateX(Math.PI / 2).translate(0, 6.52, 1.1),
+    cyl(0.05, 0.36, 0.26, 12).translate(0, 6.43, 1.42),
+    cyl(0.03, 0.03, 0.14, 6).translate(0, 6.6, 1.42),
+    new THREE.TorusGeometry(0.21, 0.025, 4, 12).rotateX(Math.PI / 2).translate(0, 5.98, 1.42),
+  ]);
   const poleM = new THREE.InstancedMesh(
-    new THREE.CylinderGeometry(0.08, 0.12, 6, 6).translate(0, 3, 0),
-    Tex.mat('metal', { color: '#3a3040', metal: 0.7, rough: 0.8, scale: 2 }),
+    lampGeo,
+    Tex.mat('metal', { color: '#2e2634', metal: 0.75, rough: 0.55, scale: 3, bump: 0.25 }),
     lamps.length,
   );
   const bulbM = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(0.28, 10, 8),
+    cyl(0.17, 0.22, 0.42, 12).translate(0, 6.1, 1.42),
     new THREE.MeshBasicMaterial({
       color: new THREE.Color('#ffb070').multiplyScalar(2.4),
       toneMapped: false,
     }),
     lamps.length,
   );
+  const lampQ = new THREE.Quaternion();
+  const lampS = V3(1, 1, 1);
+  const lampY = V3(0, 1, 0);
   lamps.forEach(([x, z], i) => {
-    m4.makeTranslation(x, 0, z);
+    // corner lamps lean out toward the crossing
+    const ox = x - Math.round(x / LOT) * LOT;
+    const oz = z - Math.round(z / LOT) * LOT;
+    lampQ.setFromAxisAngle(lampY, Math.atan2(ox, oz));
+    m4.compose(V3(x, 0, z), lampQ, lampS);
     poleM.setMatrixAt(i, m4);
-    m4.makeTranslation(x, 6.1, z);
     bulbM.setMatrixAt(i, m4);
+    Phys.box(x, 3, z, 0.36, 6, 0.36);
   });
   poleM.frustumCulled = bulbM.frustumCulled = false;
   R.scene.add(poleM, bulbM);
@@ -382,7 +424,12 @@ const City = (() => {
   );
   water.position.y = 0.55;
   R.scene.add(fountain, water);
-  Phys.box(0, 0.3, 0, 7.4, 0.6, 7.4);
+  // basin + rim (r 4.3, top 0.78): three boxes give a close octagon instead of a square
+  Phys.box(0, 0.39, 0, 6.1, 0.78, 6.1);
+  Phys.box(0, 0.39, 0, 8.6, 0.78, 3.6);
+  Phys.box(0, 0.39, 0, 3.6, 0.78, 8.6);
+  Phys.box(0, 0.39, 0, 7.9, 0.78, 5.2);
+  Phys.box(0, 0.39, 0, 5.2, 0.78, 7.9);
 
   // park bench: wooden slats on two cast-iron frames
   const woodM = Tex.mat('wood', { color: '#6a4636', scale: 4, bump: 0.6 });
@@ -417,6 +464,10 @@ const City = (() => {
     group.add(g);
     const along = Math.abs(Math.sin(yaw)) > 0.5;
     Phys.box(x, y + 0.25, z, along ? 0.8 : 3, 0.5, along ? 3 : 0.8, { tag: 'bench' });
+    // backrest: you can lean on it, not walk through it
+    const bx = x - Math.sin(yaw) * 0.38;
+    const bz = z - Math.cos(yaw) * 0.38;
+    Phys.box(bx, y + 0.81, bz, along ? 0.12 : 3, 0.62, along ? 3 : 0.12, { tag: 'bench' });
     const b = { pos: V3(x, y, z), yaw, g };
     benches.push(b);
     return b;
@@ -534,6 +585,9 @@ const City = (() => {
     g.position.copy(pos);
     g.rotation.y = rotY;
     R.scene.add(g);
+    [-2, 2].forEach((lz) =>
+      Phys.box(pos.x + lz * Math.sin(rotY), 2.1, pos.z + lz * Math.cos(rotY), 0.34, 4.2, 0.34),
+    );
     return { frame, fill, sign, color: new THREE.Color(color), on: 0, target: 0, entry };
   };
 
@@ -650,11 +704,82 @@ const City = (() => {
   );
   cafeSign.position.set(7.1, 5.6, 0);
   cafe.add(cafeBody, awning, cafeWin, cafeSign);
+  {
+    const frameM = Tex.mat('wood', { color: '#3a1e24', scale: 1.2, rough: 0.6 });
+    const brassM = Tex.mat('metal', { color: '#c9a24a', metal: 0.9, rough: 0.35, scale: 1 });
+    const part = (geo, mat, x, y, z) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      cafe.add(m);
+      return m;
+    };
+    // window frame + mullions, a glass door in the middle
+    part(new THREE.BoxGeometry(0.16, 0.18, 8.3), frameM, 7.06, 3.05, 0);
+    part(new THREE.BoxGeometry(0.2, 0.5, 8.3), frameM, 7.08, 0.25, 0);
+    [-4.07, -2.1, 2.1, 4.07].forEach((z) =>
+      part(new THREE.BoxGeometry(0.14, 2.8, 0.14), frameM, 7.07, 1.65, z),
+    );
+    [-1.0, 1.0].forEach((z) =>
+      part(new THREE.BoxGeometry(0.16, 3.0, 0.16), frameM, 7.08, 1.5, z),
+    );
+    part(new THREE.BoxGeometry(0.05, 2.5, 1.84), glowMat('#3a1a26', 1), 7.05, 1.3, 0);
+    part(new THREE.BoxGeometry(0.06, 0.06, 0.5), brassM, 7.14, 1.25, 0.6);
+    part(new THREE.BoxGeometry(0.12, 0.12, 8.6), frameM, 7.04, 6.95, 0);
+    // A-frame menu board
+    const board = new THREE.Group();
+    const bm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.1, 0.7), frameM);
+    const chalk = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.9), glowMat('#1e2a24', 1));
+    chalk.position.set(0.03, 0, 0);
+    chalk.rotation.y = Math.PI / 2;
+    bm.add(chalk);
+    [-0.22, 0.22].forEach((tilt, k) => {
+      const p = bm.clone();
+      p.rotation.z = tilt;
+      p.position.set(k ? 0.2 : -0.2, 0.55, 0);
+      board.add(p);
+    });
+    board.position.set(8.3, 0, 2.6);
+    board.rotation.y = 0.3;
+    cafe.add(board);
+    // terrace: two bistro tables with chairs on the sides of the shop
+    const tableGeo = mergeGeos([
+      cyl(0.36, 0.36, 0.04, 20).translate(0, 0.74, 0),
+      cyl(0.03, 0.03, 0.72, 8).translate(0, 0.37, 0),
+      cyl(0.22, 0.25, 0.03, 16).translate(0, 0.015, 0),
+    ]);
+    const chairGeo = mergeGeos([
+      cyl(0.2, 0.2, 0.04, 16).translate(0, 0.46, 0),
+      new THREE.BoxGeometry(0.36, 0.34, 0.03).translate(0, 0.72, -0.18),
+      ...[
+        [-0.13, -0.13],
+        [0.13, -0.13],
+        [-0.13, 0.13],
+        [0.13, 0.13],
+      ].map(([x, z]) => cyl(0.015, 0.015, 0.46, 6).translate(x, 0.23, z)),
+    ]);
+    [
+      [4.5, 7.6],
+      [4.5, -7.6],
+    ].forEach(([x, z]) => {
+      const t = new THREE.Mesh(tableGeo, brassM);
+      t.position.set(x, 0, z);
+      cafe.add(t);
+      [-0.75, 0.75].forEach((dz) => {
+        const ch = new THREE.Mesh(chairGeo, brassM);
+        ch.position.set(x, 0, z + dz);
+        ch.rotation.y = dz > 0 ? Math.PI : 0;
+        cafe.add(ch);
+      });
+    });
+  }
   cafe.position.set(-LOT + 3, 0, 0);
   addPlace('cafe', cafe, V3(-LOT + 11, 0, 0), () => {
     Phys.box(-LOT + 3, 3.5, 0, 14, 7, 12);
     // the awning can be landed on
     Phys.box(-LOT + 10.6, 3.3, 0, 1.6, 0.3, 10);
+    // terrace tables (chairs are low enough to walk past)
+    [7.6, -7.6].forEach((z) => Phys.box(-LOT + 7.5, 0.38, z, 0.75, 0.76, 0.75));
+    Phys.box(-LOT + 11.3, 0.55, 2.6, 0.55, 1.1, 0.8);
   });
 
   const banc = new THREE.Group();
@@ -694,7 +819,7 @@ const City = (() => {
   const kino = new THREE.Group();
   const booth = new THREE.Mesh(
     new THREE.BoxGeometry(3.4, 2.8, 2),
-    Tex.mat('plaster', { color: '#6a3048', scale: 2, emissive: '#14040c' }),
+    Tex.mat('marble', { color: '#6a2238', scale: 1.6, rough: 0.45, emissive: '#14040c' }),
   );
   booth.position.set(0, 1.4, -1.2);
   const marquee = new THREE.Mesh(
@@ -716,10 +841,42 @@ const City = (() => {
     kino.add(b);
   }
   kino.add(booth, marquee);
+  {
+    const goldM = Tex.mat('metal', { color: '#c9a24a', metal: 0.9, rough: 0.35, scale: 1 });
+    const darkM = Tex.mat('marble', { color: '#2a1420', scale: 1.5, rough: 0.5 });
+    const add = (geo, mat, x, y, z) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      kino.add(m);
+      return m;
+    };
+    add(new THREE.BoxGeometry(3.6, 0.3, 2.2), darkM, 0, 0.15, -1.2);
+    add(new THREE.BoxGeometry(3.7, 0.25, 2.3), darkM, 0, 2.92, -1.2);
+    // ticket window: lit glass, brass frame, a little counter
+    add(new THREE.PlaneGeometry(1.5, 1.0), glowMat('#ffcf8a', 1.1), 0, 1.6, -0.19);
+    add(new THREE.BoxGeometry(1.7, 0.08, 0.06), goldM, 0, 2.12, -0.17);
+    add(new THREE.BoxGeometry(1.7, 0.08, 0.06), goldM, 0, 1.08, -0.17);
+    [-0.82, 0.82].forEach((x) => add(new THREE.BoxGeometry(0.08, 1.1, 0.06), goldM, x, 1.6, -0.17));
+    add(new THREE.BoxGeometry(1.6, 0.06, 0.3), goldM, 0, 1.06, -0.05);
+    // columns at the corners
+    [-1.62, 1.62].forEach((x) =>
+      add(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 14), goldM, x, 1.5, -0.2),
+    );
+    // film posters on the sides
+    [
+      [-1.71, '#ff5f8a'],
+      [1.71, '#7ce0ff'],
+    ].forEach(([x, c]) => {
+      const p = add(new THREE.PlaneGeometry(1.1, 1.6), glowMat(c, 0.7), x, 1.55, -1.2);
+      p.rotation.y = x > 0 ? Math.PI / 2 : -Math.PI / 2;
+      const fr = add(new THREE.BoxGeometry(0.04, 1.75, 1.25), goldM, x * 0.995, 1.55, -1.2);
+      fr.scale.set(1, 1, 1);
+    });
+  }
   kino.position.set(LOT / 2, 0, LOT / 2);
   kino.rotation.y = Math.PI;
   addPlace('kino', kino, V3(LOT / 2, 0, LOT / 2 - 1.6), () =>
-    Phys.box(LOT / 2, 1.4, LOT / 2 + 1.2, 3.4, 2.8, 2),
+    Phys.box(LOT / 2, 1.52, LOT / 2 + 1.2, 3.7, 3.05, 2.3),
   );
 
   const danse = new THREE.Group();
@@ -870,6 +1027,7 @@ const City = (() => {
   addPlace('pluie', pluie, V3(-LOT / 2, 0, LOT + LOT / 2 - 1.6), () => {
     Phys.box(-LOT / 2, 1.3, LOT + LOT / 2 + 0.8, 4.6, 2.6, 0.3);
     Phys.box(-LOT / 2, 2.6, LOT + LOT / 2, 4.6, 0.15, 1.8);
+    Phys.box(-LOT / 2, 0.275, LOT + LOT / 2 + 0.5, 3, 0.55, 0.45);
   });
 
   // Souvenir 06: a brass telescope on a little round stage, pointing at a bright star
@@ -944,7 +1102,7 @@ const City = (() => {
   chanson.position.set(-LOT - LOT / 2, 0, -LOT / 2);
   chanson.rotation.y = Math.PI / 2;
   addPlace('chanson', chanson, V3(-LOT - LOT / 2 + 1.8, 0, -LOT / 2), () =>
-    Phys.box(-LOT - LOT / 2, 1, -LOT / 2, 1, 2, 1.7),
+    Phys.box(-LOT - LOT / 2 + 0.2, 1.18, -LOT / 2, 1.2, 2.36, 1.7),
   );
 
   const lantern = (c) => {
@@ -997,6 +1155,37 @@ const City = (() => {
   };
   setLift(0.05);
   const roofBench = addBench(TOWER.x, TOWER.y, TOWER.z - 4, Math.PI);
+  {
+    const railM = Tex.mat('metal', { color: '#3a3040', metal: 0.8, rough: 0.5, scale: 1 });
+    const geos = [];
+    const H8 = 8;
+    const seg = (x0, z0, x1, z1) => {
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      const cx = (x0 + x1) / 2;
+      const cz = (z0 + z1) / 2;
+      const along = Math.abs(x1 - x0) > 0.01;
+      geos.push(
+        new THREE.BoxGeometry(along ? len : 0.08, 0.08, along ? 0.08 : len).translate(cx, TOWER.y + 1.05, cz),
+        new THREE.BoxGeometry(along ? len : 0.05, 0.05, along ? 0.05 : len).translate(cx, TOWER.y + 0.55, cz),
+      );
+      for (let k = 0; k <= Math.round(len / 1.6); k++) {
+        const f = k / Math.max(1, Math.round(len / 1.6));
+        geos.push(cyl(0.035, 0.035, 1.1, 6).translate(x0 + (x1 - x0) * f, TOWER.y + 0.55, z0 + (z1 - z0) * f));
+      }
+      Phys.box(cx, TOWER.y + 0.6, cz, along ? len : 0.12, 1.2, along ? 0.12 : len);
+    };
+    const x0 = TOWER.x - H8 + 0.1;
+    const x1 = TOWER.x + H8 - 0.1;
+    const z0 = TOWER.z - H8 + 0.1;
+    const z1 = TOWER.z + H8 - 0.1;
+    seg(x0, z0, x1, z0);
+    seg(x0, z0, x0, z1);
+    seg(x1, z0, x1, z1);
+    // lift side: leave a gap in front of the cabin
+    seg(x0, z1, LIFT.x - 2.4, z1);
+    seg(LIFT.x + 2.4, z1, x1, z1);
+    R.scene.add(new THREE.Mesh(mergeGeos(geos), railM));
+  }
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU;
     const b = new THREE.Mesh(
@@ -1006,6 +1195,209 @@ const City = (() => {
     b.position.set(TOWER.x + Math.cos(a) * 7, TOWER.y + 0.3, TOWER.z + Math.sin(a) * 7);
     R.scene.add(b);
   }
+
+  // ---- exploration: things to climb (and places where cards can hide) ----
+  const concM = Tex.mat('concrete', { color: '#5a4a5e', scale: 2.5 });
+  const steelM = Tex.mat('metal', { color: '#3a3444', metal: 0.7, rough: 0.55, scale: 1.2 });
+  const solidBox = (x, y, z, sx, sy, sz, mat) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
+    m.position.set(x, y, z);
+    R.scene.add(m);
+    Phys.box(x, y, z, sx, sy, sz);
+    return m;
+  };
+  // concrete stairs running along a facade, from the street up to the roof
+  const roofs = [];
+  const stairUp = (b) => {
+    const cx = Math.round(b.x / LOT) * LOT;
+    const cz = Math.round(b.z / LOT) * LOT;
+    const full = b.sx >= 21 && b.sz >= 21;
+    // full lot: the side facing the city centre; half lot: its street side (not the alley)
+    const face = full
+      ? Math.abs(b.x) > Math.abs(b.z)
+        ? b.x > 0
+          ? 'x-'
+          : 'x+'
+        : b.z > 0
+          ? 'z-'
+          : 'z+'
+      : b.sz >= 21
+        ? b.x < cx
+          ? 'x-'
+          : 'x+'
+        : b.z < cz
+          ? 'z-'
+          : 'z+';
+    const n = Math.ceil(b.h / 0.4);
+    const rise = b.h / n;
+    const run = Math.min(0.55, 17 / n);
+    // face: +x / -x / +z / -z side of the building; the stair hugs that facade
+    const ax = face === 'x+' || face === 'x-';
+    const sgn = face === 'x+' || face === 'z+' ? 1 : -1;
+    const off = (ax ? b.sx : b.sz) / 2 + 0.7;
+    const geos = [];
+    const rails = [];
+    for (let i = 0; i < n; i++) {
+      const top = rise * (i + 1);
+      const t = -8.5 + (i + 0.5) * run;
+      const x = ax ? b.x + sgn * off : b.x + t;
+      const z = ax ? b.z + t : b.z + sgn * off;
+      const sx = ax ? 1.4 : run;
+      const sz = ax ? run : 1.4;
+      geos.push(new THREE.BoxGeometry(sx, top, sz).translate(x, top / 2, z));
+      Phys.box(x, top / 2, z, sx, top, sz);
+      // railing on the street side
+      const rx = ax ? x + sgn * 0.68 : x;
+      const rz = ax ? z : z + sgn * 0.68;
+      Phys.box(rx, top + 0.5, rz, ax ? 0.08 : run, 1.0, ax ? run : 0.08);
+      if (i % 3 === 0 || i === n - 1) rails.push([rx, top, rz]);
+    }
+    // top landing + rails on its far end: you step sideways onto the roof, never off the end
+    const tE = -8.5 + n * run;
+    const L = (t, o) => (ax ? [b.x + sgn * o, b.z + t] : [b.x + t, b.z + sgn * o]);
+    const [gx, gz] = L(tE + 0.6, off);
+    const lsx = ax ? 1.4 : 1.2;
+    const lsz = ax ? 1.2 : 1.4;
+    geos.push(new THREE.BoxGeometry(lsx, b.h, lsz).translate(gx, b.h / 2, gz));
+    Phys.box(gx, b.h / 2, gz, lsx, b.h, lsz);
+    const [ex, ez] = L(tE + 1.17, off);
+    Phys.box(ex, b.h + 0.5, ez, ax ? 1.4 : 0.08, 1.0, ax ? 0.08 : 1.4);
+    const [sx2, sz2] = L(tE + 0.6, off + 0.68);
+    Phys.box(sx2, b.h + 0.5, sz2, ax ? 0.08 : 1.2, 1.0, ax ? 1.2 : 0.08);
+    const [c1x, c1z] = L(tE + 1.17, off + 0.68);
+    const [c2x, c2z] = L(tE + 1.17, off - 0.66);
+    rails.push([c1x, b.h, c1z], [c2x, b.h, c2z]);
+    const stairs = new THREE.Mesh(mergeGeos(geos), concM);
+    R.scene.add(stairs);
+    const rg = [];
+    rails.forEach(([x, y, z]) => rg.push(cyl(0.03, 0.03, 1.0, 6).translate(x, y + 0.5, z)));
+    for (let k = 1; k < rails.length; k++) {
+      const a = V3(...rails[k - 1]).add(V3(0, 1, 0));
+      const c = V3(...rails[k]).add(V3(0, 1, 0));
+      const len = a.distanceTo(c);
+      const g = cyl(0.035, 0.035, len, 6);
+      const q = new THREE.Quaternion().setFromUnitVectors(lampY, c.clone().sub(a).normalize());
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(q));
+      rg.push(g.translate((a.x + c.x) / 2, (a.y + c.y) / 2, (a.z + c.z) / 2));
+    }
+    R.scene.add(new THREE.Mesh(mergeGeos(rg), steelM));
+    // roof furniture: AC units and a water tank (things to stand on)
+    // along the long side of the roof, so narrow buildings get them too
+    const lx = b.sx >= b.sz;
+    const across = Math.max(0, Math.min(3, (lx ? b.sz : b.sx) / 2 - 1.3));
+    const at = (l, a) => (lx ? [b.x + l, b.z + a] : [b.x + a, b.z + l]);
+    const acs = [at(-4, across), at(1.5, -across)];
+    acs.forEach(([x, z]) => solidBox(x, b.h + 0.55, z, 1.8, 1.1, 1.3, steelM));
+    const [tx, tz] = at(6.5, 0);
+    const tank = new THREE.Mesh(cyl(1.1, 1.1, 1.8, 18), Tex.mat('wood', { color: '#5a3a2a', scale: 1 }));
+    tank.position.set(tx, b.h + 2.4, tz);
+    R.scene.add(tank);
+    [
+      [-0.7, -0.7],
+      [0.7, -0.7],
+      [-0.7, 0.7],
+      [0.7, 0.7],
+    ].forEach(([dx, dz]) => solidBox(tx + dx, b.h + 0.75, tz + dz, 0.12, 1.5, 0.12, steelM));
+    Phys.box(tx, b.h + 2.4, tz, 2.2, 1.8, 2.2);
+    roofs.push({ b, face, ac: acs.map(([x, z]) => V3(x, b.h + 1.1, z)) });
+  };
+  {
+    // six low buildings spread over the city (the layout is seeded, so these are stable)
+    [
+      [-120, 60],
+      [-30, 90],
+      [-60, -55.3],
+      [124.8, 60],
+      [150, -150],
+      [-115.5, -150],
+    ].forEach(([wx, wz]) => {
+      const b = buildings.find((q) => Math.abs(q.x - wx) < 1 && Math.abs(q.z - wz) < 1 && q.h < 14);
+      if (b) stairUp(b);
+    });
+  }
+  // newspaper kiosks: roof at 2.45 m, a jump away
+  const kiosks = [];
+  const kioskTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#1e3a2a';
+    g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#c9a24a';
+    g.lineWidth = 6;
+    g.strokeRect(8, 8, 496, 112);
+    g.fillStyle = '#f4e2b8';
+    g.font = 'bold 64px Georgia';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('JOURNAUX', 256, 68);
+    const t = new THREE.CanvasTexture(c);
+    t.anisotropy = 8;
+    return t;
+  })();
+  const kioskBody = Tex.mat('metal', { color: '#24503a', metal: 0.5, rough: 0.6, scale: 1.5 });
+  const addKiosk = (x, z, yaw) => {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.3, 1.6), kioskBody);
+    body.position.y = 1.15;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.16, 2.1), steelM);
+    roof.position.y = 2.38;
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5, 16, 8, 0, TAU, 0, Math.PI / 2),
+      kioskBody,
+    );
+    dome.position.y = 2.46;
+    dome.scale.set(1, 0.5, 1);
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.2, 0.55),
+      new THREE.MeshBasicMaterial({ map: kioskTex, toneMapped: false }),
+    );
+    sign.position.set(0, 2.0, 0.81);
+    // magazines on the front rack
+    const mags = ['#ff5f8a', '#7ce0ff', '#ffcf8a', '#b07cff', '#f4ece0', '#ff9a3a'];
+    for (let i = 0; i < 12; i++) {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.3, 0.4),
+        glowMat(mags[i % mags.length], 0.55),
+      );
+      m.position.set(-0.85 + (i % 6) * 0.34, 0.75 + ((i / 6) | 0) * 0.5, 0.81);
+      m.rotation.x = -0.12;
+      g.add(m);
+    }
+    g.add(body, roof, dome, sign);
+    g.position.set(x, 0, z);
+    g.rotation.y = yaw;
+    R.scene.add(g);
+    const along = Math.abs(Math.sin(yaw)) > 0.5;
+    Phys.box(x, 1.15, z, along ? 1.6 : 2.4, 2.3, along ? 2.4 : 1.6);
+    Phys.box(x, 2.38, z, along ? 2.1 : 2.9, 0.16, along ? 2.9 : 2.1);
+    Phys.box(x, 2.58, z, 0.7, 0.25, 0.7);
+    // free spot on the roof, beside the little dome
+    kiosks.push(along ? V3(x, 2.46, z + 0.95) : V3(x + 0.95, 2.46, z));
+  };
+  addKiosk(7.6, -7.6, 0);
+  addKiosk(-36, 8.5, 0);
+  addKiosk(-7.6, 7.6, Math.PI);
+  // crate stacks: three steps up to 3.6 m
+  const crateM = Tex.mat('wood', { color: '#7a5a3a', scale: 1.2, bump: 0.8 });
+  const crates = [];
+  const addCrates = (x, z, dx, dz) => {
+    [
+      [0, 0.6, 0, 1.2],
+      [dx * 1.2, 0.6, dz * 1.2, 1.2],
+      [dx * 1.2, 1.8, dz * 1.2, 1.2],
+      [dx * 2.4, 0.6, dz * 2.4, 1.2],
+      [dx * 2.4, 1.8, dz * 2.4, 1.2],
+      [dx * 2.4, 3.0, dz * 2.4, 1.2],
+    ].forEach(([ox, y, oz, sz]) => {
+      const m = solidBox(x + ox, y, z + oz, sz, sz, sz, crateM);
+      m.rotation.y = (r() - 0.5) * 0.1;
+    });
+    crates.push(V3(x + dx * 2.4, 3.6, z + dz * 2.4));
+  };
+  addCrates(-37.5, -8, 0, -1);
+  addCrates(-21.5, 10, -1, 0);
 
   const rockets = [V3(-5, 0, 6), V3(5, 0, -6)].map((p) => {
     const g = new THREE.Group();
@@ -1049,6 +1441,10 @@ const City = (() => {
     benches,
     roofBench,
     rockets,
+    kiosks,
+    crates,
+    roofs,
+    buildings,
     TOWER,
     LIFT,
     setLift,

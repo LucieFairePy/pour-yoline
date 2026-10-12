@@ -9,26 +9,10 @@
     liftTo: 0.05,
     moment: false,
     lantern: 0,
-    line: null,
   };
   const tm = { lift: 0, empty: 0 };
-  const ha = V3();
-  const hb = V3();
 
   Clues.add('c4', V3(City.TOWER.x + 4, City.TOWER.y + 0.9, City.TOWER.z - 5));
-
-  const handLine = () => {
-    const l = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#ffcf8a').multiplyScalar(2),
-        toneMapped: false,
-      }),
-    );
-    l.visible = false;
-    R.scene.add(l);
-    return l;
-  };
 
   const goldenBase = (c) => {
     City.mood({ gold: 1 });
@@ -72,7 +56,6 @@
     enter(c, first) {
       goldenBase(c);
       if (first) c.spawn(City.hubSpawn[c.role], Math.PI);
-      if (!local.line) local.line = handLine();
       HUD.visa(A.title);
       BigScreen.show(A.title, 'Pas d’épreuve. Pas de chrono.', '#ffcf8a');
       HUD.say(A.intro, T.master, 2600);
@@ -82,7 +65,7 @@
       City.setLift(local.lift);
     },
     exit() {
-      if (local.line) local.line.visible = false;
+      Avatar.together(0, false);
       Player.handPose = false;
       Remote.handPose = false;
     },
@@ -149,7 +132,7 @@
           c.send('lift', x.lift.y);
         }
       }
-      if (x.hand && Math.hypot(pd.x - pv.x, pd.z - pv.z) > 4) c.set((s) => (s.x.hand = false));
+      if (x.hand && Math.hypot(pd.x - pv.x, pd.z - pv.z) > 6) c.set((s) => (s.x.hand = false));
       const b = City.roofBench;
       const sitD = c.role === 'dame' ? Player.mode === 'sit' : c.remoteState().mode === 'sit';
       const sitV = c.role === 'valet' ? Player.mode === 'sit' : c.remoteState().mode === 'sit';
@@ -202,20 +185,12 @@
       }
       const rp = Remote.pos;
       const close = Math.hypot(p.x - rp.x, p.z - rp.z) < 1.8;
-      Player.handPose = x.hand && close;
-      Remote.handPose = x.hand && close;
-      const l = local.line;
-      if (l) {
-        l.visible = x.hand;
-        if (x.hand) {
-          ha.set(p.x, p.y + 0.95, p.z);
-          hb.set(rp.x, rp.y + 0.95, rp.z);
-          l.position.copy(ha);
-          l.lookAt(hb);
-          l.scale.set(1, 1, Math.max(0.01, ha.distanceTo(hb)));
-        }
+      Avatar.together(dt, x.hand);
+      if (x.moment) {
+        // keep handling getting up from the bench during the moment (no prompt)
+        Benches.update(c);
+        return null;
       }
-      if (x.moment) return null;
       const sit = Benches.update(c);
       if (Player.mode === 'sit') return sit;
       for (const id of SPOTS) {
