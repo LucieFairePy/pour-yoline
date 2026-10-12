@@ -80,7 +80,7 @@
       }
       if (c.S.x.moment && !local.moment) {
         local.moment = true;
-        Cam.focus = V3(City.TOWER.x - 120, City.TOWER.y + 200, City.TOWER.z - 520);
+        Cam.focus = V3(City.TOWER.x - 110, City.TOWER.y + 390, City.TOWER.z - 470);
         Sound.play('reveal');
         A.moment.forEach((l) => HUD.say(l, T.master, 2200));
         for (let i = 0; i < 6; i++)

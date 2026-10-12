@@ -39,108 +39,34 @@ const Cards = (() => {
   };
 
   // ---------- where each card comes from ----------
-  // stage: awarded by the host while the phase runs, as soon as test(S.x) is true
+  // one card per épreuve (js/game/trials.js); the story finale gives its own three cards
   const STAGE = {
-    act1: [
-      ['h7', (x) => x.stage >= 2],
-      ['h8', (x) => x.stage >= 3],
-      ['h9', (x) => x.stage >= 4],
-    ],
-    soleil: [
-      ['s1', (x) => x.stage >= 2],
-      ['s2', (x) => x.stage >= 3],
-    ],
-    act2: [
-      ['c1', (x) => x.stage >= 2],
-      ['c2', (x) => x.stage >= 3],
-      ['c3', (x) => x.stage >= 4],
-    ],
-    donjon: [
-      ['s4', (x) => x.stage >= 4],
-      ['s5', (x) => x.stage >= 7],
-      ['s6', (x) => x.stage >= 10],
-    ],
-    portes: [
-      ['d6', (x) => x.stage >= 2],
-      ['d7', (x) => x.stage >= 3],
-      ['d8', (x) => x.stage >= 4],
-    ],
-    balade: [
-      ['h3', (x) => x.stage >= 2],
-      ['h4', (x) => x.stage >= 3],
-      ['h5', (x) => x.stage >= 4],
-      ['h6', (x) => x.stage >= 5],
-    ],
-    garde: [
-      ['sV', (x) => x.stage >= 3],
-      ['sD', (x) => x.stage >= 4],
-    ],
-    raid: [
-      ['cV', (x) => (x.ms || 0) >= 1],
-      ['cD', (x) => (x.ms || 0) >= 2],
-    ],
-    act5: [
-      ['dV', (x) => !!x.p1],
-      ['dD', (x) => !!x.s2],
-      ['dR', (x) => x.stage === 'caught'],
-    ],
-    final: [
-      ['hV', (x) => x.step !== 'joker'],
-      ['hD', (x) => ['letter', 'visa'].includes(x.step)],
-      ['hR', (x) => x.step === 'visa'],
-    ],
+    act5: [['dR', (x) => x.stage === 'caught']],
+    final: [['hD', (x) => ['letter', 'visa'].includes(x.step)]],
     epilogue: [['J', (x) => x.step >= 1]],
   };
-  // the card shown at the end of each épreuve (reward screen)
-  const REWARD = {
-    h10: ['h10'],
-    s3: ['s3'],
-    c4: ['c4'],
-    s7: ['s7'],
-    d9: ['d9'],
-    h2: ['h2', 'h1'],
-    sK: ['sR'],
-    cR: ['cR'],
+  const rewardOf = (trialId) => {
+    const t = Trials.byId[trialId];
+    return t ? [t.card] : [];
   };
-  const CHAPTER_OF = { h10: 0, s3: 1, c4: 2, s7: 3, d9: 4, h2: 5, sK: 6, cR: 7 };
-  const PHASE_OF = {
-    h10: 'act1',
-    s3: 'soleil',
-    c4: 'act2',
-    s7: 'donjon',
-    d9: 'portes',
-    h2: 'balade',
-    sK: 'garde',
-    cR: 'raid',
+  // where to find a card, computed late: the épreuves register their phases after this file
+  const hintOf = (id) => {
+    const t = Trials.byCard[id];
+    if (!t) {
+      const ph = Object.keys(Trials.STORY_CARDS).find((k) => Trials.STORY_CARDS[k] === id);
+      return D.where[ph] || '';
+    }
+    const what = (t.face ? 'Figure ' : 'Épreuve ') + label(id) + ' · ' + t.title;
+    return Trials.built(t) ? what : D.soon + ' · ' + what;
   };
-  // hidden in the city: [id, x, y, z, revealed once this many épreuves are done, hint]
-  const CITY = D.city;
-  const cityOf = Object.fromEntries(CITY.map((c) => [c[0], c]));
-
-  const HINT = {};
-  Object.entries(STAGE).forEach(([ph, list]) =>
-    list.forEach(([id]) => (HINT[id] = D.where[ph] || ph)),
-  );
-  Object.entries(REWARD).forEach(([door, ids]) =>
-    ids.forEach((id) => (HINT[id] = D.where[PHASE_OF[door]])),
-  );
-  CITY.forEach((c) => (HINT[c[0]] = D.where.city + (c[5] ? ' · ' + c[5] : '')));
-
-  /** Every card a save at `chapter` must already hold (épreuves finished before). */
-  const upTo = (chapter) => {
-    const out = [];
-    Object.entries(CHAPTER_OF).forEach(([door, ch]) => {
-      if (ch >= chapter) return;
-      (STAGE[PHASE_OF[door]] || []).forEach(([id]) => out.push(id));
-      REWARD[door].forEach((id) => out.push(id));
-    });
-    return out;
-  };
+  const CITY = [];
+  const cityOf = {};
 
   const owned = () => (Story.S && Story.S.cards) || [];
   const has = (id) => owned().includes(id);
   const count = (list) => list.filter(has).length;
-  const numbersDone = () => count(NUM_IDS) >= NUM_IDS.length;
+  // the faces open once every built number épreuve is done
+  const numbersDone = () => !!Story.S && Trials.numbersLeft(Story.S.done || []).length === 0;
 
   // ---------- host ----------
   const award = (ctx, ids) => {
@@ -154,10 +80,7 @@ const Cards = (() => {
     const add = list.filter(([id, test]) => !has(id) && test(S.x || {})).map(([id]) => id);
     if (add.length) award(ctx, add);
   };
-  const valid = (id) => {
-    const c = cityOf[id];
-    return !!c && Story.S.chapter >= c[4];
-  };
+  const valid = () => false;
 
   // ---------- toasts ----------
   let known = null;
@@ -199,7 +122,7 @@ const Cards = (() => {
     if (known) {
       const fresh = now.filter((id) => !known.includes(id));
       // the reward screen already shows the big card
-      const quiet = S.phase === 'reward' ? (REWARD[S.x.card] || []).slice(0, 1) : [];
+      const quiet = S.phase === 'reward' ? rewardOf(S.x.card) : [];
       const show = fresh.filter((id) => !quiet.includes(id));
       // a big batch (loaded save, test jump): one toast, not a minute of them
       if (show.length > 3) toastQ.push(show[show.length - 1]);
@@ -311,7 +234,7 @@ const Cards = (() => {
         const cls = ['dk', got ? 'got' : 'miss', face ? 'face' : '', lock ? 'lock' : '']
           .filter(Boolean)
           .join(' ');
-        const hint = got ? longName(id) : lock ? D.lockedHint : HINT[id] || '';
+        const hint = got ? longName(id) : lock ? D.lockedHint : hintOf(id);
         return `<li class="${cls}" title="${hint}"><i style="background-image:url(${img})"></i>${got ? '' : `<b><em>${lock ? Icons.svg('lock') : '?'}</em></b>`}<span>${r === '1' ? 'A' : r}</span></li>`;
       }).join('');
       return `<div class="dk-row ${Tex.isRed(suit) ? 'red' : 'black'}"><span class="dk-suit">${Icons.glyphs(suit)}</span><ul>${cells}</ul></div>`;
@@ -320,22 +243,17 @@ const Cards = (() => {
     $('deckGrid').innerHTML = rows;
     $('deckJokerCard').innerHTML = `<li class="dk ${jl ? 'got' : 'miss lock'}"><i style="background-image:url(${jl ? dataUrl('J') : back()})"></i>${jl ? '' : `<b><em>${Icons.svg('lock')}</em></b>`}<span>J</span></li>`;
     $('deckNote').textContent = figOpen ? (f >= 12 ? D.jokerHint : D.facesNote) : D.numbersNote;
-    // where the missing cards are, grouped by place
-    const miss = {};
-    ALL.forEach((id) => {
-      if (has(id)) return;
-      if (FACES.includes(id.slice(1)) && !figOpen) return;
-      if (id === 'J' && f < 12) return;
-      const w = cityOf[id] ? D.where.city : HINT[id] || '';
-      if (cityOf[id] && !valid(id)) return;
-      (miss[w] = miss[w] || []).push(id);
-    });
-    $('deckWhere').innerHTML = Object.entries(miss)
-      .map(
-        ([w, ids]) =>
-          `<li><span>${Icons.rich(w)}</span><b>${ids.map((id) => Icons.rich(label(id))).join(' · ')}</b></li>`,
-      )
-      .join('');
+    // the next épreuves to play, in order (the ones still being built are only counted)
+    const done = S.done || [];
+    const nexts = Trials.list.filter((t) => Trials.built(t) && !done.includes(t.id)).slice(0, 4);
+    const soon = Trials.list.filter((t) => !Trials.built(t)).length;
+    $('deckWhere').innerHTML =
+      nexts
+        .map(
+          (t, i) =>
+            `<li><span>${i ? D.later : D.nextUp}</span><b>${Icons.rich(label(t.card) + ' · ' + t.title)}</b></li>`,
+        )
+        .join('') + (soon ? `<li><span>${D.soon}</span><b>${soon} ${D.soonN}</b></li>` : '');
     paintHeart();
   };
   const paintHeart = () => {
@@ -369,11 +287,11 @@ const Cards = (() => {
       g.position.set(x, y, z);
       const front = new THREE.Mesh(
         geo,
-        new THREE.MeshBasicMaterial({ map: texOf(id), toneMapped: false, transparent: true }),
+        new THREE.MeshBasicMaterial({ map: texOf(id), toneMapped: false, color: 0xcccccc }),
       );
       const backM = new THREE.Mesh(
         geo,
-        new THREE.MeshBasicMaterial({ map: backTexture(), toneMapped: false, transparent: true }),
+        new THREE.MeshBasicMaterial({ map: backTexture(), toneMapped: false, color: 0xcccccc }),
       );
       backM.rotation.y = Math.PI;
       const card = new THREE.Group();
@@ -459,14 +377,13 @@ const Cards = (() => {
     IDS: ALL,
     NUM_IDS,
     FACE_IDS,
-    REWARD,
+    rewardOf,
     label,
     longName,
     texOf,
     dataUrl,
     back,
     backTexture,
-    upTo,
     has,
     count,
     numbersDone,
@@ -478,8 +395,7 @@ const Cards = (() => {
       return menuOpen;
     },
     toggle,
-    hiddenLeft: () => CITY.filter((c) => Story.S.chapter >= c[4] && !has(c[0])).length,
-    numbersLeft: () => NUM_IDS.length - count(NUM_IDS),
+    numbersLeft: () => (Story.S ? Trials.numbersLeft(Story.S.done || []).length : 0),
     update(dt, t) {
       if (Input.pressed('deck')) toggle();
       if (menuOpen) {

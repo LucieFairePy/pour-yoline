@@ -13,7 +13,7 @@ const Story = (() => {
   const SWAP = new Set(['soleil', 'donjon', 'portes', 'act5']);
   const kitOf = (who, phase) => {
     const k = BASE[who];
-    return SWAP.has(phase) ? (k === 'dame' ? 'valet' : 'dame') : k;
+    return SWAP.has(phase) || Trials.swap(phase) ? (k === 'dame' ? 'valet' : 'dame') : k;
   };
   const whoOf = (kit) => (kitOf(me, local.phase) === kit ? me : mate);
   const P_ = (who) => T.players[who];
@@ -69,6 +69,8 @@ const Story = (() => {
     final: 8,
   };
 
+  const checkpoint = (ph) => CHECKPOINTS.includes(ph) || !!Trials.byPhase[ph];
+
   const set = (fn) => {
     fn(S);
     dirty = true;
@@ -87,19 +89,26 @@ const Story = (() => {
       clues: [],
       seen: [],
       cards: [],
+      done: [],
       x: {},
     };
-    if (p && typeof p === 'object' && CHECKPOINTS.includes(p.phase)) {
+    if (p && typeof p === 'object' && checkpoint(p.phase)) {
       s.phase = p.phase;
-      let ch = p.chapter || 0;
-      if (!(p.v >= 2)) ch = OLD_CHAPTER[ch] ?? 8;
-      if (!(p.v >= 3)) ch = V2_CHAPTER[ch] ?? 8;
-      s.chapter = ch;
-      if (PHASE_CHAPTER[s.phase] != null) s.chapter = PHASE_CHAPTER[s.phase];
+      if (p.v >= 4) s.done = (p.done || []).filter((id) => Trials.byId[id]);
+      else {
+        // older saves counted chapters in a fixed order
+        let ch = p.chapter || 0;
+        if (!(p.v >= 2)) ch = OLD_CHAPTER[ch] ?? 8;
+        if (!(p.v >= 3)) ch = V2_CHAPTER[ch] ?? 8;
+        if (PHASE_CHAPTER[s.phase] != null) ch = PHASE_CHAPTER[s.phase];
+        s.done = Trials.fromChapter(ch);
+      }
+      s.chapter = s.done.length;
       s.clues = p.clues || [];
       s.seen = p.seen || [];
-      // every card of the épreuves already played, plus what was found on the way
-      s.cards = [...new Set([...(p.cards || []), ...Cards.upTo(s.chapter)])];
+      // one card per épreuve done, plus the story cards already won
+      const story = (p.cards || []).filter((id) => Object.values(Trials.STORY_CARDS).includes(id));
+      s.cards = [...new Set([...Trials.cardsOf(s.done), ...story])];
     }
     s.x = PH[s.phase] && PH[s.phase].init ? PH[s.phase].init(s) : {};
     return s;
@@ -216,12 +225,13 @@ const Story = (() => {
       dirty = false;
       timers.sync = 0;
       Net.send('S', S);
-      if (CHECKPOINTS.includes(S.phase) && S.phase !== 'prologue')
+      if (checkpoint(S.phase) && S.phase !== 'prologue')
         save.set({
           progress: {
-            v: 3,
+            v: 4,
             phase: S.phase,
             chapter: S.chapter,
+            done: S.done,
             clues: S.clues,
             seen: S.seen,
             cards: S.cards,
@@ -245,6 +255,7 @@ const Story = (() => {
     lastClues = S.clues.slice();
     Clues.sync(S.clues);
     if (!S.cards) S.cards = [];
+    if (!S.done) S.done = [];
     if (S.phase !== local.phase) enter(S.phase, first);
     Cards.sync(S);
     const def = PH[S.phase];
@@ -255,6 +266,7 @@ const Story = (() => {
     register(name, def) {
       PH[name] = def;
     },
+    has: (name) => !!PH[name],
     get S() {
       return S;
     },

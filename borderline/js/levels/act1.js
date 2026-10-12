@@ -80,7 +80,7 @@
       Sound.mood('calm');
       HUD.danger(0);
       HUD.say(C.win, T.master, 2500);
-      Arena.screen.show('♥ 10', C.win, '#ff5f8a');
+      Arena.screen.show('♥ A', C.win, '#ff5f8a');
       Arena.cabShow('♥', 'Bravo', '#ff5f8a');
       HUD.objective('Allez chercher la carte, ensemble.');
       Sound.play('reveal');
@@ -112,7 +112,7 @@
         c.role === 'dame' && Story.S.x.stage === 3 ? Arena.rings.map((r) => r.pos) : [];
       c.fog(0.006);
       Arena.screen.show(A.card, A.title, '#ff5f8a');
-      HUD.visa('♥ 10 · ' + A.title);
+      HUD.visa('♥ A · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

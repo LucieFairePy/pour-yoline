@@ -81,13 +81,13 @@ const Arena = (() => {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
       new THREE.MeshBasicMaterial({
-        map: Tex.card('10', '♥'),
+        map: Tex.card('A', '♥'),
         alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,
       }),
     );
-    m.material.color.setScalar(1.15);
+    m.material.color.setScalar(0.8);
     return m;
   };
 

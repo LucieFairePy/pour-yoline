@@ -220,7 +220,7 @@ const Portes = (() => {
         toneMapped: false,
       }),
     );
-    card.material.color.setScalar(1.1);
+    card.material.color.setScalar(0.8);
     card.position.copy(P(0, 3.6, 100));
     card.visible = false;
     group.add(card);

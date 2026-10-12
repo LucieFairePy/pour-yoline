@@ -62,8 +62,9 @@ const Sky = (() => {
   const galaxy = heart.group;
   const gal = new THREE.Group();
   gal.add(galaxy);
-  gal.position.set(-120, 260, -520);
-  gal.scale.setScalar(2.3);
+  // high enough to be seen above the roofs from the streets
+  gal.position.set(-110, 390, -470);
+  gal.scale.setScalar(2.6);
   gal.lookAt(0, 0, 0);
   heart.core.material.opacity = 0.32;
   group.add(gal);
@@ -81,7 +82,7 @@ const Sky = (() => {
       const H = heart.U;
       H.uTime.value = t;
       // star size in px scales with the distance (the voyage saw it from ~190 m)
-      H.uPx.value = 3.1 * R.renderer.getPixelRatio();
+      H.uPx.value = 4.2 * R.renderer.getPixelRatio();
       H.uRed.value = U.uRed.value;
       H.uGray.value = U.uGray.value;
       // the Oui fills up again card by card

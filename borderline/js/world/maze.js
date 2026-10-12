@@ -363,7 +363,7 @@ const Maze = (() => {
         toneMapped: false,
       }),
     );
-    card.material.color.setScalar(1.15);
+    card.material.color.setScalar(0.8);
     card.position.copy(P(CARD.x, CARD.y, CARD.z));
     card.visible = false;
     group.add(card);

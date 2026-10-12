@@ -58,8 +58,8 @@ const LvKit = (() => {
         toneMapped: false,
       }),
     );
-    // just under the bloom threshold (0.9): the face stays readable instead of a white glow
-    m.material.color.setScalar(0.88);
+    // well under the bloom threshold (0.9): the face stays readable instead of a white glow
+    m.material.color.setScalar(0.8);
     const halo = new THREE.Mesh(
       new THREE.RingGeometry(1.15, 1.5, 48),
       new THREE.MeshBasicMaterial({

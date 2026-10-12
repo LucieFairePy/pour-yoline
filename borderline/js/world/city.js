@@ -595,7 +595,7 @@ const City = (() => {
     h10: makeDoor(
       V3(LOT - HALF - 0.1, 0, 0),
       0,
-      '♥ 10',
+      '♥ A',
       'LA BALANCE',
       '#ff5f8a',
       V3(LOT - HALF - 1.5, 0, 0),
@@ -644,6 +644,53 @@ const City = (() => {
       V3(sx * (LOT - HALF - 1.5), 0, z),
     );
   });
+
+  // Free building faces along the streets, nearest to the plaza first: each new épreuve
+  // (js/game/trials.js) gets its own door on one of them.
+  let slots = null;
+  const doorSlots = () => {
+    if (slots) return slots;
+    const stairs = roofs.map((r) => [r.b, r.face]);
+    const out = [];
+    buildings.forEach((b) => {
+      const ci = Math.round(b.x / LOT);
+      const cj = Math.round(b.z / LOT);
+      if (Math.abs(ci) >= N || Math.abs(cj) >= N || SPECIAL[ci + ',' + cj]) return;
+      [
+        [1, 0, 'x+'],
+        [-1, 0, 'x-'],
+        [0, 1, 'z+'],
+        [0, -1, 'z-'],
+      ].forEach(([nx, nz, face]) => {
+        const fx = nx ? b.x + (nx * b.sx) / 2 : b.x;
+        const fz = nz ? b.z + (nz * b.sz) / 2 : b.z;
+        // only faces on the street edge of the block, wide and tall enough for a door
+        const edge = nx
+          ? Math.abs(fx - (ci * LOT + nx * HALF)) < 0.6
+          : Math.abs(fz - (cj * LOT + nz * HALF)) < 0.6;
+        if (!edge || (nx ? b.sz : b.sx) < 7 || b.h < 7) return;
+        if (stairs.some(([sb, sf]) => sb === b && sf === face)) return;
+        out.push({
+          pos: V3(fx + nx * 0.1, 0, fz + nz * 0.1),
+          entry: V3(fx + nx * 1.5, 0, fz + nz * 1.5),
+          rotY: nx === -1 ? 0 : nx === 1 ? Math.PI : nz === -1 ? -Math.PI / 2 : Math.PI / 2,
+          d: Math.hypot(fx, fz),
+        });
+      });
+    });
+    out.sort((a, b) => a.d - b.d);
+    slots = [];
+    out.forEach((sl) => {
+      if (slots.every((o) => o.pos.distanceTo(sl.pos) > 16)) slots.push(sl);
+    });
+    return slots;
+  };
+  const addDoor = (id, k, txt, sub, color) => {
+    if (doors[id]) return doors[id];
+    const sl = doorSlots()[k % doorSlots().length];
+    doors[id] = makeDoor(sl.pos, sl.rotY, txt, sub, color, sl.entry);
+    return doors[id];
+  };
 
   const pillarGeo = new THREE.CylinderGeometry(0.7, 0.7, 60, 12, 1, true).translate(0, 30, 0);
   const pillars = [];
@@ -1451,8 +1498,10 @@ const City = (() => {
     onLift: (p, y) =>
       Math.abs(p.x - LIFT.x) < 2.1 && Math.abs(p.z - LIFT.z) < 2.1 && Math.abs(p.y - y) < 0.8,
     door(id, on) {
-      doors[id].target = on;
+      if (doors[id]) doors[id].target = on;
     },
+    doorSlots,
+    addDoor,
     showPlace(id, instant) {
       const pl = places[id];
       if (!pl || pl.shown) return;

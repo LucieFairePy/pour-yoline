@@ -156,7 +156,7 @@
         // the Joker speaks, then gives the Oui back
         local.joker = true;
         HUD.objective('');
-        Cam.focus = V3(City.TOWER.x - 120, City.TOWER.y + 200, City.TOWER.z - 520);
+        Cam.focus = V3(City.TOWER.x - 110, City.TOWER.y + 390, City.TOWER.z - 470);
         Sound.mood('tense');
         Sound.play('glitch');
         HUD.card('J', '\u{1F0CF}', T.joker, T.deck.toastJoker);

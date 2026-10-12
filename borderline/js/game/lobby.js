@@ -23,8 +23,13 @@ const Lobby = (() => {
       const ph = typeof progress === 'object' ? progress.phase : progress;
       let ch = typeof progress === 'object' ? progress.chapter : progress === 'free' ? 1 : 0;
       if (typeof progress === 'object' && !(progress.v >= 2)) ch = [0, 1, 3, 5, 6][ch] ?? 8;
-      const where =
-        ph === 'final'
+      const nDone = typeof progress === 'object' && progress.v >= 4 ? (progress.done || []).length : -1;
+      const tr = typeof Trials !== 'undefined' && Trials.byPhase[ph];
+      const where = tr
+        ? 'à ' + Cards.label(tr.card) + ' · ' + tr.title
+        : ph === 'city' && nDone >= 0
+          ? 'après ' + nDone + (nDone > 1 ? ' épreuves' : ' épreuve')
+          : ph === 'final'
           ? 'avant la Dame de Cœur'
           : ph === 'act5'
             ? 'aux Deux mondes'
@@ -40,7 +45,7 @@ const Lobby = (() => {
                 }[ph] ||
                 [
                   'après les retrouvailles',
-                  'après ♥ 10',
+                  'après ♥ A',
                   'après ♠ 3',
                   'après ♣ 4',
                   'après ♠ 7',

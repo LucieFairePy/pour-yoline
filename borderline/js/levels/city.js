@@ -1,47 +1,23 @@
 (() => {
   const T = CONFIG;
   const seen = new Set();
-  // numbers first (♥ 10 … ♥ 2), then the faces (♠ and ♣ figures) once all 40 numbers are found
-  const ORDER = ['h10', 's3', 'c4', 's7', 'd9', 'h2', 'sK', 'cR'];
-  const FIRST_FACE = ORDER.indexOf('sK');
-  const DOOR_BY_CHAPTER = Object.fromEntries(ORDER.map((id, i) => [i, id]));
-  const PLACES = ['cafe', 'message', 'banc', 'pluie', 'kino', 'etoiles', 'chanson', 'danse'];
-  const PLACE_BY_CHAPTER = Object.fromEntries(PLACES.map((id, i) => [i + 1, id]));
-  const LAST = ORDER.length;
-  const ACT_BY_DOOR = {
-    h10: 'act1',
-    s3: 'soleil',
-    c4: 'act2',
-    s7: 'donjon',
-    sK: 'garde',
-    d9: 'portes',
-    h2: 'balade',
-    cR: 'raid',
+  // one épreuve = one card, in the order of js/game/trials.js (numbers first, then faces)
+  const PLACES = ['cafe', 'message', 'banc', 'pluie', 'kino', 'etoiles', 'chanson'];
+  const LAST_PLACE = 'danse';
+  const SUIT_COL = { h: '#ff5f8a', s: '#b9a6ff', d: '#ff9a3a', c: '#7ce0ff' };
+  const colorOf = (t) => (t.card.length && SUIT_COL[t.card[0]]) || '#ffcf8a';
+  const labelOf = (t) => Cards.label(t.card);
+  const done = (c) => c.S.done || [];
+  const nextTrial = (c) => Trials.next(done(c));
+  // the memory that the last épreuve brought back (one per épreuve for the first ones)
+  const placeNow = (c) => (nextTrial(c) ? PLACES[done(c).length - 1] : LAST_PLACE);
+  // every built épreuve gets a door: the old ones keep theirs, the new ones take a free facade
+  const doorOf = (t) => {
+    if (t.door) return t.door;
+    const k = Trials.list.filter((x) => !x.door).indexOf(t);
+    City.addDoor(t.id, k, labelOf(t), t.title.toUpperCase(), colorOf(t));
+    return t.id;
   };
-  const LABEL = {
-    h10: '♥ 10',
-    s3: '♠ 3',
-    c4: '♣ 4',
-    s7: '♠ 7',
-    sK: '♠ V · D · R',
-    d9: '♦ 9',
-    h2: '♥ 2',
-    cR: '♣ V · D · R',
-  };
-  const COLOR = {
-    h10: '#ff5f8a',
-    s3: '#ff9ec4',
-    c4: '#7ce0ff',
-    s7: '#b9a6ff',
-    sK: '#ffcf8a',
-    d9: '#ff9a3a',
-    h2: '#ffb3c7',
-    cR: '#7cf0c8',
-  };
-  const cardsWon = (ch) =>
-    ORDER.slice(0, ch)
-      .map((id) => LABEL[id])
-      .join(' · ');
 
   Clues.add('c1', V3(-45, 1.1, 77));
 
@@ -52,8 +28,7 @@
     Player.checkpoint = () => City.hubSpawn[c.role];
     City.mood({});
     Sound.mood('calm');
-    for (let ch = 1; ch < c.S.chapter; ch++)
-      if (PLACE_BY_CHAPTER[ch]) City.showPlace(PLACE_BY_CHAPTER[ch], true);
+    PLACES.slice(0, Math.max(0, done(c).length - 1)).forEach((id) => City.showPlace(id, true));
   };
 
   Story.register('prologue', {
@@ -111,21 +86,26 @@
     },
   });
 
-  // the face doors stay shut until every number card is found
-  const doorOpen = (ch) => !!DOOR_BY_CHAPTER[ch] && (ch < FIRST_FACE || Cards.numbersDone());
   const objective = (c) => {
-    const ch = c.S.chapter;
-    const place = PLACE_BY_CHAPTER[ch];
-    if (place && !seen.has(place)) return ch === LAST ? T.city.memoryLast : T.city.memory;
-    if (DOOR_BY_CHAPTER[ch] && !doorOpen(ch))
-      return T.city.hunt.replace('{n}', Cards.numbersLeft());
-    if (DOOR_BY_CHAPTER[ch]) return T.city.doors[DOOR_BY_CHAPTER[ch]];
+    const place = placeNow(c);
+    const t = nextTrial(c);
+    if (place && !seen.has(place)) return t ? T.city.memory : T.city.memoryLast;
+    if (t)
+      return (
+        T.city.doors[t.id] ||
+        T.city.doorNew.replace('{card}', labelOf(t)).replace('{title}', t.title)
+      );
     return '';
   };
-  const lightDoors = (c) =>
-    Object.keys(City.doors).forEach((id) =>
-      City.door(id, id === DOOR_BY_CHAPTER[c.S.chapter] && doorOpen(c.S.chapter) ? 1 : 0.15),
-    );
+  const lightDoors = (c) => {
+    const t = nextTrial(c);
+    const id = t && doorOf(t);
+    Object.keys(City.doors).forEach((k) => City.door(k, k === id ? 1 : 0.15));
+  };
+  const visa = () => {
+    const n = Cards.count(Cards.IDS);
+    HUD.visa('Visa · 3 jours · ' + (n ? n + (n > 1 ? ' cartes' : ' carte') : 'aucune carte'));
+  };
 
   Story.register('city', {
     async enter(c, first, prev) {
@@ -139,31 +119,22 @@
         const sp = City.hubSpawn[c.role];
         c.spawn(sp, Math.PI);
       }
-      const ch = c.S.chapter;
       lightDoors(c);
-      const place = PLACE_BY_CHAPTER[ch];
+      const place = placeNow(c);
       if (place) {
         City.showPlace(place, first);
         City.pillar(place, !seen.has(place));
       }
-      const door = DOOR_BY_CHAPTER[ch];
-      const n = Cards.count(Cards.IDS);
-      HUD.visa('Visa · 3 jours · ' + (n ? n + (n > 1 ? ' cartes' : ' carte') : 'aucune carte'));
-      if (door && !doorOpen(ch))
-        BigScreen.show(Cards.numbersLeft() + ' / 40', 'Chiffres cachés dans la ville', '#ffcf8a');
-      else
-        BigScreen.show(
-          door ? LABEL[door] : cardsWon(ch) || '?',
-          door ? 'Une porte s’est allumée' : 'Toutes les cartes du jeu',
-          door ? COLOR[door] : '#ff5f8a',
-        );
+      const t = nextTrial(c);
+      visa();
+      if (t) BigScreen.show(labelOf(t), t.title, colorOf(t));
+      else BigScreen.show(Cards.count(Cards.IDS) + ' / 52', 'Le dernier souvenir', '#ff5f8a');
       HUD.objective(objective(c));
       if (fromAct && !first) {
         await sleep(400);
         fadeTo(false);
         Sound.play('reveal');
         if (place) HUD.say(T.city.memoryLine, T.master);
-        if (door && !doorOpen(ch)) HUD.say(T.city.huntLine, T.master, 4200);
       }
       if (!c.local.tuto) {
         c.local.tuto = true;
@@ -173,24 +144,17 @@
     apply(c) {
       HUD.objective(objective(c));
       lightDoors(c);
-      const n = Cards.count(Cards.IDS);
-      HUD.visa('Visa · 3 jours · ' + (n ? n + (n > 1 ? ' cartes' : ' carte') : 'aucune carte'));
-      const door = DOOR_BY_CHAPTER[c.S.chapter];
-      if (door && doorOpen(c.S.chapter) && c.local.gate === false)
-        BigScreen.show(LABEL[door], 'Une porte s’est allumée', COLOR[door]);
-      c.local.gate = door ? doorOpen(c.S.chapter) : null;
-      const place = PLACE_BY_CHAPTER[c.S.chapter];
+      visa();
+      const place = placeNow(c);
       if (place && seen.has(place)) City.pillar(place, false);
     },
     host(c, dt) {
-      const ch = c.S.chapter;
-      const id = DOOR_BY_CHAPTER[ch];
-      if (id && doorOpen(ch)) {
-        const e = City.doors[id].entry;
-        if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5))
-          c.goto(ACT_BY_DOOR[id]);
-      }
-      if (ch === LAST && c.S.seen.includes(PLACE_BY_CHAPTER[LAST])) {
+      const t = nextTrial(c);
+      if (t) {
+        const e = City.doors[doorOf(t)].entry;
+        if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5)) c.goto(t.phase);
+      } else if (c.S.seen.includes(LAST_PLACE)) {
+        // every épreuve before the golden hour is done: the last memory, then the roof
         c.local.banc = (c.local.banc || 0) + dt;
         const both = (c.S.x.seenBy || []).length >= 2;
         if ((both && c.local.banc > 4) || c.local.banc > 30) c.goto('act3');
@@ -202,7 +166,7 @@
     },
     update(c) {
       const p = Player.body.p;
-      const place = PLACE_BY_CHAPTER[c.S.chapter];
+      const place = placeNow(c);
       if (
         place &&
         City.places[place].shown &&
@@ -229,7 +193,16 @@
       Sound.mood('calm');
       Sound.play('card');
       Player.mode = 'frozen';
-      const k = T.cards[c.S.x.card];
+      const tr = Trials.byId[c.S.x.card];
+      const id = tr ? tr.card : 'J';
+      // the old épreuves have their card text in config.js, the new ones register it at load
+      const k = T.cards[c.S.x.card] || {
+        corner: Cards.label(id).replace(' ', '\n'),
+        big: Cards.label(id).split(' ')[1] || '',
+        title: tr ? tr.title : '',
+        sub: (tr && tr.face ? 'Figure' : 'Épreuve') + ' · réussie',
+        lines: [],
+      };
       HUD.card(k.corner, k.big, k.title, k.sub);
       await sleep(2600);
       for (const l of k.lines) {
@@ -243,8 +216,13 @@
       Player.mode = 'walk';
     },
     host(c) {
-      Cards.award(c, Cards.REWARD[c.S.x.card] || []);
-      if (c.phaseT > 9.5) c.goto('city', (s) => (s.chapter += 1));
+      Cards.award(c, Cards.rewardOf(c.S.x.card));
+      const id = c.S.x.card;
+      if (c.phaseT > 9.5)
+        c.goto('city', (s) => {
+          s.done = [...new Set([...(s.done || []), id])];
+          s.chapter = s.done.length;
+        });
     },
   });
 })();

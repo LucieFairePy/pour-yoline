@@ -142,7 +142,7 @@ const Finale = (() => {
         transparent: true,
       }),
     );
-    joker.material.color.setScalar(1.15);
+    joker.material.color.setScalar(0.8);
     joker.position.copy(P(0, 3, 0));
     group.add(joker);
     screen = makeScreen(14, 7, 1024);
@@ -199,7 +199,8 @@ const Finale = (() => {
       U.uForm.value = damp(U.uForm.value, step === 'joker' ? 0.72 + inside * 0.08 : 1, 0.6, dt);
       U.uRed.value = damp(U.uRed.value, step === 'joker' ? 0.5 : 0, 1, dt);
       U.uBeat.value = Math.pow(Math.max(0, Math.sin(t * 2.4)), 10) * (step === 'joker' ? 0.2 : 0.8);
-      const lit = step === 'joker' ? 0.25 : 1.5 + Math.sin(t * 2) * 0.2;
+      // cards stay under the bloom threshold (0.9) so the face stays readable
+      const lit = step === 'joker' ? 0.25 : 0.8 + Math.sin(t * 2) * 0.03;
       queen.material.color.setScalar(damp(queen.material.color.r, lit, 2, dt));
     },
   };
