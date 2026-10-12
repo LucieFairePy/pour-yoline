@@ -187,6 +187,7 @@ const Story = (() => {
       Net.on('call', (p) => {
         const far = PH[S && S.phase] && PH[S.phase].farCall;
         Sound.play('call', far ? null : V3(p[0], p[1] + 1.5, p[2]));
+        if (S && S.phase === 'prologue') return;
         beam.position.set(p[0], p[1], p[2]);
         beamT = 4;
       });

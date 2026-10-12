@@ -193,15 +193,27 @@ const Sound = (() => {
     o.stop(t + dur + 0.05);
   };
 
-  const spatial = (pos) => {
+  const spatial = (pos, far = false) => {
     const p = ctx.createPanner();
     p.panningModel = 'HRTF';
     p.distanceModel = 'exponential';
-    p.refDistance = 6;
-    p.rolloffFactor = 1.1;
-    p.maxDistance = 400;
+    p.refDistance = far ? 14 : 6;
+    p.rolloffFactor = far ? 0.85 : 1.1;
+    p.maxDistance = far ? 900 : 400;
     setPos(p, pos);
-    p.connect(sfx);
+    if (far && ctx.listener.positionX) {
+      const l = ctx.listener;
+      const d = Math.hypot(
+        pos.x - l.positionX.value,
+        pos.y - l.positionY.value,
+        pos.z - l.positionZ.value,
+      );
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = Math.max(500, 16000 * Math.exp(-d / 110));
+      lp.connect(sfx);
+      p.connect(lp);
+    } else p.connect(sfx);
     return p;
   };
 
@@ -231,9 +243,15 @@ const Sound = (() => {
       bell(hz(84), ctx.currentTime, 0.05, sfx);
     },
     call(pos) {
-      const out = pos ? spatial(pos) : sfx;
+      const out = pos ? spatial(pos, true) : sfx;
       const t = ctx.currentTime;
       [76, 81, 88].forEach((m, i) => bell(hz(m), t + i * 0.14, 0.22, out));
+    },
+    beacon(pos, who) {
+      const out = spatial(pos, true);
+      const t = ctx.currentTime;
+      const notes = who === 'dame' ? [64, 71] : [76, 83];
+      notes.forEach((m, i) => bell(hz(m), t + i * 0.22, 0.12, out));
     },
     grapple() {
       sweep(ctx.currentTime, 1600, 300, 0.35, 0.06, 'sawtooth');

@@ -17,8 +17,8 @@ const Intro = (() => {
 
   const neb = CineKit.nebula();
   scene.add(neb.mesh);
-  const heart = CineKit.heart(16000, 2.2);
-  scene.add(heart);
+  const heartG = CineKit2.heartGalaxy();
+  scene.add(heartG.group);
   const bh = CineKit.blackHole();
   scene.add(bh.group);
   const glare = new THREE.Mesh(
@@ -35,8 +35,10 @@ const Intro = (() => {
   const warp = CineKit.warp(2400);
   cam.add(warp.mesh);
   scene.add(cam);
-  const ship = CineKit.ship();
-  scene.add(ship.group);
+  const ship = CineKit2.alienShip();
+  const shipRoot = new THREE.Group();
+  shipRoot.add(ship.group);
+  scene.add(shipRoot);
   const planet = CineKit.planet();
   scene.add(planet.group);
   const cards = CineKit.cards();
@@ -68,12 +70,51 @@ const Intro = (() => {
     metalness: 0.04,
   });
   rockMat.onBeforeCompile = (sh) => {
-    sh.fragmentShader = sh.fragmentShader.replace(
-      '#include <emissivemap_fragment>',
-      `#include <emissivemap_fragment>
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRk;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRk = position * 3.0;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        varying vec3 vRk;
+        float rh(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+        float rn(vec3 p) {
+          vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(mix(rh(i), rh(i + vec3(1,0,0)), f.x), mix(rh(i + vec3(0,1,0)), rh(i + vec3(1,1,0)), f.x), f.y),
+                     mix(mix(rh(i + vec3(0,0,1)), rh(i + vec3(1,0,1)), f.x), mix(rh(i + vec3(0,1,1)), rh(i + vec3(1,1,1)), f.x), f.y), f.z);
+        }
+        float rfbm(vec3 p) { return rn(p) * 0.5 + rn(p * 2.1) * 0.25 + rn(p * 4.3) * 0.15 + rn(p * 9.1) * 0.1; }`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        float rH = rfbm(vRk);
+        float crater = smoothstep(0.62, 0.7, rn(vRk * 0.8 + 3.0));
+        diffuseColor.rgb *= 0.72 + rH * 0.5 - crater * 0.18;
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.15, 0.95, 0.9), rn(vRk * 0.3));`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        {
+          vec3 dpx = dFdx(-vViewPosition);
+          vec3 dpy = dFdy(-vViewPosition);
+          float hx = dFdx(rH);
+          float hy = dFdy(rH);
+          vec3 r1 = cross(dpy, normal);
+          vec3 r2 = cross(normal, dpx);
+          float det = dot(dpx, r1);
+          vec3 grad = sign(det) * (hx * r1 + hy * r2);
+          normal = normalize(abs(det) * normal - grad * 1.6);
+        }`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
       float rimL = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0);
       totalEmissiveRadiance += vec3(0.3, 0.1, 0.26) * rimL * 0.22;`,
-    );
+      );
   };
 
   const mkRig = (fem) =>
@@ -103,27 +144,47 @@ const Intro = (() => {
     const dt = 1 / FPS_SIM;
     const N = Math.ceil(64 * FPS_SIM);
     const BH = V3(9, 2.5, -62);
+    const RB = 0.5;
+    const UPV = V3(0, 1, 0);
     const startQ = () => new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
-    const bodies = [
-      { p: V3(), v: V3(), q: startQ(), w: V3() },
-      { p: V3(), v: V3(), q: startQ(), w: V3() },
-    ];
-    const rec = [[], []];
-    const rocks = [];
-    const bumps = [];
+    const bodies = [0, 1].map(() => ({ p: V3(), v: V3(), q: startQ(), w: V3() }));
+    let rec = [[], []];
     const r = rng(42);
     const qtmp = new THREE.Quaternion();
+    const tA = V3();
+    const tB = V3();
+    const tC = V3();
+    const tD = V3();
+    const tE = V3();
+    let beamAxis = null;
+    const rockPos = (rk, t, out = V3()) => {
+      out.copy(rk.p0).addScaledVector(rk.v, t - rk.tc);
+      if (beamAxis && t > 64.3) {
+        const dx = out.x - beamAxis.x;
+        const dz = out.z - beamAxis.z;
+        const d = Math.hypot(dx, dz) || 1e-3;
+        const Rc = 38 + rk.R;
+        if (d < Rc && out.y < beamAxis.y + 4) {
+          const k = ease(seg(t, 64.3, 68.5)) * (Rc - d);
+          out.x += (dx / d) * k;
+          out.z += (dz / d) * k;
+        }
+      }
+      return out;
+    };
     const integrate = (b, a, alpha) => {
       b.v.addScaledVector(a, dt);
       b.p.addScaledVector(b.v, dt);
       b.w.addScaledVector(alpha, dt);
       const wl = b.w.length();
       if (wl > 1e-6) {
-        qtmp.setFromAxisAngle(b.w.clone().divideScalar(wl), wl * dt);
+        qtmp.setFromAxisAngle(tE.copy(b.w).divideScalar(wl), wl * dt);
         b.q.premultiply(qtmp).normalize();
       }
     };
-    const run = (withRocks) => {
+    let colliders = [];
+    let bigHit = 0;
+    const run = () => {
       bodies[0].p.set(-0.48, 0, 0);
       bodies[1].p.set(0.48, 0, 0);
       bodies.forEach((b) => {
@@ -131,17 +192,19 @@ const Intro = (() => {
         b.q.copy(startQ());
         b.w.set(0, 0, 0);
       });
-      rec[0] = [];
-      rec[1] = [];
+      colliders.forEach((c) => (c.hits = 0));
+      rec = [[], []];
+      bigHit = 0;
       let ejected = false;
-      let hit = false;
+      let thS = 0;
       for (let i = 0; i <= N; i++) {
         const t = i * dt;
         const [A, B] = bodies;
         const acc = [V3(), V3()];
         const ang = [V3(), V3()];
-        const hold = (t < 28.6 || (t > 48.6 && t < 61.4)) && A.p.distanceTo(B.p) < 2.2;
-        if (hold) {
+        let thrust = 0;
+        const holding = t < 28.45 || (t > 48.6 && (!bigHit || t < bigHit + 0.12));
+        if (holding && A.p.distanceTo(B.p) < 2.2) {
           const d = V3().subVectors(B.p, A.p);
           const L = d.length();
           const n = d.clone().divideScalar(L || 1);
@@ -149,6 +212,9 @@ const Intro = (() => {
           const rel = V3().subVectors(B.v, A.v).dot(n) * 3;
           acc[0].addScaledVector(n, f + rel);
           acc[1].addScaledVector(n, -(f + rel));
+          const rv = V3().subVectors(B.v, A.v).multiplyScalar(1.3);
+          acc[0].add(rv);
+          acc[1].sub(rv);
           const wd = V3().subVectors(B.w, A.w).multiplyScalar(1.5);
           ang[0].add(wd);
           ang[1].sub(wd);
@@ -161,7 +227,7 @@ const Intro = (() => {
             acc[j].addScaledVector(to, s);
             acc[j].add(
               V3()
-                .crossVectors(to, V3(0, 1, 0))
+                .crossVectors(to, UPV)
                 .multiplyScalar(s * 0.25 * (1 - k)),
             );
             ang[j].add(V3(0.4 + j * 0.3, 0.2, 0.6 - j * 0.2).multiplyScalar(k * 1.4));
@@ -178,50 +244,68 @@ const Intro = (() => {
         if (!ejected && t >= 28.5) {
           ejected = true;
           const fwd = A.v.clone().normalize();
-          const side = V3()
-            .crossVectors(fwd, V3(0, 1, 0))
-            .normalize();
+          const side = V3().crossVectors(fwd, UPV).normalize();
+          if (V3().subVectors(B.p, A.p).dot(side) < 0) side.negate();
           A.v
             .copy(fwd.clone().multiplyScalar(7))
-            .addScaledVector(side, -0.45)
+            .addScaledVector(side, -0.5)
             .add(V3(0, 0.12, 0));
           B.v
             .copy(fwd.clone().multiplyScalar(7))
-            .addScaledVector(side, 0.45)
+            .addScaledVector(side, 0.5)
             .add(V3(0, -0.08, 0));
           A.w.set(1.1, 0.6, 0.9);
           B.w.set(-0.8, 0.9, -1.2);
         }
-        if (t > 30 && t < 61.4) {
+        if (t > 30 && !bigHit) {
           A.w.multiplyScalar(Math.exp(-(t > 47 ? 1.2 : 0.06) * dt));
-          if (t > 37) B.w.multiplyScalar(Math.exp(-1.6 * dt));
-          if (t > 38.5 && t < 48.6) {
-            const to = V3().subVectors(A.p, B.p);
+          if (t < 35) B.w.multiplyScalar(Math.exp(-0.05 * dt));
+          if (t >= 35 && t < 48.6) {
+            const to = tA.subVectors(A.p, B.p);
             const dist = to.length();
-            to.normalize();
-            const relV = V3().subVectors(B.v, A.v).dot(to);
-            const want = clamp(dist * 0.35, 0, 1.4);
-            acc[1].addScaledVector(to, (want - relV) * 1.8);
-            const lateral = V3().subVectors(B.v, A.v).addScaledVector(to, -relV);
-            acc[1].addScaledVector(lateral, -1.5);
+            to.divideScalar(dist);
+            const vrel = tB.subVectors(B.v, A.v);
+            const closing = Math.max(0, vrel.dot(to));
+            const vdes = Math.min(
+              1.3,
+              Math.sqrt(2 * 0.5 * Math.max(0, dist - 1.1 - closing * 1.8)),
+            );
+            const dv = tC.copy(to).multiplyScalar(vdes).sub(vrel);
+            const dvl = dv.length();
+            const up = tD.copy(UPV).applyQuaternion(B.q);
+            const dir = dvl > 0.04 ? dv.divideScalar(dvl) : to;
+            const align = up.dot(dir);
+            const axis = V3().crossVectors(up, dir);
+            if (axis.lengthSq() < 1e-4) axis.set(1, 0, 0).applyQuaternion(B.q);
+            axis.normalize().multiplyScalar(Math.acos(clamp(align, -1, 1)) * 4.2);
+            ang[1].add(axis).addScaledVector(B.w, -3.6);
+            if (t > 37 && align > 0.8) thrust = Math.min(0.9, dvl * 1.4) * align;
+            acc[1].addScaledVector(up, thrust);
           }
+          if (t >= 48.6) B.w.multiplyScalar(Math.exp(-1.2 * dt));
         }
-        if (withRocks && t > 50 && t < 61.4) {
-          bumps.forEach((bp) => {
-            if (Math.abs(t - bp.t) < dt / 2) {
-              bodies[bp.j].v.add(bp.dv);
-              bodies[bp.j].w.add(bp.dw);
+        for (const c of colliders) {
+          if (t < c.t0 || t > c.t1) continue;
+          const rp = rockPos(c, t, tA);
+          bodies.forEach((b) => {
+            const d = tB.subVectors(b.p, rp);
+            const L = d.length();
+            const minD = c.R + RB;
+            if (L >= minD || L === 0) return;
+            const n = d.divideScalar(L);
+            b.p.copy(rp).addScaledVector(n, minD);
+            const vr = tC.subVectors(b.v, c.v);
+            const vn = vr.dot(n);
+            if (vn < 0) {
+              b.v.addScaledVector(n, -(1 + c.e) * vn);
+              const vt = vr.addScaledVector(n, -vn);
+              b.w.add(tD.crossVectors(n, vt).multiplyScalar(c.spin));
+              c.hits++;
+              if (c.big && !bigHit) bigHit = t;
             }
           });
         }
-        if (withRocks && !hit && t >= 61.4) {
-          hit = true;
-          A.v.add(V3(3.2, 1.4, 0.6));
-          B.v.add(V3(4.1, 0.6, -0.4));
-          A.w.add(V3(1.6, -2.2, 1.1));
-          B.w.add(V3(-2.4, 1.3, 1.8));
-        }
-        if (t > 61.4) bodies.forEach((b) => b.w.multiplyScalar(Math.exp(-0.25 * dt)));
+        if (bigHit) bodies.forEach((b) => b.w.multiplyScalar(Math.exp(-0.25 * dt)));
         const d = V3().subVectors(B.p, A.p);
         const L = d.length();
         if (L < 1.0 && L > 0) {
@@ -237,74 +321,196 @@ const Intro = (() => {
         }
         integrate(A, acc[0], ang[0]);
         integrate(B, acc[1], ang[1]);
-        bodies.forEach((b, j) => rec[j].push({ p: b.p.clone(), q: b.q.clone(), v: b.v.clone() }));
+        thS += (thrust - thS) * Math.min(1, dt * 5);
+        rec[0].push({ p: A.p.clone(), q: A.q.clone(), v: A.v.clone(), th: 0 });
+        rec[1].push({ p: B.p.clone(), q: B.q.clone(), v: B.v.clone(), th: thS });
       }
     };
-    run(false);
     const at = (j, t) => rec[j][clamp(Math.round(t * FPS_SIM), 0, rec[j].length - 1)];
     const com = (t) => at(0, t).p.clone().add(at(1, t).p).multiplyScalar(0.5);
-    for (let i = 0; i < 46; i++) {
-      const tt = 50 + r() * 11;
-      const c = com(tt);
-      const vel = at(0, tt).v.clone().normalize();
-      const side = V3()
-        .crossVectors(vel, V3(0, 1, 0))
-        .normalize();
-      const up = V3().crossVectors(side, vel).normalize();
-      const off = 4 + r() * 13;
-      const ang = r() * TAU;
-      rocks.push({
-        p: c
-          .clone()
-          .addScaledVector(side, Math.cos(ang) * off)
-          .addScaledVector(up, Math.sin(ang) * off * 0.7),
-        s: 0.25 + Math.pow(r(), 2.2) * 1.9,
+    const frame = (t) => {
+      const fwd = at(0, t).v.clone().normalize();
+      const side = V3().crossVectors(fwd, UPV).normalize();
+      const up = V3().crossVectors(side, fwd).normalize();
+      return { fwd, side, up };
+    };
+    const randUnit = () => V3(r() - 0.5, r() - 0.5, r() - 0.5).normalize();
+    const mkRock = (o) => {
+      const sc = o.sc || V3(0.8 + r() * 0.35, 0.75 + r() * 0.3, 0.8 + r() * 0.35);
+      return {
         rot: V3(r() * 6, r() * 6, r() * 6),
-        sp: V3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(0.3),
-      });
+        spinV: randUnit().multiplyScalar(0.05 + r() * 0.35),
+        e: 0.3,
+        spin: 0.4,
+        t0: 1e9,
+        t1: -1,
+        hits: 0,
+        ...o,
+        sc,
+        R: o.s * Math.max(sc.x, sc.y, sc.z),
+      };
+    };
+
+    run();
+    const near = [];
+    for (let i = 0; i < 40; i++) {
+      const tc = 49.5 + r() * 12;
+      const c = com(Math.min(tc, 61));
+      const { fwd, side, up } = frame(Math.min(tc, 61));
+      const off = 3.8 + r() * 13;
+      const a = r() * TAU;
+      const dir = randUnit();
+      dir.addScaledVector(fwd, -dir.dot(fwd) * 0.6).normalize();
+      near.push(
+        mkRock({
+          kind: 'near',
+          p0: c
+            .clone()
+            .addScaledVector(side, Math.cos(a) * off)
+            .addScaledVector(up, Math.sin(a) * off * 0.7),
+          v: dir.multiplyScalar(0.7 + r() * 2.6),
+          tc,
+          s: 0.25 + Math.pow(r(), 2.2) * 1.9,
+          t0: 40,
+          t1: 64,
+        }),
+      );
     }
-    for (let i = 0; i < 520; i++) {
+    const far = [];
+    const pathPts = [];
+    for (let t = 29; t <= 64; t += 0.5) pathPts.push(com(t));
+    for (let i = 0, tries = 0; i < 520 && tries < 5000; tries++) {
       const tt = 44 + r() * 30;
       const c = com(Math.min(tt, 63));
-      const off = 26 + Math.pow(r(), 0.8) * 170;
+      const off = 30 + Math.pow(r(), 0.8) * 170;
       const a = r() * TAU;
       const b2 = (r() - 0.5) * 2;
-      rocks.push({
-        p: c.clone().add(V3(Math.cos(a) * off, b2 * off * 0.5, Math.sin(a) * off)),
-        s: 0.6 + Math.pow(r(), 2.6) * 10,
-        rot: V3(r() * 6, r() * 6, r() * 6),
-        sp: V3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(0.12),
-      });
+      const sz = 0.6 + Math.pow(r(), 2.6) * 10;
+      const pp = c.clone().add(V3(Math.cos(a) * off, b2 * off * 0.5, Math.sin(a) * off));
+      if (pathPts.some((q) => q.distanceTo(pp) < 22 + sz * 1.2)) continue;
+      i++;
+      far.push(
+        mkRock({
+          kind: 'far',
+          p0: pp,
+          v: randUnit().multiplyScalar(r() * 0.3),
+          tc: tt,
+          s: sz,
+        }),
+      );
     }
+    colliders = near.slice();
+    run();
+    const pebbles = [];
     [
-      [53.2, 1, V3(0.6, 0.4, 0), V3(0.8, 0, 0.4)],
-      [55.8, 0, V3(-0.4, 0.5, 0.2), V3(0, 0.9, -0.5)],
-      [58.4, 1, V3(0.2, -0.6, 0.1), V3(-0.6, 0.3, 0.7)],
-    ].forEach(([tt, j, dv, dw]) => {
-      bumps.push({ t: tt, j, dv, dw });
-      const c = at(j, tt).p.clone();
-      rocks.push({
-        p: c.addScaledVector(dv.clone().normalize(), -1.2),
-        s: 0.45,
-        rot: V3(1, 2, 3),
-        sp: V3(0.2, 0.1, 0.3),
+      [53.2, 1],
+      [55.8, 0],
+      [58.4, 1],
+    ].forEach(([tt, j], k) => {
+      const b = at(j, tt);
+      const { fwd, side, up } = frame(tt);
+      const u = side
+        .clone()
+        .multiplyScalar(k % 2 ? 1 : -1)
+        .addScaledVector(up, 0.5 - k * 0.4)
+        .addScaledVector(fwd, -0.3)
+        .normalize();
+      const s = 0.3 + k * 0.05;
+      const pb = mkRock({
+        kind: 'pebble',
+        sc: V3(1, 0.9, 1),
+        s,
+        tc: tt,
+        v: b.v.clone().addScaledVector(u, 1.1),
+        p0: b.p.clone().addScaledVector(u, -(RB + s - 0.03)),
+        t0: tt - 8,
+        t1: tt + 8,
+        e: 0.4,
+        spin: 0.8,
       });
+      pebbles.push(pb);
+      colliders.push(pb);
+      run();
     });
-    run(true);
-    const S64 = com(64).add(V3(0, 22, -2));
-    for (let i = rocks.length - 1; i >= 0; i--) {
-      const p = rocks[i].p;
-      const below = S64.y + 6 - p.y;
-      if (
-        below > -rocks[i].s &&
-        Math.hypot(p.x - S64.x, p.z - S64.z) < 22 + Math.max(0, below) * 0.5 + rocks[i].s
-      )
-        rocks.splice(i, 1);
-    }
-    const hitP = at(0, 61.4)
-      .p.clone()
-      .add(V3(-6, -2.6, -0.6));
-    return { at, com, rocks, BH, hitP };
+    const TH = 61.4;
+    const f61 = frame(TH);
+    const bA = at(0, TH);
+    const bB = at(1, TH);
+    const sideSign = Math.sign(tA.subVectors(bB.p, bA.p).dot(f61.side)) || 1;
+    const from = f61.fwd
+      .clone()
+      .multiplyScalar(0.55)
+      .addScaledVector(f61.side, sideSign * 0.8)
+      .addScaledVector(f61.up, 0.12)
+      .normalize();
+    const big = mkRock({
+      kind: 'big',
+      big: true,
+      sc: V3(1.05, 0.88, 1),
+      s: 2.3,
+      tc: TH,
+      v: bB.v.clone().addScaledVector(from, -4.2),
+      p0: bB.p.clone().addScaledVector(from, RB + 2.3 * 1.05 - 0.05),
+      t0: 50,
+      t1: 64,
+      e: 0.3,
+      spin: 0.5,
+    });
+    colliders.push(big);
+    run();
+    const all = () => [...near, ...pebbles, big, ...far];
+    const solid = () => [...near, ...pebbles, big];
+    return {
+      at,
+      com,
+      frame,
+      BH,
+      big,
+      sideSign,
+      rockPos,
+      rocks: all(),
+      get bigHit() {
+        return bigHit;
+      },
+      finalize(camFn) {
+        for (let it = 0; it < 3; it++) {
+          let changed = false;
+          for (let i = near.length - 1; i >= 0; i--) {
+            const rk = near[i];
+            for (let t = 42; t <= 64; t += 0.1) {
+              if (camFn(t).pos.distanceTo(rockPos(rk, t, tA)) < rk.R + 1.4) {
+                near.splice(i, 1);
+                if (rk.hits) changed = true;
+                break;
+              }
+            }
+          }
+          if (!changed) break;
+          colliders = solid();
+          run();
+        }
+        const S64 = com(64).add(V3(0, 22, -2));
+        beamAxis = S64;
+        this.rocks = all();
+      },
+      avoid(pos, t) {
+        for (const rk of solid()) {
+          const rp = rockPos(rk, t, tA);
+          const d = tB.subVectors(pos, rp);
+          const L = d.length();
+          const minD = rk.R + 0.9;
+          if (L < minD) pos.copy(rp).addScaledVector(d.divideScalar(L || 1), minD);
+        }
+        if (t < 64)
+          [0, 1].forEach((j) => {
+            const bp = at(j, t).p;
+            const d = tB.subVectors(pos, bp);
+            const L = d.length();
+            if (L < 0.85) pos.copy(bp).addScaledVector(d.divideScalar(L || 1), 0.85);
+          });
+        return pos;
+      },
+    };
   })();
 
   const rockInst = new THREE.InstancedMesh(
@@ -335,7 +541,7 @@ const Intro = (() => {
       return g;
     })(),
     rockMat,
-    SIM.rocks.length + 1,
+    SIM.rocks.length + 4,
   );
   rockInst.frustumCulled = false;
   scene.add(rockInst);
@@ -431,7 +637,7 @@ const Intro = (() => {
     if (on === inCity) return;
     inCity = on;
     pass.scene = on ? R.scene : scene;
-    [D.g, V.g, ship.group, cam].forEach((o) => (on ? R.scene : scene).add(o));
+    [D.g, V.g, shipRoot, cam].forEach((o) => (on ? R.scene : scene).add(o));
     R.scene.fog.density = on ? 0.004 : 0.0085;
   };
 
@@ -453,7 +659,7 @@ const Intro = (() => {
       tgt
         .copy(c)
         .add(V3(0, 0.3, 0))
-        .lerp(c.clone().add(V3(0, 4, -60)), (1 - k) * 0.55);
+        .lerp(c.clone().add(V3(-34, 9, -49)), (1 - k) * 0.6);
     } else if (t < 22.6) {
       const k = ease(seg(t, 12, 22.6));
       const back = SIM.at(0, t).v.clone().normalize().negate();
@@ -477,13 +683,19 @@ const Intro = (() => {
       const side = V3()
         .crossVectors(fwd, V3(0, 1, 0))
         .normalize();
-      const sep = SIM.at(0, t).p.distanceTo(SIM.at(1, t).p);
+      const sepV = V3().subVectors(SIM.at(1, t).p, SIM.at(0, t).p);
+      const sep = sepV.length();
+      sepV.divideScalar(sep || 1);
+      const upF = V3().crossVectors(side, fwd);
+      const perp = fwd
+        .clone()
+        .multiplyScalar(-0.75)
+        .addScaledVector(upF, 0.45)
+        .addScaledVector(side, 0.35);
+      perp.addScaledVector(sepV, -perp.dot(sepV)).normalize();
       const back = lerpV(
         fwd.clone().negate().multiplyScalar(3.6),
-        side
-          .clone()
-          .multiplyScalar(sep * 1.15 + 3.5)
-          .add(fwd.clone().multiplyScalar(1.5)),
+        perp.multiplyScalar(sep * 0.78 + 3.8),
         k,
       );
       pos
@@ -492,7 +704,7 @@ const Intro = (() => {
         .add(V3(0, lerp(0.8, 1.6, k), 0));
       tgt.copy(c);
     } else {
-      const fwd = SIM.at(0, Math.min(t, 61)).v.clone().normalize();
+      const fwd = SIM.at(0, Math.min(t, 61.3)).v.clone().normalize();
       const side = V3()
         .crossVectors(fwd, V3(0, 1, 0))
         .normalize();
@@ -513,30 +725,60 @@ const Intro = (() => {
           c
             .clone()
             .addScaledVector(fwd, -7)
-            .addScaledVector(side, 3)
+            .addScaledVector(side, 3.5 * SIM.sideSign)
             .add(V3(0, 2.4, 0)),
           ease(seg(t, 61.4, 64)),
         );
-      tgt.copy(c).addScaledVector(fwd, lerp(3, 1, ease(seg(t, 60, 64))));
+      tgt.copy(c).addScaledVector(fwd, lerp(0.3, 2.2, k) * (1 - ease(seg(t, 60, 64)) * 0.5));
     }
     return { pos, tgt };
   };
 
+  SIM.finalize(camPath);
   const SHIP0 = SIM.com(64).add(V3(0, 22, -2));
+  const F61 = SIM.frame(61.3);
+  const SHIPFROM = SHIP0.clone()
+    .addScaledVector(F61.fwd, -340)
+    .add(V3(0, 170, 0));
   const shipPath = (t) => {
-    if (t < 64)
-      return SHIP0.clone().add(V3(-80 + (t - 56) * 10, 40 - (t - 56) * 5, -40 + (t - 56) * 5));
-    if (t < 80) return SHIP0.clone();
-    const k = ease(seg(t, 80, 86));
-    return SHIP0.clone().add(V3(0, k * 6, -k * 40 - Math.pow(seg(t, 84, 90), 2) * 2400));
+    if (t < 64.5) {
+      const k = 1 - Math.pow(1 - seg(t, 57.5, 64.5), 3);
+      return SHIPFROM.clone().lerp(SHIP0, k);
+    }
+    if (t < 80.5) return SHIP0.clone().add(V3(0, Math.sin(t * 0.8) * 0.08, 0));
+    const k = ease(seg(t, 80.5, 86.4));
+    return SHIP0.clone().add(V3(0, k * 8, -k * 30 - Math.pow(seg(t, 86.4, 86.9), 3) * 3000));
   };
-  const ARRIVE = shipPath(89.4);
+  const ARRIVE = V3(0, 0, -5000);
+  const camIn = ARRIVE.clone().add(V3(16, 6, 34));
   const ring81 = (() => {
     const orbit = 0.4 + 17 * 0.07;
-    return V3(Math.sin(orbit) * 13, -9, Math.cos(orbit) * 13)
+    return V3(Math.sin(orbit) * 20, -4, Math.cos(orbit) * 20)
       .add(SHIP0)
       .sub(shipPath(81));
   })();
+
+  const lookLocal = (rig, p) => {
+    rig.g.updateMatrixWorld(true);
+    const l = rig.g.worldToLocal(p.clone());
+    const h = Math.hypot(l.x, l.z);
+    return {
+      l: l.normalize(),
+      yaw: clamp(Math.atan2(l.x, l.z), -1.1, 1.1),
+      pitch: clamp(-Math.atan2(l.y, h), -0.7, 0.8),
+    };
+  };
+  const aimArm = (pose, i, dir, k) => {
+    const s = i === 0 ? 1 : -1;
+    const a = pose.arms[i];
+    const p = clamp(Math.atan2(dir.z, -dir.y), -0.4, 3.0);
+    const ab = clamp(Math.asin(clamp(dir.x * s, -1, 1)), 0.05, 1.3);
+    a.p = lerp(a.p, p, k);
+    a.a = lerp(a.a, ab, k);
+    a.e = lerp(a.e, 0.12, k);
+    a.g = lerp(a.g, 0.25, k);
+    return pose;
+  };
 
   const seek = (t, dt) => {
     HQ.time.value = t;
@@ -551,17 +793,17 @@ const Intro = (() => {
     let blur = 0;
     const city = t >= 97;
     setCity(city);
-    heart.visible = !city && t < 30;
+    heartG.group.visible = !city && t < 26;
     bh.group.visible = !city && t > 12.5 && t < 31;
     glare.visible = false;
     warp.mesh.visible = false;
-    planet.group.visible = !city && t > 84;
+    planet.group.visible = !city && t >= 89.4;
     cards.group.visible = false;
     hearts.forEach((h) => (h.visible = false));
-    rockInst.visible = !city && t > 40 && t < 84;
+    rockInst.visible = !city && t > 29.3 && t < 86.7;
     neb.mesh.visible = !city;
     cloud.material.opacity = 0;
-    ship.group.visible = t > 56 && t < 121;
+    shipRoot.visible = t > 57.5 && t < 121 && !(t > 86.9 && t < 89.5);
     D.g.visible = V.g.visible = true;
     [D, V].forEach((r) => r.A.flames.forEach((f) => (f.visible = false)));
 
@@ -576,11 +818,21 @@ const Intro = (() => {
       neb.U.uMix.value = ease(seg(t, 28.5, 34));
       neb.U.uRed.value = 0.45 * pulse(t, 12, 22.6, 1.5);
       neb.U.uDark.value = 0.8 * pulse(t, 22.6, 28.6, 0.6);
-      heart.position.copy(SIM.com(0)).add(V3(0, 8, -95));
-      heart.lookAt(SIM.com(0));
-      const red = seg(t, 12, 14);
-      heart.material.color.setRGB(1, 1 - red * 0.7, 1 - red * 0.7);
-      heart.material.opacity = (0.92 + Math.sin(t * 1.3) * 0.06) * (1 - seg(t, 16, 24));
+      heartG.group.position.copy(SIM.com(0)).add(V3(-105, 24, -150));
+      heartG.group.lookAt(SIM.com(0));
+      heartG.group.updateMatrixWorld(true);
+      const HU = heartG.U;
+      HU.uTime.value = t;
+      HU.uForm.value = ease(seg(t, 0.3, 8.8));
+      const ph = t >= 1 ? (t - 1) % 1.05 : 9;
+      HU.uBeat.value =
+        (Math.exp(-ph * 10) + (ph >= 0.24 ? 0.6 * Math.exp(-(ph - 0.24) * 10) : 0)) *
+        (1 - seg(t, 12, 14));
+      HU.uRed.value = seg(t, 12, 14.5);
+      HU.uSuck.value = ease(seg(t, 13.6, 23));
+      HU.uFade.value = seg(t, 22.4, 25.5);
+      HU.uSink.value.copy(heartG.group.worldToLocal(SIM.BH.clone()));
+      heartG.core.material.opacity = 0.5 * HU.uForm.value * (1 - seg(t, 13, 17));
       bh.group.position.copy(SIM.BH);
       bh.group.scale.setScalar(
         t < 22.6
@@ -594,6 +846,7 @@ const Intro = (() => {
       const cp = camPath(Math.min(t, 64));
       pos = cp.pos;
       tgt = cp.tgt;
+      if (t > 40 && t < 64) SIM.avoid(pos, t);
       bh.group.lookAt(pos);
       if (t < 64) {
         placeBody(D, 0, t);
@@ -610,10 +863,11 @@ const Intro = (() => {
         glare.material.opacity = pulse(t, 27.4, 31, 1.1);
         FU.uFlash.value = pulse(t, 27.8, 30.2, 0.8) * 0.85;
       }
-      if (t > 38.5 && t < 48.6)
+      const thr = t < 64 ? SIM.at(1, t).th : 0;
+      if (thr > 0.03)
         V.A.flames.forEach((f) => {
           f.visible = true;
-          f.scale.set(1, 1.4 + Math.sin(t * 40) * 0.15, 1);
+          f.scale.set(1, (0.5 + thr * 1.4) * (1 + Math.sin(t * 40) * 0.12), 1);
         });
       const pullK = seg(t, 13.5, 22.6);
       const holdK = t < 12 ? 1 : t < 28.6 ? 0.6 : 0;
@@ -627,11 +881,28 @@ const Intro = (() => {
         vPose = P.reach(P.mix(P.float(t, 1.7), P.struggle(t, 1.7, 1), k), 0, holdK);
       } else if (t < 48.6) {
         const sk = 1 - seg(t, 36, 41);
-        dPose = P.mix(P.reach(P.swim(t, 0.3), 1, seg(t, 44, 48)), P.struggle(t, 0.3, 1), sk * 0.6);
-        vPose =
-          t > 38.5
-            ? P.reach(P.float(t, 2), 0, seg(t, 40, 46))
-            : P.mix(P.swim(t, 1.1), P.struggle(t, 1.1, 1), sk * 0.6);
+        const toV = lookLocal(D, V.g.position);
+        const toD = lookLocal(V, D.g.position);
+        dPose = P.mix(P.swim(t, 0.3), P.struggle(t, 0.3, 1), sk * 0.6);
+        aimArm(dPose, 1, toV.l, seg(t, 41, 45) * 0.9);
+        dPose.head.y = lerp(dPose.head.y, toV.yaw, seg(t, 33, 36));
+        dPose.head.p = lerp(dPose.head.p, toV.pitch, seg(t, 33, 36));
+        const wild = P.mix(P.swim(t, 1.1), P.struggle(t, 1.1, 1), sk * 0.6);
+        const ctl = P.float(t * 0.6, 2.4);
+        ctl.arms[1] = { p: 0.95 + Math.sin(t * 1.3) * 0.05, a: 0.22, e: 1.95, g: 0.9 };
+        ctl.legs.forEach((l, i) => {
+          l.p = 0.06 + Math.sin(t * 0.9 + i * 2) * 0.05;
+          l.a = 0.05;
+          l.k = 0.22 + Math.sin(t * 1.1 + i) * 0.08;
+        });
+        aimArm(ctl, 0, toD.l, 0.55 + 0.4 * clamp(thr * 2, 0, 1));
+        ctl.head.y = toD.yaw;
+        ctl.head.p = toD.pitch;
+        if (thr < 0.05 && t > 36.5) {
+          ctl.arms[0].a = lerp(ctl.arms[0].a, 1.0, 0.5);
+          ctl.arms[0].p = lerp(ctl.arms[0].p, 0.9, 0.5);
+        }
+        vPose = P.mix(wild, ctl, ease(seg(t, 34.6, 36.4)));
       } else if (t < 61.4) {
         dPose = P.reach(P.float(t, 0), 1, 1);
         vPose = P.reach(P.float(t, 1.7), 0, 1);
@@ -639,47 +910,39 @@ const Intro = (() => {
         dPose = P.limp(t, 0);
         vPose = P.limp(t, 1);
       }
-      if (t > 40) {
-        rockInst.count = SIM.rocks.length + 1;
+      if (rockInst.visible) {
+        rockInst.count = SIM.rocks.length;
         SIM.rocks.forEach((rk, i) => {
-          eul.set(rk.rot.x + rk.sp.x * t, rk.rot.y + rk.sp.y * t, rk.rot.z + rk.sp.z * t);
+          eul.set(rk.rot.x + rk.spinV.x * t, rk.rot.y + rk.spinV.y * t, rk.rot.z + rk.spinV.z * t);
           qq.setFromEuler(eul);
-          sc.setScalar(rk.s);
-          m4.compose(rk.p, qq, sc);
+          sc.copy(rk.sc).multiplyScalar(rk.s);
+          m4.compose(SIM.rockPos(rk, t), qq, sc);
           rockInst.setMatrixAt(i, m4);
         });
-        const hk = seg(t, 58.2, 61.4);
-        const bp = SIM.hitP
-          .clone()
-          .add(V3(-60, -14, 22))
-          .lerp(SIM.hitP, Math.pow(hk, 1.25));
-        if (t > 61.4) bp.copy(SIM.hitP).add(V3(1.4, 0.4, 0).multiplyScalar(t - 61.4));
-        eul.set(t * 0.25, t * 0.18, 0);
-        qq.setFromEuler(eul);
-        sc.setScalar(5.2);
-        m4.compose(bp, qq, sc);
-        rockInst.setMatrixAt(SIM.rocks.length, m4);
         rockInst.instanceMatrix.needsUpdate = true;
       }
-      if (t > 61.3 && t < 64) {
-        const s = pulse(t, 61.35, 62.4, 0.05);
+      const HT = SIM.bigHit || 61.4;
+      if (t > HT - 0.1 && t < 64) {
+        const s = pulse(t, HT, HT + 1, 0.05);
         pos.x += (Math.sin(t * 91) + Math.sin(t * 57)) * s * 0.25;
         pos.y += (Math.cos(t * 83) + Math.sin(t * 41)) * s * 0.25;
-        FU.uFlash.value = pulse(t, 61.38, 61.75, 0.04) * 0.9;
+        FU.uFlash.value = pulse(t, HT - 0.02, HT + 0.3, 0.04) * 0.45;
       }
       if (t > 61.4) {
         FU.uDark.value = pulse(t, 61.6, 69, 1.4) * 0.85;
         blur = pulse(t, 61.6, 67, 1.4) * 4;
       }
-      if (t > 56) {
-        ship.group.position.copy(shipPath(t));
-        ship.group.rotation.set(-0.12 * seg(t, 81, 84), t * 0.12, 0);
-        ship.group.scale.setScalar(1);
-        ship.ring.rotation.y = -t * 0.6;
+      if (t > 57.5) {
+        const charge = seg(t, 84, 86.4);
+        shipRoot.position.copy(shipPath(t));
+        shipRoot.rotation.set(-0.1 * seg(t, 81, 84), 0, 0);
+        shipRoot.scale.set(1, 1, 1 + Math.pow(seg(t, 86.4, 86.9), 2) * 45);
+        ship.group.rotation.y = t * 0.05;
+        ship.ring.rotation.y = -t * (0.5 + charge * 3);
         ship.lights.rotation.y = t * 0.4;
-        ship.BU.uTime.value = t;
-        ship.BU.uOn.value = pulse(t, 64.5, 81, 1) * 0.7;
+        ship.BU.uOn.value = pulse(t, 64.5, 81, 1) * 0.55;
         ship.beam.scale.set(1, 0.85, 1);
+        ship.update(t, { hatch: pulse(t, 63.8, 81.6, 1), charge });
       }
       if (t >= 64) {
         const rise = ease(seg(t, 66, 80));
@@ -702,28 +965,36 @@ const Intro = (() => {
             c.clone().add(V3(Math.sin(orbit) * r, y, Math.cos(orbit) * r));
           pos = lerpV(cp64.pos, ring(14, -4), ease(seg(t, 64, 70)));
           if (t > 70) pos.lerp(ring(7.5, 1.2), ease(seg(t, 70, 74)));
-          if (t > 75.5) pos.lerp(ring(13, -9, SHIP0), ease(seg(t, 75.5, 80.5)));
+          if (t > 75.5) pos.lerp(ring(20, -4, SHIP0), ease(seg(t, 75.5, 80.5)));
           tgt = lerpV(cp64.tgt, mid.clone().add(V3(0, 1.2, 0)), ease(seg(t, 64, 70)));
-          if (t > 75.5) tgt.lerp(SHIP0.clone().add(V3(0, -1, 0)), ease(seg(t, 75.5, 80)));
+          if (t > 75.5) tgt.lerp(SHIP0.clone().add(V3(0, -2.5, 0)), ease(seg(t, 75.5, 80)));
           FU.uFlash.value = Math.max(
             FU.uFlash.value,
             pulse(t, 75.2, 76, 0.15) * 0.4,
             pulse(t, 79.6, 80.8, 0.4) * 0.3,
           );
-        } else {
+        } else if (t < 86.4) {
           const sp = shipPath(t);
-          const o81 = ring81.clone();
-          pos = sp.clone().add(lerpV(o81, V3(16, 4, 30), ease(seg(t, 81, 85.5))));
-          if (t > 85.5)
-            pos = sp.clone().add(lerpV(V3(16, 4, 30), V3(6, 3, 20), ease(seg(t, 85.5, 89))));
-          tgt = sp.clone().add(V3(0, 0, -lerp(0, 10, seg(t, 81, 86))));
-          FU.uFlash.value = seg(t, 88.6, 89.4) * 0.95;
-          if (t > 86 && t < 89.6) {
-            warp.mesh.visible = true;
-            warp.set(t, 260, 2 + seg(t, 86, 89) * 7);
-            FU.uCA.value = 0.004 + seg(t, 86, 89) * 0.012;
-          }
-          neb.U.uDark.value = 0.6 * pulse(t, 86, 90.5, 0.8);
+          pos = sp.clone().add(lerpV(ring81, V3(14, 4, 32), ease(seg(t, 81, 85.6))));
+          tgt = sp.clone().add(V3(0, 0, -lerp(0, 8, seg(t, 81, 86))));
+          FU.uCA.value = 0.0012 + seg(t, 85, 86.4) * 0.004;
+        } else {
+          const s86 = shipPath(86.4);
+          const run = Math.pow(seg(t, 86.4, 89.4), 1.6) * 400;
+          pos = s86.clone().add(V3(14, 4, 32 - run));
+          tgt = pos.clone().add(V3(-6, -2, -40));
+          const sw = seg(t, 86.3, 87);
+          warp.mesh.visible = t < 89.6;
+          warp.mesh.material.color.setRGB(lerp(1, 0.75, sw), lerp(1, 0.9, sw), 1);
+          warp.set(t, 120 + sw * 380, 0.3 + sw * 9 - seg(t, 89.2, 89.5) * 9);
+          FU.uCA.value = 0.004 + sw * 0.012;
+          FU.uFlash.value = Math.max(pulse(t, 86.5, 87.1, 0.12) * 0.55, seg(t, 89, 89.4) * 0.9);
+          neb.U.uDark.value = 0.9 * pulse(t, 86.6, 89.5, 0.4);
+        }
+        if (t > 84 && t < 86.4) {
+          warp.mesh.visible = true;
+          warp.mesh.material.color.setRGB(1, 1, 1);
+          warp.set(t, 30 + seg(t, 84, 86.4) * 90, 0.05 + Math.pow(seg(t, 84.6, 86.4), 2) * 1.5);
         }
         hearts.forEach((h, i) => {
           const src = i === 2 ? null : (i ? V : D).world(V3(0, 0.15, 0.25));
@@ -750,26 +1021,29 @@ const Intro = (() => {
           c.scale.setScalar(1 - Math.pow(shatter, 6) * 0.9);
         });
       }
-      if (t > 84) {
+      if (t >= 89.4) {
+        warp.mesh.visible = t < 89.6;
         planet.group.position.copy(ARRIVE).add(V3(0, -70, -230));
         planet.group.scale.setScalar(1.6);
         planet.group.rotation.y = t * 0.015;
         planet.U.uTime.value = t;
         planet.U.uSun.value.set(-0.7, 0.35, 0.6).normalize();
-        if (t > 89.4) {
-          const k = ease(seg(t, 89.4, 97));
-          const sp = ARRIVE.clone().add(V3(0, -k * 40, -k * 132));
-          ship.group.position.copy(sp);
-          ship.group.rotation.set(0.15, t * 0.12, 0);
-          ship.group.scale.setScalar(1);
-          pos = ARRIVE.clone()
-            .add(V3(6, 3, 20))
-            .add(V3(4 * k, -26 * k * k, -96 * k * k));
-          tgt = sp.clone().lerp(planet.group.position, 0.5 * ease(seg(t, 89.4, 92.5)));
-          cloud.material.opacity = ease(seg(t, 94.6, 96.6));
-          FU.uFlash.value = 0.95 * (1 - seg(t, 89.4, 91));
-          FU.uWarm.value = 0.25;
-        }
+        const kin = seg(t, 89.45, 90.2);
+        const k = ease(seg(t, 90.2, 97));
+        const sp = ARRIVE.clone().add(
+          V3(-2 - k * 26, -k * 52, -k * 132 + Math.pow(1 - kin, 4) * 420),
+        );
+        shipRoot.position.copy(sp);
+        shipRoot.rotation.set(0.12, 0, 0);
+        shipRoot.scale.set(1, 1, 1 + Math.pow(1 - kin, 2) * 40);
+        ship.group.rotation.y = t * 0.05;
+        ship.update(t, { charge: 1 - kin });
+        ship.BU.uOn.value = 0;
+        pos = camIn.clone().add(V3(2 * k, -18 * k * k, -62 * k * k));
+        tgt = sp.clone().lerp(planet.group.position, 0.72 * ease(seg(t, 89.8, 93.5)));
+        cloud.material.opacity = ease(seg(t, 94.6, 96.6));
+        FU.uFlash.value = 0.9 * (1 - seg(t, 89.4, 90.4));
+        FU.uWarm.value = 0.25;
       }
       key.position.copy(pos).add(V3(-6, 8, 10));
       key.target.position.copy(tgt);
@@ -787,14 +1061,15 @@ const Intro = (() => {
       const sp = lerpV(V3(spV.x + 60, 140, spV.z + 90), shipA, ease(seg(t, 97, 101.5)));
       if (t > 104.5) sp.lerp(shipB, ease(seg(t, 104.5, 109)));
       if (t > 111.6) sp.add(V3(0, Math.pow(seg(t, 111.6, 121), 2) * 260, 0));
-      ship.group.position.copy(sp);
-      ship.group.rotation.set(0, t * 0.12, 0);
-      ship.group.scale.setScalar(1.3);
+      shipRoot.position.copy(sp);
+      shipRoot.rotation.set(0, 0, 0);
+      shipRoot.scale.setScalar(1.1);
+      ship.group.rotation.y = t * 0.05;
       ship.ring.rotation.y = -t * 0.6;
       ship.lights.rotation.y = t * 0.4;
-      ship.BU.uTime.value = t;
       ship.BU.uOn.value = pulse(t, 101.4, 104.2, 0.4) + pulse(t, 108.8, 111.4, 0.4);
-      ship.beam.scale.set(1.2, 1.12, 1.2);
+      ship.beam.scale.set(1.2, 1.12 * 1.33, 1.2);
+      ship.update(t, { hatch: pulse(t, 100.6, 105, 0.8) + pulse(t, 108, 112.2, 0.8) });
       const vDrop = ease(seg(t, 101.6, 103.8));
       const dDrop = ease(seg(t, 109, 111.2));
       const lieV = HQRig.wake('front', Math.max(0, t - 115));
@@ -921,6 +1196,7 @@ const Intro = (() => {
   const resize = () => {
     const pr = window.__rec ? window.devicePixelRatio || 1 : Math.min(devicePixelRatio || 1, 1.5);
     composer.setPixelRatio(pr);
+    heartG.U.uPx.value = pr;
     composer.setSize(innerWidth, innerHeight);
     bloom.resolution.set(innerWidth * 0.5, innerHeight * 0.5);
     cam.aspect = innerWidth / innerHeight;
@@ -941,7 +1217,7 @@ const Intro = (() => {
     R.renderer.domElement.style.filter = '';
     setCity(false);
     R.scene.fog.density = 0.0085;
-    [D.g, V.g, ship.group].forEach((o) => o.parent && o.parent.remove(o));
+    [D.g, V.g, shipRoot].forEach((o) => o.parent && o.parent.remove(o));
   };
 
   return {

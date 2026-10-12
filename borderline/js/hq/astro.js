@@ -766,7 +766,7 @@ const HQ = (() => {
     const armR = {
       up: add(limbGeo, suit, 0, 0, 0),
       lo: add(limbGeo, suit, 0, 0, 0),
-      hand: glove(cloth, 0.5, F ? -1 : 1),
+      hand: glove(cloth, 0.5, -1),
       r1: T.ua,
       r2: T.la,
       hs: F ? 0.9 : 1,
@@ -774,7 +774,7 @@ const HQ = (() => {
     const armL = {
       up: add(limbGeo, suit, 0, 0, 0),
       lo: add(limbGeo, suit, 0, 0, 0),
-      hand: glove(cloth, F ? 1.2 : 0.5, F ? -1 : 1, { checklist: true }),
+      hand: glove(cloth, F ? 1.2 : 0.5, 1, { checklist: true }),
       r1: T.ua,
       r2: T.la,
       hs: F ? 0.9 : 1,

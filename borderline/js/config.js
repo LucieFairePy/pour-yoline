@@ -21,7 +21,8 @@ const CONFIG = {
     valet: { name: 'Le Valet', suit: '♠', pronoun: 'lui', other: 'elle' },
   },
   prologue: {
-    objective: 'Retrouve l’autre joueur. Écoute, appelle avec C.',
+    objective:
+      'Retrouve l’autre joueur. Pas de carte, pas de flèche : écoute son signal. Appelle avec C.',
     welcome: [
       'Bienvenue, Yoline.',
       'Joueurs : 2. Visa : 3 jours.',

@@ -139,6 +139,7 @@ const IntroScore = (ctx, dest, at = ctx.currentTime) => {
   bell(84, 1.3, 0.05, music, 5);
   bell(88, 6.2, 0.05, music, 5);
   breath(1, 5, 2.2, 0.03);
+  for (let i = 0; i < 11; i++) heart(1 + i * 1.05, 0.16 * (1 - i / 14));
   // 12-22.6 : black hole opens, pull grows
   for (let i = 0; i < 8; i++) noise(12 + i * 0.18, 0.12, 300 + Math.random() * 5000, 800, 4, 0.18);
   tone(12, 0.6, 1200, 80, 0.1, 'square');
@@ -177,8 +178,10 @@ const IntroScore = (ctx, dest, at = ctx.currentTime) => {
   tone(61.5, 6, 3200, 3000, 0.05, 'sine', 0.05);
   for (let i = 0; i < 6; i++) heart(62.4 + i * 1.1, 0.35 - i * 0.04);
   // 64-81 : ship, beam, the Oui extracted
-  tone(56, 10, 55, 55, 0.1, 'sawtooth', 3);
-  tone(56, 10, 82.4, 82.4, 0.05, 'sawtooth', 3);
+  noise(58, 6.6, 120, 900, 0.7, 0.3, 'lowpass', 5);
+  tone(58, 7, 30, 55, 0.12, 'sawtooth', 5);
+  tone(62, 18, 55, 55, 0.08, 'sawtooth', 2);
+  tone(62, 18, 82.4, 82.4, 0.04, 'sawtooth', 2);
   tone(64.5, 2.6, 80, 1400, 0.08, 'sawtooth', 2);
   noise(64.5, 16, 400, 900, 0.8, 0.07, 'bandpass', 2);
   pad([48, 54, 58, 62], 66, 6, 0.04, 'sine', 1200);
@@ -188,9 +191,12 @@ const IntroScore = (ctx, dest, at = ctx.currentTime) => {
   for (let i = 0; i < 26; i++) bell(86 + ((i * 7) % 12), 75.4 + i * 0.18, 0.035, sfx, 1.2);
   pad([53, 60, 65, 69], 76, 6, 0.045);
   // 81-90 : departure, lightspeed
-  tone(83, 6, 80, 2400, 0.12, 'sawtooth', 4);
-  noise(83, 6.4, 300, 6000, 1, 0.3, 'bandpass', 4.5);
-  boom(89.4, 0.8);
+  tone(84, 2.5, 80, 1600, 0.12, 'sawtooth', 2.3);
+  noise(84, 2.5, 300, 4000, 1, 0.22, 'bandpass', 2.3);
+  boom(86.5, 0.75);
+  noise(86.6, 2.8, 2000, 800, 0.6, 0.25, 'bandpass', 0.3);
+  tone(86.6, 2.8, 40, 34, 0.25, 'sawtooth', 0.3);
+  boom(89.4, 0.7);
   // 89.4-97 : Terre 39
   pad([48, 55, 60, 64, 67, 72], 89.6, 8, 0.07);
   [72, 76, 79, 84].forEach((m, i) => bell(m, 91.5 + i * 0.4, 0.05, music, 5));

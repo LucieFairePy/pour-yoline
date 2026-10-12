@@ -7,6 +7,7 @@ const HQRig = (() => {
   const q = new THREE.Quaternion();
   const tmp = V3();
   const tmp2 = V3();
+  const handM = new THREE.Matrix4();
 
   const LEG = { th: 0.36, sh: 0.34 };
   const ARM = 0.3;
@@ -43,7 +44,7 @@ const HQRig = (() => {
     const d1 = V3(0, -1, 0).applyQuaternion(q);
     const ax = X.clone().applyQuaternion(q);
     const d2 = d1.clone().applyAxisAngle(ax, sign * bend);
-    return [d1, d2];
+    return [d1, d2, q.clone(), ax];
   };
 
   const build = (opts) => {
@@ -74,7 +75,7 @@ const HQRig = (() => {
       arms.forEach(({ arm, s }, i) => {
         const a = P.arms[i];
         const S = V3(s * shX, 0.3, 0);
-        const [d1, d2] = limbDir(s, a.p, a.a, a.e, -1);
+        const [d1, d2, qa1, ax1] = limbDir(s, a.p, a.a, a.e, -1);
         const E = S.clone().addScaledVector(d1, ARM);
         const H = E.clone().addScaledVector(d2, ARM);
         HQ.limb(arm.up, S, E, arm.r1);
@@ -85,7 +86,11 @@ const HQRig = (() => {
         }
         arm.elbow.position.copy(E);
         arm.hand.position.copy(H);
-        arm.hand.quaternion.setFromUnitVectors(UP, d2);
+        const palm = V3(-s, 0, 0.18).normalize().applyQuaternion(qa1).applyAxisAngle(ax1, -a.e);
+        palm.addScaledVector(d2, -palm.dot(d2)).normalize();
+        const side = tmp.crossVectors(d2, palm);
+        handM.makeBasis(side, d2, palm);
+        arm.hand.quaternion.setFromRotationMatrix(handM);
         arm.hand.scale.setScalar(arm.hs || 1);
         HQ.setGrip(arm.hand, a.g);
         live.hands[i].copy(H);

@@ -1,7 +1,7 @@
 const City = (() => {
   const LOT = 30;
   const HALF = 11;
-  const N = 4;
+  const N = 6;
   const r = rng(2026);
   const fogU = THREE.UniformsLib.fog;
   const MOOD = { uGold: { value: 0 }, uGray: { value: 0 }, uRed: { value: 0 } };
@@ -709,8 +709,8 @@ const City = (() => {
 
   return {
     spawns: {
-      dame: V3(-75, 0, 75),
-      valet: V3(75, 0, -75),
+      dame: V3(-165, 0, 165),
+      valet: V3(165, 0, -165),
     },
     plaza: V3(0, 0, 0),
     screenPos: V3(0, 22, -LOT + HALF + 0.15),

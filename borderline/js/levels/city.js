@@ -36,6 +36,15 @@
       const pv = c.pos('valet');
       if (c.phaseT > 2 && Remote.fresh && c.near(pd, pv, 5)) c.goto('welcome');
     },
+    update(c, dt) {
+      if (!Remote.has) return null;
+      c.local.beacon = (c.local.beacon ?? 1.5) - dt;
+      if (c.local.beacon <= 0) {
+        c.local.beacon = 2.8;
+        Sound.play('beacon', Remote.pos.clone().add(V3(0, 1.6, 0)), c.role);
+      }
+      return null;
+    },
   });
 
   Story.register('welcome', {
