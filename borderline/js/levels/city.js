@@ -1,9 +1,9 @@
 (() => {
   const T = CONFIG;
   const seen = new Set();
-  const DOOR_BY_CHAPTER = { 0: 'h10', 1: 'c4', 2: 'sK' };
-  const PLACE_BY_CHAPTER = { 1: 'cafe', 2: 'banc', 3: 'kino' };
-  const ACT_BY_DOOR = { h10: 'act1', c4: 'act2', sK: 'garde' };
+  const DOOR_BY_CHAPTER = { 0: 'h10', 1: 'c4', 2: 'sK', 3: 'd9' };
+  const PLACE_BY_CHAPTER = { 1: 'cafe', 2: 'banc', 3: 'kino', 4: 'danse' };
+  const ACT_BY_DOOR = { h10: 'act1', c4: 'act2', sK: 'garde', d9: 'portes' };
 
   Clues.add('c1', V3(-45, 1.1, 77));
 
@@ -68,8 +68,8 @@
     const ch = c.S.chapter;
     const place = PLACE_BY_CHAPTER[ch];
     if (place && !seen.has(place))
-      return [null, T.city.memory1, T.city.memory2, T.city.memory3][ch];
-    if (DOOR_BY_CHAPTER[ch]) return [T.city.door1, T.city.door2, T.city.door3][ch];
+      return [null, T.city.memory1, T.city.memory2, T.city.memory3, T.city.memory4][ch];
+    if (DOOR_BY_CHAPTER[ch]) return [T.city.door1, T.city.door2, T.city.door3, T.city.door4][ch];
     return '';
   };
 
@@ -92,7 +92,9 @@
         City.showPlace(place, first);
         City.pillar(place, !seen.has(place));
       }
-      const cards = ['', '♥ 10', '♥ 10 · ♣ 4', '♥ 10 · ♣ 4 · ♠ R'][ch] || '';
+      const cards =
+        ['', '♥ 10', '♥ 10 · ♣ 4', '♥ 10 · ♣ 4 · ♠ R', '♥ 10 · ♣ 4 · ♠ R · ♦ 9'][ch] ||
+        '';
       HUD.visa('Visa · 3 jours' + (cards ? ' · ' + cards : ''));
       BigScreen.show(
         { h10: '♥ 10', c4: '♣ 4', sK: '♠ R' }[DOOR_BY_CHAPTER[ch]] || cards || '?',
@@ -120,7 +122,7 @@
         if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5))
           c.goto(ACT_BY_DOOR[id]);
       }
-      if (ch === 3 && c.S.seen.includes('kino')) {
+      if (ch === 4 && c.S.seen.includes('danse')) {
         c.local.banc = (c.local.banc || 0) + dt;
         const both = (c.S.x.seenBy || []).length >= 2;
         if ((both && c.local.banc > 4) || c.local.banc > 30) c.goto('act3');

@@ -38,9 +38,34 @@ const CONFIG = {
     memory1: 'Quelque chose est apparu sur la place.',
     door2: 'Une nouvelle porte s’est allumée : ♣ 4. Allez-y ensemble.',
     door3: 'Sous l’écran géant, une porte noire : ♠ R. Préparez-vous à vous battre.',
+    door4: 'Une arche s’est allumée près du café : ♦ 9.',
+    memory4: 'Un quatrième souvenir s’est allumé sur la place.',
     memory3: 'Un troisième souvenir s’est allumé près de la place.',
     memory2: 'Un autre souvenir est revenu, près de la place.',
     memoryLine: 'Chaque carte gagnée fait revenir un souvenir.',
+  },
+  portes: {
+    title: 'Les Portes',
+    intro: 'Épreuve de logique. Les Veilleurs adorent les portes qui mènent ailleurs.',
+    hint: {
+      dame: 'Clic gauche : portail bleu. Clic droit (ou F) : portail orange. Seulement sur les panneaux blancs.',
+      valet:
+        'Elle pose les portails. Toi, tu passes. Et plus tu entres vite, plus tu ressors vite.',
+    },
+    s1: {
+      dame: 'Un bouton derrière la vitre. Pose un portail sur le panneau près de vous, l’autre sur celui de la pièce.',
+      valet: 'Le bouton est derrière la vitre. Passe par ses portails et appuie dessus.',
+    },
+    s2: {
+      dame: 'Monte sur la corniche : portail au fond du puits. Puis sur le balcon : portail sur le mur face au vide.',
+      valet:
+        'Saute de la corniche dans le puits. Tu ressortiras du mur assez vite pour traverser le vide.',
+    },
+    s3: {
+      dame: 'Ton bouton est dans la cage de verre : utilise tes portails. Le sien est tout en haut.',
+      valet: 'Grimpe jusqu’au bouton du haut. Tenez vos deux boutons ensemble.',
+    },
+    card: 'La carte ♦ 9 est apparue. Ensemble.',
   },
   garde: {
     title: 'Le Roi de Pique',
@@ -89,6 +114,17 @@ const CONFIG = {
         'Vous auriez pu sortir seuls.',
         'Vous êtes restés.',
         'Retenez ça. Vous en aurez besoin.',
+      ],
+    },
+    d9: {
+      corner: '9\n♦',
+      big: '♦',
+      title: 'Les Portes',
+      sub: 'Épreuve de logique · réussie',
+      lines: [
+        'Elle ouvrait les chemins.',
+        'Il les traversait sans hésiter.',
+        'Quatre cartes. Le Oui se souvient de vous.',
       ],
     },
     sK: {
@@ -270,20 +306,26 @@ const CONFIG = {
       text: 'Le film dont on ne se souvient pas. Parce qu’on n’a pas regardé l’écran une seule fois.',
     },
     {
-      id: 'p3',
+      id: 'danse',
       tag: 'Souvenir · 04',
+      name: 'Notre première danse',
+      text: 'Pas de musique, juste toi qui riais de mes pas. On a dansé quand même.',
+    },
+    {
+      id: 'p3',
+      tag: 'Souvenir · 05',
       name: 'La première photo',
       text: 'La première photo de nous deux. Floue, mal cadrée. Ma préférée.',
     },
     {
       id: 'p4',
-      tag: 'Souvenir · 05',
+      tag: 'Souvenir · 06',
       name: 'Le fou rire',
       text: 'Ce fou rire impossible à arrêter, pour une raison que plus personne ne comprend.',
     },
     {
       id: 'p5',
-      tag: 'Souvenir · 06',
+      tag: 'Souvenir · 07',
       name: 'La promesse',
       text: 'Le soir où on s’est promis des choses à voix basse, comme si le monde écoutait.',
     },

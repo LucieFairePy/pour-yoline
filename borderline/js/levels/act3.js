@@ -35,7 +35,7 @@
     Player.killY = -40;
     Player.targets = null;
     Player.checkpoint = () => City.hubSpawn[c.role];
-    ['cafe', 'banc', 'kino'].forEach((id) => City.showPlace(id, true));
+    ['cafe', 'banc', 'kino', 'danse'].forEach((id) => City.showPlace(id, true));
     SPOTS.forEach((id) => {
       City.showPlace(id, true);
       City.pillar(id, !(Story.S.x.found || []).includes(id));

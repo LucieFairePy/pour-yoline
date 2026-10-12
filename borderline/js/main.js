@@ -51,7 +51,9 @@ const Game = (() => {
     Sky.update(t, R.camera);
     Sound.listener(R.camera);
     HUD.crosshair(
-      (role === 'dame' && !!Player.targets && Player.targets().length > 0) || Combat.on,
+      (role === 'dame' && !!Player.targets && Player.targets().length > 0) ||
+        Combat.on ||
+        (role === 'dame' && Story.S && Story.S.phase === 'portes'),
       Player.lockTarget >= 0,
     );
 

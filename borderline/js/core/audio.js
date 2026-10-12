@@ -367,6 +367,17 @@ const Sound = (() => {
       [84, 79, 72, 67].forEach((m, i) => bell(hz(m), t + i * 0.08, 0.08, sfx));
       noise(t, 0.6, 3000, 0.8, 0.12, 'highpass');
     },
+    portal() {
+      const t = ctx.currentTime;
+      sweep(t, 200, 1200, 0.35, 0.08, 'sine');
+      noise(t, 0.4, 2500, 1.5, 0.08);
+      bell(hz(79), t + 0.05, 0.05, sfx);
+    },
+    portalShoot() {
+      const t = ctx.currentTime;
+      sweep(t, 1400, 400, 0.18, 0.06, 'triangle');
+      noise(t, 0.15, 3000, 2, 0.05);
+    },
     grappleHit() {
       const t = ctx.currentTime;
       noise(t, 0.12, 2200, 3, 0.25);

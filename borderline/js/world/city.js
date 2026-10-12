@@ -456,6 +456,15 @@ const City = (() => {
     V3(0, 0, -(LOT - HALF) + 1.5),
   );
 
+  doors.d9 = makeDoor(
+    V3(-LOT + HALF + 0.6, 0, -9),
+    0,
+    '♦ 9',
+    'LES PORTES',
+    '#ff9a3a',
+    V3(-LOT + HALF + 2, 0, -9),
+  );
+
   const pillarGeo = new THREE.CylinderGeometry(0.7, 0.7, 60, 12, 1, true).translate(0, 30, 0);
   const pillars = [];
   const makePillar = (pos, color = '#ffcf8a') => {
@@ -582,6 +591,39 @@ const City = (() => {
   addPlace('kino', kino, V3(LOT / 2, 0, LOT / 2 - 1.6), () =>
     Phys.box(LOT / 2, 1.4, LOT / 2 + 1.2, 3.4, 2.8, 2),
   );
+
+  const danse = new THREE.Group();
+  const stage = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.4, 2.6, 0.3, 24),
+    new THREE.MeshStandardMaterial({ color: '#2a1a2e', roughness: 0.4, metalness: 0.5 }),
+  );
+  stage.position.y = 0.15;
+  const ball = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.45, 1),
+    new THREE.MeshStandardMaterial({
+      color: '#dfe6ff',
+      metalness: 1,
+      roughness: 0.1,
+      emissive: '#3a3a5a',
+      flatShading: true,
+    }),
+  );
+  ball.position.y = 4.2;
+  ball.name = 'gem';
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 2, 4), stone);
+  string.position.y = 5.4;
+  danse.add(stage, ball, string);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    const l = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 6, 4),
+      glowMat(['#ff5f8a', '#7ce0ff', '#ffcf8a', '#b07cff'][i % 4], 2.4),
+    );
+    l.position.set(Math.cos(a) * 2.5, 0.35, Math.sin(a) * 2.5);
+    danse.add(l);
+  }
+  danse.position.set(LOT / 2, 0, -LOT / 2);
+  addPlace('danse', danse, V3(LOT / 2, 0, -LOT / 2 + 2.6));
 
   const lantern = (c) => {
     const g = new THREE.Group();

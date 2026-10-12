@@ -163,6 +163,7 @@ const Player = (() => {
       P.target = P.lockTarget;
     }
 
+    P.preSpeed = Math.hypot(v.x, v.y, v.z);
     const wasG = body.grounded;
     const vy = v.y;
     Phys.move(body, dt);

@@ -27,8 +27,13 @@ const Lobby = (() => {
             ? 'aux Deux mondes'
             : ph === 'act3'
               ? 'à l’Heure dorée'
-              : ['après les retrouvailles', 'après ♥ 10', 'après ♣ 4', 'après ♠ R'][ch] ||
-                'en ville';
+              : [
+                  'après les retrouvailles',
+                  'après ♥ 10',
+                  'après ♣ 4',
+                  'après ♠ R',
+                  'après ♦ 9',
+                ][ch] || 'en ville';
       $('resumeText').innerHTML =
         'Partie sauvegardée : ' +
         where +
