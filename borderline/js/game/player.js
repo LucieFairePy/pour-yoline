@@ -221,11 +221,17 @@ const Player = (() => {
         hand: P.handPose,
         flip: P.flip,
         punch: P.punch || 0,
+        aim: Combat.on && P.role === 'dame' && Combat.aim > 0,
       },
       t,
     );
     if (!P.rope) P.rope = Rope.create(Avatar.LOOK[P.avatar.role].glow);
-    P.weapon.update(dt, Combat.on ? (P.role === 'dame' ? 'rifle' : 'sword') : null, P.punch || 0);
+    P.weapon.update(
+      dt,
+      Combat.on ? (P.role === 'dame' ? 'rifle' : 'sword') : null,
+      P.punch || 0,
+      Combat.aim > 0,
+    );
     const tg = P.mode === 'grapple' && P.targets && P.targets()[P.target];
     P.rope.update(dt, a.hand(handV), !!tg, tg || null);
   };
@@ -252,6 +258,7 @@ const Player = (() => {
     Combat.down ? 1 : 0,
     Combat.cloak > 0 ? 1 : 0,
     +(Combat.punch || 0).toFixed(2),
+    Combat.aim > 0 ? 1 : 0,
   ];
 
   return P;

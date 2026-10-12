@@ -180,7 +180,7 @@ const Sound = (() => {
     return f;
   };
 
-  const sweep = (t, f0, f1, dur, vol, type = 'sine') => {
+  const sweep = (t, f0, f1, dur, vol, type = 'sine', out = sfx) => {
     const o = ctx.createOscillator();
     o.type = type;
     o.frequency.setValueAtTime(f0, t);
@@ -188,7 +188,7 @@ const Sound = (() => {
     const g = ctx.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(sfx);
+    o.connect(g).connect(out);
     o.start(t);
     o.stop(t + dur + 0.05);
   };
@@ -327,16 +327,20 @@ const Sound = (() => {
     lift() {
       sweep(ctx.currentTime, 70, 110, 1.6, 0.06, 'sawtooth');
     },
-    shoot() {
+    shoot(pos) {
+      const out = pos ? spatial(pos) : sfx;
       const t = ctx.currentTime;
-      sweep(t, 1800, 500, 0.12, 0.05, 'sawtooth');
-      noise(t, 0.08, 4000, 1, 0.04, 'highpass');
+      noise(t, 0.09, 900, 0.8, 0.22, 'lowpass', out);
+      noise(t, 0.05, 5000, 1, 0.06, 'highpass', out);
+      sweep(t, 220, 60, 0.1, 0.12, 'square', out);
     },
-    punch() {
+    punch(pos) {
+      const out = pos ? spatial(pos) : sfx;
       const t = ctx.currentTime;
-      noise(t, 0.2, 400, 1, 0.3, 'lowpass');
-      sweep(t, 160, 50, 0.2, 0.25);
-      bell(hz(60), t, 0.04, sfx);
+      // sword swish then a metallic ring
+      noise(t, 0.22, 2600, 2.5, 0.16, 'bandpass', out);
+      sweep(t, 900, 300, 0.18, 0.05, 'sawtooth', out);
+      bell(hz(88), t + 0.05, 0.03, out);
     },
     hurt() {
       const t = ctx.currentTime;

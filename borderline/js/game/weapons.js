@@ -116,7 +116,7 @@ const Weapons = (() => {
       fire() {
         flashT = 0.05;
       },
-      update(dt, k, swing) {
+      update(dt, k, swing, aim) {
         if (k !== kind) {
           kind = k;
           models.rifle.visible = k === 'rifle';
@@ -129,7 +129,7 @@ const Weapons = (() => {
         avatar.spin.worldToLocal(hv);
         holder.position.copy(hv);
         if (k === 'rifle') {
-          holder.rotation.set(-0.04, 0.1, 0);
+          holder.rotation.set(aim ? 0 : 0.5, aim ? 0.05 : 0.5, aim ? 0 : -0.3);
           flashT -= dt;
           const f = models.rifle.userData.flash;
           f.visible = flashT > 0;

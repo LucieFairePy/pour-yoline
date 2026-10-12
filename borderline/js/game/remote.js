@@ -1,6 +1,9 @@
 const Remote = (() => {
   const buf = [];
-  const DELAY = 110;
+  // interpolation delay follows the measured packet spacing and jitter
+  let delay = 110;
+  let gapAvg = 50;
+  let gapJit = 10;
   const pos = V3();
   let yaw = 0;
   let state = { speed: 0, grounded: true, mode: 'walk', target: -1 };
@@ -33,11 +36,20 @@ const Remote = (() => {
       this.weapon = Weapons.attach(avatar);
       line = Rope.create(Avatar.LOOK[look].glow);
     },
+    hand(out) {
+      return avatar ? avatar.hand(out) : out.copy(pos);
+    },
     setKit(kit) {
       this.role = kit;
     },
     push(s) {
       const now = performance.now();
+      if (lastRx) {
+        const gap = Math.min(1000, now - lastRx);
+        gapAvg += (gap - gapAvg) * 0.1;
+        gapJit += (Math.abs(gap - gapAvg) - gapJit) * 0.1;
+        delay = clamp(gapAvg * 1.6 + gapJit * 2.5, 80, 450);
+      }
       lastRx = now;
       if (
         buf.length &&
@@ -53,7 +65,7 @@ const Remote = (() => {
     },
     update(dt, t, targets) {
       if (!avatar || !buf.length) return;
-      const rt = performance.now() - DELAY;
+      const rt = performance.now() - delay;
       let a = buf[0];
       let b = buf[buf.length - 1];
       for (let i = 0; i < buf.length - 1; i++)
@@ -77,6 +89,7 @@ const Remote = (() => {
         down: !!s[14],
         cloak: !!s[15],
         punch: s[16] || 0,
+        aim: !!s[17],
       };
       if (s[9]) tgt.set(s[10], s[11], s[12]);
       avatar.ghost(state.cloak ? 1 : 0);
@@ -89,6 +102,7 @@ const Remote = (() => {
         dt,
         Combat.on ? (this.role === 'dame' ? 'rifle' : 'sword') : null,
         state.punch || 0,
+        state.aim,
       );
       const on = state.mode === 'grapple' && !!s[9];
       line.update(dt, avatar.hand(handV), on, on ? tgt : null);

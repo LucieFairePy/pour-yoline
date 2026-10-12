@@ -1,18 +1,20 @@
 // Two links run side by side: a direct WebRTC data channel (PeerJS) and an MQTT relay over
 // secure WebSockets. Messages go through the direct channel when it is open and through the
 // relay otherwise, so players behind strict NATs (no TURN server) can still play.
+//
+// The relay publishes to two public brokers at once (measured: ~15 ms, no loss at 40 msg/s;
+// broker.emqx.io drops most messages above ~10/s, so it is not used). Outgoing messages are
+// batched at 20 Hz: "latest only" streams (positions, full state, enemies) keep their newest
+// value, everything else is numbered, acknowledged and resent until the other side has it.
 const Net = (() => {
   const PREFIX = 'brdl-yo-';
-  const BROKERS = [
-    'wss://broker.emqx.io:8084/mqtt',
-    'wss://broker.hivemq.com:8884/mqtt',
-    'wss://test.mosquitto.org:8081/mqtt',
-  ];
+  const BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
+  const LATEST = new Set(['p', 'S', 'en']);
   const handlers = {};
   let peer = null;
   let conn = null;
   let bc = null;
-  let me = Math.random().toString(36).slice(2, 10);
+  const me = Math.random().toString(36).slice(2, 10);
   let code = '';
   let isHost = false;
   let connected = false;
@@ -20,20 +22,26 @@ const Net = (() => {
   let localStream = null;
   let retry = null;
   let p2pOpen = false;
-  let relay = null;
-  let relayUp = false;
-  let relayMate = false;
-  let relaySeen = 0;
-  let brokerIx = 0;
-  let mateId = '';
+  let rtt = 0;
+  const BORN = Date.now();
 
   const emit = (t, d) => (handlers[t] || []).forEach((f) => f(d));
   const state = (s) => emit('state', s);
   const refresh = () => {
-    const s = p2pOpen || relayMate;
+    const s = p2pOpen || RL.mate;
     const was = connected;
     connected = s;
     if (was !== s) emit(s ? 'connect' : 'disconnect');
+  };
+
+  // every message from the other side lands here
+  const rx = (t, d) => {
+    if (t === '__rtt') return send('__rtt2', d);
+    if (t === '__rtt2') {
+      rtt = Math.round(performance.now() - d);
+      return;
+    }
+    emit(t, d);
   };
 
   const makeCode = () => {
@@ -44,79 +52,138 @@ const Net = (() => {
   };
 
   // ---- MQTT relay ----
-  const topic = (from) => 'brdl-yo/v1/' + code + '/' + from;
-  const relayPub = (t, d) => {
-    if (!relay || !relayUp) return;
-    try {
-      relay.publish(topic(isHost ? 'h' : 'g'), JSON.stringify({ f: me, t, d }), { qos: 0 });
-    } catch (e) {}
+  const RL = {
+    clients: [],
+    up: 0,
+    mate: false,
+    mateId: '',
+    mateSt: 0,
+    seen: 0,
+    // outgoing
+    seq: 0,
+    pend: [],
+    latest: new Map(),
+    n: 0,
+    hello: true,
+    // incoming
+    rxSeq: 0,
+    rxN: 0,
+    ackDue: false,
   };
-  const startRelay = () => {
-    if (relay || typeof mqtt === 'undefined' || !code) return;
-    const url = BROKERS[brokerIx % BROKERS.length];
-    let c;
+  const topic = (from) => 'brdl-yo/v2/' + code + '/' + from;
+  const relayQueue = (t, d) => {
+    if (LATEST.has(t)) RL.latest.set(t, d);
+    else {
+      RL.pend.push([++RL.seq, t, d]);
+      if (RL.pend.length > 400) RL.pend.splice(0, RL.pend.length - 400);
+    }
+  };
+  const relayFlush = () => {
+    if (!RL.up) return;
+    const idle = !RL.pend.length && !RL.latest.size && !RL.ackDue && !RL.hello;
+    if (idle) return;
+    const pkt = { f: me, st: BORN, n: ++RL.n, a: RL.rxSeq };
+    if (RL.hello) pkt.h = 1;
+    if (RL.pend.length) pkt.r = RL.pend.slice(0, 60);
+    if (RL.latest.size) {
+      pkt.l = [...RL.latest];
+      RL.latest.clear();
+    }
+    RL.ackDue = false;
+    RL.hello = false;
+    const body = JSON.stringify(pkt);
+    for (const c of RL.clients)
+      if (c.connected)
+        try {
+          c.publish(topic(isHost ? 'h' : 'g'), body, { qos: 0 });
+        } catch (e) {}
+  };
+  const relayRx = (buf) => {
+    let m;
     try {
-      c = mqtt.connect(url, {
-        clientId: 'brdl_' + me + '_' + brokerIx,
-        clean: true,
-        connectTimeout: 6000,
-        reconnectPeriod: 2500,
-        keepalive: 20,
-      });
+      m = JSON.parse(buf.toString());
     } catch (e) {
       return;
     }
-    relay = c;
-    let everUp = false;
-    const failover = setTimeout(() => {
-      if (everUp || relay !== c) return;
-      c.end(true);
-      relay = null;
-      brokerIx++;
-      startRelay();
-    }, 7000);
-    c.on('connect', () => {
-      everUp = true;
-      clearTimeout(failover);
-      relayUp = true;
-      c.subscribe(topic(isHost ? 'g' : 'h'), { qos: 0 });
-      relayPub('__hi');
-    });
-    c.on('close', () => {
-      relayUp = false;
-    });
-    c.on('message', (tp, buf) => {
-      let m;
+    if (!m || m.f === me) return;
+    if (m.f !== RL.mateId) {
+      // late packets from a page the other side already closed
+      if (m.st < RL.mateSt) return;
+      // a new page on the other side (reload): restart the sequences both ways
+      const had = !!RL.mateId;
+      RL.mateId = m.f;
+      RL.mateSt = m.st;
+      RL.rxSeq = 0;
+      RL.rxN = 0;
+      RL.seq = 0;
+      RL.pend = [];
+      RL.hello = true;
+      if (had && RL.mate) emit('connect');
+    }
+    RL.seen = performance.now();
+    if (!RL.mate) {
+      RL.mate = true;
+      refresh();
+    }
+    // acknowledged messages can go
+    if (m.a) while (RL.pend.length && RL.pend[0][0] <= m.a) RL.pend.shift();
+    if (m.r) {
+      for (const [s, t, d] of m.r)
+        if (s === RL.rxSeq + 1) {
+          RL.rxSeq = s;
+          rx(t, d);
+        }
+      RL.ackDue = true;
+    }
+    // packets arrive from both brokers: only the newest "latest" values count
+    if (m.n > RL.rxN) {
+      RL.rxN = m.n;
+      if (m.l) for (const [t, d] of m.l) rx(t, d);
+    }
+  };
+  const startRelay = () => {
+    if (RL.clients.length || typeof mqtt === 'undefined' || !code) return;
+    BROKERS.forEach((url, i) => {
+      let c;
       try {
-        m = JSON.parse(buf.toString());
+        c = mqtt.connect(url, {
+          clientId: 'brdl_' + me + '_' + i,
+          clean: true,
+          connectTimeout: 8000,
+          reconnectPeriod: 2000,
+          keepalive: 20,
+        });
       } catch (e) {
         return;
       }
-      if (!m || m.f === me) return;
-      relaySeen = performance.now();
-      if (m.t === '__hi' || m.t === '__ack' || m.t === '__ping') {
-        if (m.t === '__hi') relayPub('__ack');
-        const fresh = !relayMate || (mateId && mateId !== m.f);
-        mateId = m.f;
-        relayMate = true;
-        if (fresh && connected && m.t === '__hi') emit('connect');
-        refresh();
-        return;
-      }
-      relayMate = true;
-      refresh();
-      emit(m.t, m.d);
+      RL.clients.push(c);
+      c.on('connect', () => {
+        c.subscribe(topic(isHost ? 'g' : 'h'), { qos: 0 });
+        RL.up = RL.clients.filter((k) => k.connected).length;
+        RL.hello = true;
+      });
+      c.on('close', () => {
+        RL.up = RL.clients.filter((k) => k.connected).length;
+      });
+      c.on('error', () => {});
+      c.on('message', (tp, buf) => relayRx(buf));
     });
   };
-  // keep the relay alive and notice when the other side is gone
+  const stopRelay = () => {
+    RL.clients.forEach((c) => c.end(true));
+    RL.clients = [];
+    RL.up = 0;
+  };
+  setInterval(relayFlush, 50);
+  // keepalive, round-trip time and the other side going away
   setInterval(() => {
-    if (!relay || !relayUp) return;
-    relayPub('__ping');
-    if (relayMate && performance.now() - relaySeen > 9000) {
-      relayMate = false;
+    if (connected) send('__rtt', performance.now());
+    if (RL.up) RL.ackDue = true;
+    if (RL.mate && performance.now() - RL.seen > 9000) {
+      RL.mate = false;
       refresh();
     }
-  }, 3000);
+  }, 2000);
 
   // ---- PeerJS direct link ----
   const bind = (c) => {
@@ -127,7 +194,7 @@ const Net = (() => {
       state('Connexion directe établie');
       if (localStream && isHost) call(localStream);
     });
-    c.on('data', (m) => m && m.t && emit(m.t, m.d));
+    c.on('data', (m) => m && m.t && rx(m.t, m.d));
     c.on('close', () => {
       if (conn === c) {
         conn = null;
@@ -171,9 +238,25 @@ const Net = (() => {
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:global.stun.twilio.com:3478' },
+          {
+            urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'],
+            username: 'peerjs',
+            credential: 'peerjsp',
+          },
         ],
       },
     });
+
+  const send = (t, d) => {
+    if (bc) bc.postMessage({ from: me, t, d });
+    else if (p2pOpen && conn && conn.open) {
+      try {
+        conn.send({ t, d });
+      } catch (e) {
+        relayQueue(t, d);
+      }
+    } else if (RL.up) relayQueue(t, d);
+  };
 
   // ?relay forces the relay only (for testing strict networks)
   const noP2P = new URLSearchParams(location.search).has('relay');
@@ -196,7 +279,10 @@ const Net = (() => {
       return mode;
     },
     get via() {
-      return p2pOpen ? 'direct' : relayMate ? 'relais' : '';
+      return p2pOpen ? (bc ? 'local' : 'direct') : RL.mate ? 'relais' : '';
+    },
+    get rtt() {
+      return rtt;
     },
     host() {
       isHost = true;
@@ -215,7 +301,7 @@ const Net = (() => {
         if (typeof mqtt !== 'undefined') {
           // the relay alone is enough to share a link
           const wait = setInterval(() => {
-            if (relayUp) {
+            if (RL.up) {
               clearInterval(wait);
               ok();
             }
@@ -248,9 +334,7 @@ const Net = (() => {
               setTimeout(() => attempt(n + 1), 5000);
             } else if (n < 4 && !done) {
               // the code is taken on PeerJS: pick a new one for both links
-              if (relay) relay.end(true);
-              relay = null;
-              relayUp = false;
+              stopRelay();
               code = makeCode();
               startRelay();
               attempt(n + 1);
@@ -325,21 +409,12 @@ const Net = (() => {
           refresh();
           return;
         }
-        emit(m.t, m.d);
+        rx(m.t, m.d);
       };
       bc.postMessage({ from: me, t: '__hi' });
       return Promise.resolve(c);
     },
-    send(t, d) {
-      if (bc) bc.postMessage({ from: me, t, d });
-      else if (p2pOpen && conn && conn.open) {
-        try {
-          conn.send({ t, d });
-        } catch (e) {
-          relayPub(t, d);
-        }
-      } else relayPub(t, d);
-    },
+    send,
     voice(stream) {
       localStream = stream;
       if (connected) call(stream);

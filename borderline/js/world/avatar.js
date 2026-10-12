@@ -99,6 +99,7 @@ const Avatar = (() => {
     A.grap = damp(A.grap, s.mode === 'grapple' ? 1 : 0, 12, dt);
     A.sit = damp(A.sit, s.mode === 'sit' ? 1 : 0, 6, dt);
     A.hand = damp(A.hand, s.hand ? 1 : 0, 6, dt);
+    A.aim = damp(A.aim || 0, s.aim ? 1 : 0, 14, dt);
     if (s.grounded && !A.wasGround) A.land = 1;
     A.wasGround = s.grounded;
     A.land = Math.max(0, A.land - dt * 4);
@@ -151,6 +152,9 @@ const Avatar = (() => {
         uz = lerp(uz, 0.7, A.hand);
       }
       ux = lerp(ux, -0.3, A.sit);
+      // rifle held to the shoulder: firing arm forward, the other one under the handguard
+      ux = lerp(ux, i === 1 ? -1.45 : -1.25, A.aim);
+      uz = lerp(uz, i === 1 ? 0.12 : -0.5, A.aim);
       if (i === 1 && s.punch > 0) {
         const k = Math.sin((s.punch / 0.25) * Math.PI);
         ux = lerp(ux, -1.6, k);

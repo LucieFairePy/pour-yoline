@@ -20,7 +20,10 @@ const Game = (() => {
     const net = Net.connected
       ? '<span style="color:#4fd1b5">●</span> connecté·e·s'
       : '<span style="color:#d8324f">●</span> en attente de l’autre';
-    const mic = (Net.via === 'relais' ? ' · relais' : '') + (Sound.hasVoice ? ' · voix' : '');
+    const mic =
+      (Net.via === 'relais' ? ' · relais' : '') +
+      (Net.connected && Net.rtt ? ' · ' + Net.rtt + ' ms' : '') +
+      (Sound.hasVoice ? ' · voix' : '');
     HUD.status(`${net}${mic}<br>${fps} fps`);
   };
 

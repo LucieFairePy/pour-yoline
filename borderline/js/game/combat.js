@@ -10,6 +10,7 @@ const Combat = (() => {
     regen: 0,
     revive: 0,
     punch: 0,
+    aim: 0,
   };
   const tracerMat = new THREE.LineBasicMaterial({
     color: new THREE.Color('#ff8fb0').multiplyScalar(3),
@@ -59,11 +60,14 @@ const Combat = (() => {
     tracer(from, to);
     Player.weapon.fire();
     Sound.play('shoot');
+    C.aim = 0.7;
     if (hit) {
       Fx.burst(to, hit.weak ? '#ffcf8a' : '#ff8fb0', hit.weak ? 30 : 12, 4, 0.4, 0);
       HUD.hitmark(hit.weak);
       act({ a: 'hit', id: hit.e.id, dmg: 9, weak: hit.weak });
     }
+    // the other player sees the shot, the muzzle flash and the impact
+    Net.send('shot', [...to.toArray().map((v) => +v.toFixed(2)), hit ? (hit.weak ? 2 : 1) : 0]);
     Player.yaw = Math.atan2(fwd.x, fwd.z);
   };
 
@@ -77,6 +81,7 @@ const Combat = (() => {
     Sound.play('punch');
     Fx.burst(p.clone().add(V3(fx * 1.4, 1.1, fz * 1.4)), '#6cc8ff', 40, 5, 0.35, 0);
     slash(p, yaw);
+    Net.send('slash', +yaw.toFixed(3));
     for (const e of Enemies.list.values()) {
       const dx = e.pos.x - p.x;
       const dz = e.pos.z - p.z;
@@ -162,6 +167,7 @@ const Combat = (() => {
       C.cloakCd = Math.max(0, C.cloakCd - dt);
       C.cloak = Math.max(0, C.cloak - dt);
       C.punch = Math.max(0, C.punch - dt);
+      C.aim = Math.max(0, C.aim - dt);
       if (!C.down) {
         C.regen -= dt;
         if (C.regen <= 0) C.hp = Math.min(C.max, C.hp + dt * 9);
@@ -209,6 +215,29 @@ const Combat = (() => {
     },
   });
 
+  Net.on('shot', (d) => {
+    if (!Remote.has) return;
+    const to = V3(d[0], d[1], d[2]);
+    const from = Remote.hand(handV).clone();
+    tracer(from, to);
+    Remote.weapon.fire();
+    Sound.play('shoot', from);
+    if (d[3]) Fx.burst(to, d[3] === 2 ? '#ffcf8a' : '#ff8fb0', d[3] === 2 ? 30 : 12, 4, 0.4, 0);
+  });
+  Net.on('slash', (yaw) => {
+    if (!Remote.has) return;
+    const p = Remote.pos;
+    Sound.play('punch', p);
+    Fx.burst(
+      p.clone().add(V3(Math.sin(yaw) * 1.4, 1.1, Math.cos(yaw) * 1.4)),
+      '#6cc8ff',
+      40,
+      5,
+      0.35,
+      0,
+    );
+    slash(p, yaw);
+  });
   Net.on('hurt', (d) => C.apply(d.dmg));
   Net.on('revived', () => C.revived());
   return C;
