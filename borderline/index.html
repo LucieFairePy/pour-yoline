@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0612">
+<meta name="description" content="Un jeu à deux. On ne gagne jamais seul.">
+<meta property="og:title" content="BORDERLINE">
+<meta property="og:description" content="Un jeu à deux. On ne gagne jamais seul.">
+<title>BORDERLINE</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230d0612'/%3E%3Cpath fill='%23d8324f' d='M50 82C24 63 12 49 12 34C12 22 21 14 32 14C40 14 46 19 50 26C54 19 60 14 68 14C79 14 88 22 88 34C88 49 76 63 50 82Z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<div id="hud" hidden>
+  <div class="hud-top">
+    <div class="brand"><span class="mono">BORDERLINE</span><span class="suit" id="hudSuit">♥</span></div>
+    <div class="visa label" id="hudVisa">Visa · 3 jours</div>
+  </div>
+  <div class="objective" id="objective"><span class="label">Objectif</span><p id="objText"></p></div>
+  <div class="partner" id="partner"><i class="arrow"></i><span id="partnerDist"></span></div>
+  <div class="prompt" id="prompt" hidden><kbd id="promptKey">E</kbd><span id="promptText"></span></div>
+  <div class="subtitle" id="subtitle" hidden><span class="who" id="subWho"></span><p id="subText"></p></div>
+  <div class="status" id="status"></div>
+  <div class="crosshair" id="crosshair"></div>
+  <div class="vign" id="vign"></div>
+</div>
+
+<div id="card" hidden>
+  <div class="card-face"><span class="corner" id="cardCorner"></span><span class="big" id="cardBig"></span><span class="corner flip" id="cardCorner2"></span></div>
+  <p class="card-title" id="cardTitle"></p>
+  <p class="card-sub" id="cardSub"></p>
+</div>
+
+<div id="memory" hidden>
+  <div class="memory-in">
+    <span class="label" id="memTag"></span>
+    <h2 id="memTitle"></h2>
+    <p id="memText"></p>
+    <button class="btn" id="memClose" type="button">Continuer</button>
+  </div>
+</div>
+
+<section id="lobby" class="screen">
+  <div class="lobby-in">
+    <p class="label eyebrow">Un jeu à deux</p>
+    <h1 class="title">BORDER<em>LINE</em></h1>
+    <p class="tagline">On ne gagne jamais seul.</p>
+
+    <div class="step" id="stepStart">
+      <button class="btn primary" id="btnHost" type="button">Créer une partie</button>
+      <p class="hint">Ou ouvre le lien que l'autre joueur t'a envoyé.</p>
+    </div>
+
+    <div class="step" id="stepRole" hidden>
+      <p class="label">Choisis ton agent</p>
+      <div class="roles">
+        <button class="role" data-role="dame" type="button">
+          <span class="suit">♥</span><span class="rname">La Dame</span>
+          <span class="rdesc">Grappin · voit l'invisible</span>
+        </button>
+        <button class="role" data-role="valet" type="button">
+          <span class="suit">♠</span><span class="rname">Le Valet</span>
+          <span class="rdesc">Double saut · porte le poids</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="step" id="stepWait" hidden>
+      <p class="label">Envoie ce lien à l'autre joueur</p>
+      <div class="link"><input id="linkInput" readonly><button class="btn" id="btnCopy" type="button">Copier</button></div>
+      <p class="hint" id="waitText">En attente de l'autre joueur…</p>
+    </div>
+
+    <div class="step" id="stepReady" hidden>
+      <p class="label" id="readyText">Connecté·e·s</p>
+      <button class="btn" id="btnMic" type="button">Activer le micro</button>
+      <button class="btn primary" id="btnPlay" type="button">Entrer dans le Borderland</button>
+      <p class="hint" id="resumeText"></p>
+    </div>
+
+    <p class="error" id="lobbyErr" hidden></p>
+  </div>
+  <div class="controls label">
+    <span><kbd>ZQSD</kbd>/<kbd>WASD</kbd> bouger</span><span><kbd>Espace</kbd> sauter</span><span><kbd>Maj</kbd> courir</span><span><kbd>E</kbd> interagir</span><span><kbd>F</kbd> capacité</span><span><kbd>C</kbd> appeler</span><span>Manette OK</span>
+  </div>
+  <a class="back label" href="../index.html">← Destinations</a>
+</section>
+
+<section id="pause" class="screen" hidden>
+  <div class="lobby-in">
+    <h2 class="title small">Pause</h2>
+    <label class="opt"><span>Sensibilité</span><input type="range" id="optSens" min="0.3" max="2.5" step="0.05" value="1"></label>
+    <label class="opt"><span>Inverser l'axe vertical</span><input type="checkbox" id="optInvert"></label>
+    <label class="opt"><span>Qualité</span><select id="optQuality"><option value="high">Haute</option><option value="med">Moyenne</option><option value="low">Basse</option></select></label>
+    <label class="opt"><span>Volume</span><input type="range" id="optVol" min="0" max="1" step="0.05" value="0.8"></label>
+    <button class="btn" id="btnMic2" type="button">Activer le micro</button>
+    <button class="btn primary" id="btnResume" type="button">Reprendre</button>
+    <a class="back label" href="../index.html">← Quitter vers les destinations</a>
+  </div>
+</section>
+
+<div id="fade"></div>
+
+<div id="nogl" class="screen" hidden>
+  <div class="lobby-in"><h2 class="title small">BORDERLINE</h2><p class="tagline" id="noglText"></p><a class="back label" href="../index.html">← Destinations</a></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/settings.js"></script>
+<script src="js/core/input.js"></script>
+<script src="js/core/audio.js"></script>
+<script src="js/net/net.js"></script>
+<script src="js/world/physics.js"></script>
+<script src="js/world/renderer.js"></script>
+<script src="js/world/sky.js"></script>
+<script src="js/world/city.js"></script>
+<script src="js/world/screen.js"></script>
+<script src="js/world/avatar.js"></script>
+<script src="js/world/arena.js"></script>
+<script src="js/game/hud.js"></script>
+<script src="js/game/player.js"></script>
+<script src="js/game/remote.js"></script>
+<script src="js/game/camera.js"></script>
+<script src="js/game/story.js"></script>
+<script src="js/game/lobby.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

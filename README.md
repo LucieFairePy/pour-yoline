@@ -14,9 +14,10 @@ La page d'accueil est un launcher : chaque site fait pour Yoline y a sa bulle, a
 
 ## Destinations
 
-| #   | Site                          | Dossier              | Démo                                                         |
-| --- | ----------------------------- | -------------------- | ------------------------------------------------------------ |
-| 01  | [Le voyage](voyage/README.md) | [`voyage/`](voyage/) | [ouvrir](https://luciefairepy.github.io/pour-yoline/voyage/) |
+| #   | Site                               | Dossier                      | Démo                                                            |
+| --- | ---------------------------------- | ---------------------------- | --------------------------------------------------------------- |
+| 01  | [Le voyage](voyage/README.md)      | [`voyage/`](voyage/)         | [ouvrir](https://luciefairepy.github.io/pour-yoline/voyage/)    |
+| 02  | [BORDERLINE](borderline/README.md) | [`borderline/`](borderline/) | [jouer](https://luciefairepy.github.io/pour-yoline/borderline/) |
 
 ## Lancer en local
 
@@ -48,6 +49,7 @@ launcher/
   style.css           styles du launcher
   img/                une image par destination
 voyage/               Le voyage (site complet, voir son README)
+borderline/           BORDERLINE, le jeu coop (voir son README)
 ```
 
 ## Licence
