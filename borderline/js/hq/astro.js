@@ -387,7 +387,7 @@ const HQ = (() => {
             x.fillText('CHECKLIST', 18, 34);
             x.font = '500 19px IBM Plex Mono, monospace';
             ['☑ décoller', '☑ lettre', '☑ rose', '☐ dire oui'].forEach((l, i) =>
-              x.fillText(l, 18, 70 + i * 30),
+              Icons.fillText(x, l, 18, 70 + i * 30),
             );
           }),
         }),
@@ -560,7 +560,7 @@ const HQ = (() => {
           x.fillText('O₂ 98%', 28, 96);
           x.fillStyle = '#ff6b9a';
           x.font = '600 60px IBM Plex Mono, monospace';
-          x.fillText('♥ 120 bpm', 28, 200);
+          Icons.fillText(x, '♥ 120 bpm', 28, 200);
         }),
       }),
     );

@@ -439,7 +439,7 @@ const CONFIG = {
       ['♥ 2', 'Mes endroits préférés, ce sont ceux où l’on marche à deux.'],
       ['♣ R', 'Aucun monstre n’est assez grand pour nous deux.'],
       ['♠', 'Je courrai toujours, tant que c’est vers toi.'],
-      ['🃏', 'Et quand la peur arrive, je saute quand même.'],
+      ['\u{1F0CF}', 'Et quand la peur arrive, je saute quand même.'],
       ['♛', 'Tu es ma Dame de Cœur, Yoline.'],
     ],
     signature: '— Moi',

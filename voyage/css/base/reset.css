@@ -71,3 +71,16 @@ button:focus-visible {
   inset: 0;
   z-index: 2;
 }
+
+.ic {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+  vertical-align: -0.14em;
+}
+
+.tapback .ic {
+  width: 14px;
+  height: 14px;
+}

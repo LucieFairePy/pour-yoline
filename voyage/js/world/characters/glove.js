@@ -144,7 +144,7 @@ function glove(mat, curl = 0.9, flip = 1, opts = {}) {
           x.fillText('CHECKLIST', 18, 34);
           x.font = '500 19px IBM Plex Mono, monospace';
           ['☑ décoller', '☑ lettre', '☑ rose', '☐ dire oui'].forEach((l, i) =>
-            x.fillText(l, 18, 70 + i * 30),
+            Icons.fillText(x, l, 18, 70 + i * 30),
           );
         }),
       }),

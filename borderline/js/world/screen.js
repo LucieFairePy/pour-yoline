@@ -36,7 +36,7 @@ const makeScreen = (w, h, res = 1024) => {
       size *= 0.92;
       g.font = `italic ${size}px "Bodoni Moda", Georgia, serif`;
     }
-    g.fillText(main, W / 2, sub ? H * 0.44 : H / 2);
+    Icons.fillText(g, main, W / 2, sub ? H * 0.44 : H / 2);
     if (sub) {
       g.shadowBlur = 0;
       g.fillStyle = '#c495a6';
@@ -46,7 +46,7 @@ const makeScreen = (w, h, res = 1024) => {
         s2 *= 0.92;
         g.font = `${s2}px "IBM Plex Mono", monospace`;
       }
-      g.fillText(sub.toUpperCase(), W / 2, H * 0.72);
+      Icons.fillText(g, sub.toUpperCase(), W / 2, H * 0.72);
     }
     g.shadowBlur = 0;
     tex.needsUpdate = true;

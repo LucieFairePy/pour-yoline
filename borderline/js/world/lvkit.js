@@ -38,13 +38,13 @@ const LvKit = (() => {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = '160px Georgia';
-      g.fillText(suit, 128, 190);
+      Icons.fillText(g, suit, 128, 190);
       g.font = 'bold 44px Georgia';
-      g.fillText(rank, 36, 44);
+      Icons.fillText(g, rank, 36, 44);
       g.save();
       g.translate(220, 316);
       g.rotate(Math.PI);
-      g.fillText(rank, 0, 0);
+      Icons.fillText(g, rank, 0, 0);
       g.restore();
     });
 

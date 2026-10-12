@@ -58,11 +58,12 @@ const HUD = (() => {
       const { who, text, hold } = queue.shift();
       typing = true;
       el.sub.hidden = false;
-      el.subWho.textContent = who || '';
+      Icons.set(el.subWho, who || '');
       el.subText.textContent = '';
-      for (let i = 1; i <= text.length; i++) {
-        el.subText.textContent = text.slice(0, i);
-        await sleep(text[i - 1] === ' ' ? 18 : 28);
+      const chars = Array.from(text);
+      for (let i = 1; i <= chars.length; i++) {
+        Icons.set(el.subText, chars.slice(0, i).join(''));
+        await sleep(chars[i - 1] === ' ' ? 18 : 28);
       }
       await sleep(hold || 1600 + text.length * 35);
     }
@@ -75,14 +76,14 @@ const HUD = (() => {
       el.root.hidden = !v;
     },
     role(r) {
-      el.suit.textContent = CONFIG.roles[r].suit;
+      Icons.set(el.suit, CONFIG.roles[r].suit);
     },
     objective(t) {
       if (t === lastObj) return;
       lastObj = t;
       el.obj.classList.add('off');
       setTimeout(() => {
-        el.objText.textContent = t || '';
+        Icons.set(el.objText, t || '');
         el.obj.classList.toggle('off', !t);
       }, 300);
     },
@@ -100,14 +101,14 @@ const HUD = (() => {
       el.prompt.hidden = !key;
       if (!key) return;
       el.pKey.textContent = Input.pad ? { E: 'X', F: 'RB', C: 'Y', Espace: 'A' }[key] || key : key;
-      el.pText.textContent = text;
+      Icons.set(el.pText, text);
       el.prompt.classList.toggle('hold', !!hold);
     },
     visa(t) {
-      el.visa.textContent = t;
+      Icons.set(el.visa, t);
     },
     status(t) {
-      el.status.innerHTML = t;
+      el.status.innerHTML = Icons.glyphs(t);
     },
     crosshair(on, lock) {
       el.cross.classList.toggle('on', on);
@@ -147,11 +148,11 @@ const HUD = (() => {
       el.partner.classList.add('on');
     },
     card(corner, big, title, sub) {
-      $('cardCorner').textContent = corner;
-      $('cardCorner2').textContent = corner;
-      $('cardBig').textContent = big;
-      $('cardTitle').textContent = title;
-      $('cardSub').textContent = sub;
+      Icons.set($('cardCorner'), corner);
+      Icons.set($('cardCorner2'), corner);
+      Icons.set($('cardBig'), big);
+      Icons.set($('cardTitle'), title);
+      Icons.set($('cardSub'), sub);
       const c = $('card');
       c.hidden = false;
       c.querySelectorAll('.card-face,.card-title,.card-sub').forEach((n) => {
@@ -190,9 +191,9 @@ const HUD = (() => {
         return;
       }
       b.hidden = false;
-      $('bossName').textContent = name;
+      Icons.set($('bossName'), name);
       $('bossFill').style.transform = `scaleX(${clamp(frac, 0, 1)})`;
-      $('bossPhase').textContent = phase || '';
+      Icons.set($('bossPhase'), phase || '');
     },
     hurt() {
       const h = $('hurt');
@@ -220,12 +221,15 @@ const HUD = (() => {
         m.hidden = true;
         return;
       }
-      $('manTitle').textContent = spec.title;
-      $('manIntro').textContent = spec.intro;
+      Icons.set($('manTitle'), spec.title);
+      Icons.set($('manIntro'), spec.intro);
       $('manRules').innerHTML = spec.rules
-        .map(([s, r]) => `<li><span class="sym">${s}</span><span>${r}</span></li>`)
+        .map(
+          ([s, r]) =>
+            `<li><span class="sym">${Icons.glyphs(s)}</span><span>${Icons.glyphs(r)}</span></li>`,
+        )
         .join('');
-      $('manOutro').textContent = spec.outro;
+      Icons.set($('manOutro'), spec.outro);
       m.hidden = false;
     },
     closeLetter() {
@@ -249,7 +253,7 @@ const HUD = (() => {
         for (const [suit, text] of lines) {
           if (over) return;
           const li = document.createElement('p');
-          li.innerHTML = `<span class="suit">${suit}</span><span class="txt"></span>`;
+          li.innerHTML = `<span class="suit">${Icons.rich(suit)}</span><span class="txt"></span>`;
           box.appendChild(li);
           const t = li.querySelector('.txt');
           for (let i = 1; i <= text.length; i++) {
@@ -258,7 +262,7 @@ const HUD = (() => {
           }
           await sleep(700);
         }
-        $('letterSig').textContent = sig;
+        Icons.set($('letterSig'), sig);
         $('letterBtn').hidden = false;
         await dismiss($('letterBtn'));
         if (over) return;
@@ -268,7 +272,7 @@ const HUD = (() => {
     },
     credits(lines, note) {
       const box = $('creditsRoll');
-      box.innerHTML = lines.map(([k, v]) => `<p class="${k}">${v}</p>`).join('');
+      box.innerHTML = lines.map(([k, v]) => `<p class="${k}">${Icons.glyphs(v)}</p>`).join('');
       $('creditsNote').textContent = note || '';
       $('credits').hidden = false;
       Input.unlock();
@@ -279,9 +283,9 @@ const HUD = (() => {
     },
     memory(tag, title, text) {
       return new Promise((res) => {
-        $('memTag').textContent = tag;
-        $('memTitle').textContent = title;
-        $('memText').textContent = text;
+        Icons.set($('memTag'), tag);
+        Icons.set($('memTitle'), title);
+        Icons.set($('memText'), text);
         $('memory').hidden = false;
         Input.unlock();
         Input.enabled = false;

@@ -173,7 +173,9 @@ const Balade = (() => {
         } else l = l ? l + ' ' + wd : wd;
       });
       lines.push(l);
-      lines.forEach((ln, i) => g.fillText(ln, w / 2, h / 2 + (i - (lines.length - 1) / 2) * 44));
+      lines.forEach((ln, i) =>
+        Icons.fillText(g, ln, w / 2, h / 2 + (i - (lines.length - 1) / 2) * 44),
+      );
     });
 
   const tree = (x, z, s, r) => {

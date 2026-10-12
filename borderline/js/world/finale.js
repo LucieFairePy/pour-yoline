@@ -28,9 +28,9 @@ const Finale = (() => {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.font = 'bold 44px Georgia';
-    g.fillText(top, 40, 44);
+    Icons.fillText(g, top, 40, 44);
     g.font = '150px Georgia';
-    g.fillText(mid, 128, 190);
+    Icons.fillText(g, mid, 128, 190);
     return new THREE.CanvasTexture(c);
   };
 
@@ -105,7 +105,7 @@ const Finale = (() => {
     joker = new THREE.Mesh(
       new THREE.PlaneGeometry(1.8, 2.5),
       new THREE.MeshBasicMaterial({
-        map: cardTex('J', '🃏', '#ff2a3a', '#120208'),
+        map: cardTex('J', '\u{1F0CF}', '#ff2a3a', '#120208'),
         side: THREE.DoubleSide,
         toneMapped: false,
         transparent: true,

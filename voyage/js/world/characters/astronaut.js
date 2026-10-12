@@ -128,7 +128,7 @@ function makeAstronaut({
         x.fillText('O₂ 98%', 28, 96);
         x.fillStyle = '#ff6b9a';
         x.font = '600 60px IBM Plex Mono, monospace';
-        x.fillText('♥ 120 bpm', 28, 200);
+        Icons.fillText(x, '♥ 120 bpm', 28, 200);
       }),
     }),
   );

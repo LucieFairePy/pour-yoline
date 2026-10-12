@@ -62,7 +62,7 @@ const Arena = (() => {
     g.font = 'bold 72px "IBM Plex Mono", monospace';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(txt, 64, 68);
+    Icons.fillText(g, txt, 64, 68);
     const t = new THREE.CanvasTexture(c);
     const s = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: t, toneMapped: false, depthWrite: false }),
@@ -82,13 +82,13 @@ const Arena = (() => {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.font = '160px Georgia';
-    g.fillText('♥', 128, 190);
+    Icons.fillText(g, '♥', 128, 190);
     g.font = 'bold 44px Georgia';
-    g.fillText('10', 36, 40);
+    Icons.fillText(g, '10', 36, 40);
     g.save();
     g.translate(220, 320);
     g.rotate(Math.PI);
-    g.fillText('10', 0, 0);
+    Icons.fillText(g, '10', 0, 0);
     g.restore();
     const t = new THREE.CanvasTexture(c);
     const m = new THREE.Mesh(

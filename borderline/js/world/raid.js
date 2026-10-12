@@ -42,7 +42,7 @@ const Raid = (() => {
       g.textAlign = 'center';
       for (let i = 0; i < 24; i++) {
         const a = (i / 24) * TAU;
-        g.fillText(SYMS[i % 4], w / 2 + Math.cos(a) * 230, h / 2 + Math.sin(a) * 230 + 14);
+        Icons.fillText(g, SYMS[i % 4], w / 2 + Math.cos(a) * 230, h / 2 + Math.sin(a) * 230 + 14);
       }
     },
     1,
@@ -110,7 +110,7 @@ const Raid = (() => {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = '190px Georgia';
-      g.fillText(SYMS[i], 128, 140);
+      Icons.fillText(g, SYMS[i], 128, 140);
     });
 
   const build = () => {
@@ -159,7 +159,7 @@ const Raid = (() => {
             g.textAlign = 'center';
             g.textBaseline = 'middle';
             g.font = '100px Georgia';
-            g.fillText(s, 64, 70);
+            Icons.fillText(g, s, 64, 70);
           }),
           transparent: true,
           toneMapped: false,

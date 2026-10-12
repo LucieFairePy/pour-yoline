@@ -539,7 +539,7 @@ const CineKit = (() => {
     x.font = '80px Georgia';
     x.textAlign = 'center';
     x.textBaseline = 'middle';
-    x.fillText('♥', 64, 95);
+    Icons.fillText(x, '♥', 64, 95);
     return new THREE.CanvasTexture(c);
   })();
 

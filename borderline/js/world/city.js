@@ -361,7 +361,7 @@ const City = (() => {
     g.font = '150px Georgia';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText('?', 128, 185);
+    Icons.fillText(g, '?', 128, 185);
     const t = new THREE.CanvasTexture(c);
     return t;
   })();
@@ -385,10 +385,10 @@ const City = (() => {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.font = 'italic 110px Georgia';
-    g.fillText(txt, 256, 110);
+    Icons.fillText(g, txt, 256, 110);
     if (sub) {
       g.font = '28px monospace';
-      g.fillText(sub, 256, 205);
+      Icons.fillText(g, sub, 256, 205);
     }
     const t = new THREE.CanvasTexture(c);
     return t;

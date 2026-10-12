@@ -208,7 +208,7 @@ chat.addEventListener('pointerup', (e) => {
   if (lastTap.el === b && now - lastTap.t < 380 && !b.querySelector('.tapback')) {
     const t = document.createElement('span');
     t.className = 'tapback';
-    t.textContent = '♥';
+    t.innerHTML = Icons.svg('heart');
     b.appendChild(t);
     gsap.from(t, { scale: 0, rotation: -40, duration: 0.6, ease: 'back.out(3)' });
     sparkle();

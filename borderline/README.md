@@ -74,7 +74,7 @@ index.html          écrans (lobby, pause, HUD) et ordre de chargement
 css/game.css        interface
 js/
   config.js         tous les textes
-  core/             utilitaires, réglages, entrées clavier/manette, audio génératif
+  core/             utilitaires, réglages, entrées clavier/manette, audio génératif, icônes (Lucide, ISC)
   net/net.js        connexion pair-à-pair (PeerJS) et mode local (BroadcastChannel)
   world/            rendu, ciel, ville, écrans, astronautes, arènes, particules, cassettes, physique
   hq/ cine/         astronautes détaillés et film d'intro
@@ -84,3 +84,11 @@ js/
 ```
 
 L'hôte fait autorité sur l'état de la partie, chaque joueur simule son propre personnage.
+
+## Icônes
+
+Pas d'emoji dans l'interface. Les icônes viennent de [Lucide](https://lucide.dev) (licence ISC),
+embarquées en données de tracé dans `js/core/icons.js` pour fonctionner hors ligne et en `file://`.
+Les symboles de cartes (♥ ♠ ♦ ♣, couronne, Joker) restent du texte dans `config.js` et sont
+convertis en SVG à l'affichage : `Icons.set(el, texte)` / `Icons.rich(texte)` pour le DOM,
+`Icons.fillText(ctx, texte, x, y)` pour les textures canvas, `<i data-ic="nom"></i>` dans le HTML.

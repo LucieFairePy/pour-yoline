@@ -48,10 +48,11 @@ const Lobby = (() => {
                   'après ♣ R',
                 ][ch] ||
                 'en ville';
-      $('resumeText').innerHTML =
+      $('resumeText').innerHTML = Icons.glyphs(
         'Partie sauvegardée : ' +
-        where +
-        '. <a href="#" id="restart" style="color:inherit">Recommencer du début</a>';
+          where +
+          '. <a href="#" id="restart" style="color:inherit">Recommencer du début</a>',
+      );
     }
     const rs = $('restart');
     if (rs)
@@ -87,11 +88,11 @@ const Lobby = (() => {
       Net.voice(s);
       ['btnMic', 'btnMic2'].forEach((id) => {
         $(id).classList.add('on');
-        $(id).textContent = 'Micro activé';
+        $(id).lastElementChild.textContent = 'Micro activé';
         $(id).disabled = true;
       });
     } catch (e) {
-      btn.textContent = 'Micro refusé';
+      btn.lastElementChild.textContent = 'Micro refusé';
     }
   };
   Net.on('stream', (s) => Sound.attachVoice(s));
@@ -120,7 +121,7 @@ const Lobby = (() => {
   $('btnCopy').onclick = async () => {
     try {
       await navigator.clipboard.writeText($('linkInput').value);
-      $('btnCopy').textContent = 'Copié';
+      $('btnCopy').lastElementChild.textContent = 'Copié';
     } catch (e) {
       $('linkInput').select();
     }

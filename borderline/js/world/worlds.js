@@ -49,7 +49,7 @@ const Worlds = (() => {
     g.font = font;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(txt, 64, 68);
+    Icons.fillText(g, txt, 64, 68);
     const s = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(c),

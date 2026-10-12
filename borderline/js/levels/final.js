@@ -119,7 +119,7 @@
       City.mood({ gold: 1 });
       c.fog(0.006);
       Sound.mood('gold');
-      HUD.visa('🃏 · Le vrai Joker');
+      HUD.visa('\u{1F0CF} · Le vrai Joker');
       local.float = 0;
       if (!first) {
         await sleep(300);

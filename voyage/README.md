@@ -66,7 +66,7 @@ css/
   responsive.css      media queries
 js/
   config.js           textes
-  core/               utilitaires
+  core/               utilitaires, icônes (Lucide, ISC)
   audio/              moteur, instruments, compositeur, battement de cœur, effets
   world/
     core/             renderer, post-traitement, lumières, boucle de rendu

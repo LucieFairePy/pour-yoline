@@ -18,7 +18,7 @@ const Clues = (() => {
     g.fillStyle = '#d8324f';
     g.font = 'bold 22px monospace';
     g.textAlign = 'center';
-    g.fillText('Y.', 64, 30);
+    Icons.fillText(g, 'Y.', 64, 30);
     return new THREE.CanvasTexture(c);
   })();
   const geo = new THREE.BoxGeometry(0.5, 0.32, 0.1);

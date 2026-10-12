@@ -7,8 +7,8 @@
       Sound.play('glitch');
       Sound.mood('dark');
       City.mood({ gold: 0.4, red: 1 });
-      BigScreen.show('🃏', 'LE JOKER', '#ff2a3a');
-      HUD.visa('🃏 · ' + T.joker);
+      BigScreen.show('\u{1F0CF}', 'LE JOKER', '#ff2a3a');
+      HUD.visa('\u{1F0CF} · ' + T.joker);
       Cam.shake = 0.25;
     },
     () => {

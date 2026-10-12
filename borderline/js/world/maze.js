@@ -224,7 +224,7 @@ const Maze = (() => {
     g.font = 'bold 80px Georgia';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(txt, 64, 68);
+    Icons.fillText(g, txt, 64, 68);
     const s = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(c),
@@ -303,9 +303,9 @@ const Maze = (() => {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = '160px Georgia';
-      g.fillText('♣', 128, 190);
+      Icons.fillText(g, '♣', 128, 190);
       g.font = 'bold 44px Georgia';
-      g.fillText('4', 30, 40);
+      Icons.fillText(g, '4', 30, 40);
       return new THREE.CanvasTexture(c);
     })();
     card = new THREE.Mesh(

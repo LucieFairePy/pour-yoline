@@ -195,9 +195,9 @@ const Portes = (() => {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = '160px Georgia';
-      g.fillText('♦', 128, 190);
+      Icons.fillText(g, '♦', 128, 190);
       g.font = 'bold 44px Georgia';
-      g.fillText('9', 30, 40);
+      Icons.fillText(g, '9', 30, 40);
       return new THREE.CanvasTexture(c);
     })();
     card = new THREE.Mesh(
