@@ -92,3 +92,19 @@ embarquées en données de tracé dans `js/core/icons.js` pour fonctionner hors 
 Les symboles de cartes (♥ ♠ ♦ ♣, couronne, Joker) restent du texte dans `config.js` et sont
 convertis en SVG à l'affichage : `Icons.set(el, texte)` / `Icons.rich(texte)` pour le DOM,
 `Icons.fillText(ctx, texte, x, y)` pour les textures canvas, `<i data-ic="nom"></i>` dans le HTML.
+
+## Yoline, William et les kits
+
+Au lobby on choisit qui on est : Yoline (combinaison verte) ou William (bleue). Les mécaniques
+des niveaux restent écrites pour deux kits, `dame` et `valet` (`Story.role`, `c.role`), mais le
+kit change selon le chapitre (`SWAP` dans `js/game/story.js`) pour que chacun ait son tour :
+
+| Kit   | Déplacement                       | Arme (combat)        | Rôle                            |
+| ----- | --------------------------------- | -------------------- | ------------------------------- |
+| dame  | grappin, double saut              | fusil (rafale)       | voit l'invisible, guide         |
+| valet | double saut renforcé              | épée (étourdit)      | porte, protège, le Voile        |
+
+Yoline a le kit dame dans ♥ 10, ♣ 4, ♠ R, ♣ R, Joker et final ; William l'a dans ♠ 3, ♠ 7,
+♦ 9 et Deux mondes (le Caveau inverse aussi les rôles au dernier rituel). Les textes utilisent
+des jetons résolus pour le lecteur : `{mate}`, `{il}`, `{lui}`, `{le}`, `{e}`, `{pe}`
+(`Story.fmt`, appliqué par le HUD). Armes : `js/game/weapons.js`.

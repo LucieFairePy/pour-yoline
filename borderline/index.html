@@ -117,15 +117,18 @@ setTimeout(function () {
     <div class="step" id="stepRole" hidden>
       <p class="label">Choisis ton agent</p>
       <div class="roles">
-        <button class="role" data-role="dame" type="button">
-          <span class="suit"><i data-ic="heart"></i></span><span class="rname">La Dame</span>
-          <span class="rdesc"><span><i data-ic="anchor"></i> Grappin</span><span><i data-ic="eye"></i> Voit l'invisible</span></span>
+        <button class="role" data-role="yoline" type="button">
+          <img class="rimg" src="img/yoline.webp" alt="" width="160" height="200">
+          <span class="rname">Yoline</span>
+          <span class="rdesc"><span><i data-ic="circle"></i> Combinaison verte</span></span>
         </button>
-        <button class="role" data-role="valet" type="button">
-          <span class="suit"><i data-ic="spade"></i></span><span class="rname">Le Valet</span>
-          <span class="rdesc"><span><i data-ic="chevrons-up"></i> Double saut</span><span><i data-ic="weight"></i> Porte le poids</span></span>
+        <button class="role" data-role="william" type="button">
+          <img class="rimg" src="img/william.webp" alt="" width="160" height="200">
+          <span class="rname">William</span>
+          <span class="rdesc"><span><i data-ic="circle"></i> Combinaison bleue</span></span>
         </button>
       </div>
+      <p class="hint roles-note"><i data-ic="repeat"></i> Grappin ou double saut, fusil ou épée : les rôles changent à chaque chapitre.</p>
     </div>
 
     <div class="step" id="stepWait" hidden>
@@ -212,6 +215,7 @@ setTimeout(function () {
 <script src="js/game/enemies.js"></script>
 <script src="js/game/foes.js"></script>
 <script src="js/game/boss.js"></script>
+<script src="js/game/weapons.js"></script>
 <script src="js/game/combat.js"></script>
 <script src="js/game/story.js"></script>
 <script src="js/game/lobby.js"></script>

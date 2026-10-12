@@ -92,14 +92,7 @@
     voice: () => 1,
     net: {
       scaught: (c) => {
-        if (!HUD.talking)
-          HUD.say(
-            c.role === 'dame'
-              ? 'Il a bougé. Retour à sa ligne.'
-              : 'Elle a bougé. Retour à sa ligne.',
-            A.doll,
-            1600,
-          );
+        if (!HUD.talking) HUD.say('{mate} a bougé. Retour à sa ligne.', A.doll, 1600);
       },
     },
     async enter(c, first) {

@@ -12,11 +12,13 @@ const Lobby = (() => {
     $('lobbyErr').hidden = !m;
     $('lobbyErr').textContent = m || '';
   };
-  const other = (r) => (r === 'dame' ? 'valet' : 'dame');
+  const other = (r) => (r === 'yoline' ? 'william' : 'yoline');
+  // old links and test URLs still say dame / valet
+  const ident = (r) => ({ dame: 'yoline', valet: 'william' })[r] || r;
 
   const ready = () => {
     step('stepReady');
-    $('readyText').textContent = `Connecté·e·s · tu joues ${CONFIG.roles[role].name}`;
+    $('readyText').textContent = `Connecté·e·s · tu joues ${CONFIG.players[role].name}`;
     if (Net.isHost && progress) {
       const ph = typeof progress === 'object' ? progress.phase : progress;
       let ch = typeof progress === 'object' ? progress.chapter : progress === 'free' ? 1 : 0;
@@ -67,11 +69,11 @@ const Lobby = (() => {
   const hello = () => Net.send('hello', { role });
 
   Net.on('hello', (d) => {
-    peerRole = d.role;
+    peerRole = ident(d.role);
     if (!role) {
-      role = other(d.role);
+      role = other(peerRole);
       ready();
-    } else if (d.role === role && Net.isHost) Net.send('hello', { role });
+    } else if (peerRole === role && Net.isHost) Net.send('hello', { role });
   });
   Net.on('state', (t) => {
     if (Net.connected) return;
@@ -149,7 +151,7 @@ const Lobby = (() => {
       const r = q.get('r');
       const lc = q.get('local');
       if (lc) {
-        role = q.get('role') || (q.get('host') ? 'dame' : 'valet');
+        role = ident(q.get('role') || (q.get('host') ? 'yoline' : 'william'));
         Net.local(lc, !!q.get('host'));
         step('stepWait');
         $('linkInput').value =

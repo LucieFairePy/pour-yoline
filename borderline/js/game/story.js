@@ -5,6 +5,36 @@ const Story = (() => {
   let dirty = false;
   let role = 'dame';
   let other = 'valet';
+  // who you are (fixed) vs which kit you carry (changes with the chapter)
+  let me = 'yoline';
+  let mate = 'william';
+  const BASE = { yoline: 'dame', william: 'valet' };
+  // chapters where the kits are swapped, so each player gets every kind of role
+  const SWAP = new Set(['soleil', 'donjon', 'portes', 'act5']);
+  const kitOf = (who, phase) => {
+    const k = BASE[who];
+    return SWAP.has(phase) ? (k === 'dame' ? 'valet' : 'dame') : k;
+  };
+  const whoOf = (kit) => (kitOf(me, local.phase) === kit ? me : mate);
+  const P_ = (who) => T.players[who];
+  // {mate} {me} {il} {Il} {lui} {Lui} {le} {e} (my agreement) {pe} (partner agreement)
+  const fmt = (s) => {
+    if (typeof s !== 'string' || s.indexOf('{') < 0) return s;
+    const m = P_(mate);
+    const fem = m.fem;
+    const map = {
+      mate: m.name,
+      me: P_(me).name,
+      il: fem ? 'elle' : 'il',
+      Il: fem ? 'Elle' : 'Il',
+      lui: fem ? 'elle' : 'lui',
+      Lui: fem ? 'Elle' : 'Lui',
+      le: fem ? 'la' : 'le',
+      e: P_(me).fem ? 'e' : '',
+      pe: fem ? 'e' : '',
+    };
+    return s.replace(/\{(\w+)\}/g, (x, k) => (k in map ? map[k] : x));
+  };
   let lastPhase = null;
   let beam = null;
   let beamT = 0;
@@ -130,9 +160,24 @@ const Story = (() => {
     return m;
   };
 
+  const setKit = (ph, announce) => {
+    const was = role;
+    role = kitOf(me, ph);
+    other = role === 'dame' ? 'valet' : 'dame';
+    if (role === was) return;
+    Player.setKit(role);
+    Remote.setKit(other);
+    HUD.role(role);
+    if (announce) {
+      Sound.play('reveal');
+      HUD.say(fmt(T.kits.swap[role]), T.master, 4200);
+    }
+  };
+
   const enter = (ph, first) => {
     const prev = local.phase;
     if (prev && PH[prev] && PH[prev].exit) PH[prev].exit(ctx, ph);
+    setKit(ph, !first || SWAP.has(ph));
     local.phase = ph;
     HUD.prompt(null);
     HUD.danger(0);
@@ -197,6 +242,16 @@ const Story = (() => {
     get role() {
       return role;
     },
+    get me() {
+      return me;
+    },
+    get mate() {
+      return mate;
+    },
+    name: (kit) => T.players[whoOf(kit)].name,
+    fem: (kit) => T.players[whoOf(kit)].fem,
+    fmt,
+    kitOf,
     ctx,
     patch(fn) {
       if (Net.isHost && S) set(fn);
@@ -204,8 +259,10 @@ const Story = (() => {
     goto(phase, patch) {
       if (Net.isHost && S) ctx.goto(phase, patch);
     },
-    init(myRole, from) {
-      role = myRole;
+    init(who, from) {
+      me = who;
+      mate = who === 'yoline' ? 'william' : 'yoline';
+      role = BASE[me];
       other = role === 'dame' ? 'valet' : 'dame';
       beam = beamMesh();
       Net.on('S', (ns) => !Net.isHost && apply(ns));

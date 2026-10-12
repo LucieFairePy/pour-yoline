@@ -44,7 +44,7 @@
     }
     if (st === 3) {
       HUD.objective(A.swap[r]);
-      Maze.screen.show('L’inversion', 'À elle le noir', '#7ce0ff');
+      Maze.screen.show('L’inversion', 'À ' + Story.name('dame') + ' le noir', '#7ce0ff');
       Sound.play('reveal');
       HUD.manual(null);
     }

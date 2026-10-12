@@ -1245,3 +1245,46 @@ body.rec #cine .cskip {
   height: 0.62em;
   vertical-align: 0.02em;
 }
+
+.role .rimg {
+  width: 9rem;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  margin-bottom: -0.2rem;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.55));
+  transition: transform 0.5s var(--expo);
+}
+
+.role:hover .rimg {
+  transform: translateY(-4px) scale(1.03);
+}
+
+.role[data-role='yoline'] .rdesc .ic {
+  color: #2fae8f;
+}
+
+.role[data-role='william'] .rdesc .ic {
+  color: #4f6fe0;
+}
+
+.roles-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  max-width: 34rem;
+  margin: 0.4rem auto 0;
+  text-align: left;
+}
+
+.roles-note .ic {
+  width: 1.2em;
+  height: 1.2em;
+  color: var(--blush);
+}
+
+@media (max-height: 760px) {
+  .role .rimg {
+    width: 6.5rem;
+  }
+}

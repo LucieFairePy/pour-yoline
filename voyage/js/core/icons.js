@@ -77,6 +77,12 @@ const Icons = (() => {
     ],
     play: ['M6L3L20L12L6L21L6L3Z'],
     'rotate-ccw': ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'],
+    repeat: [
+      'm17 2 4 4-4 4',
+      'M3 11v-1a4 4 0 0 1 4-4h14',
+      'm7 22-4-4 4-4',
+      'M21 13v1a4 4 0 0 1-4 4H3',
+    ],
   };
   const FILLED = new Set(['heart', 'spade', 'club', 'diamond', 'crown', 'circle']);
   const GLYPH = {

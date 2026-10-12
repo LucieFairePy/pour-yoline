@@ -6,7 +6,7 @@ const Game = (() => {
   let fpsT = 0;
   let frames = 0;
   let fps = 60;
-  let role = 'dame';
+  let role = 'yoline';
   let lastStart = false;
   const clock = { t: 0 };
 
@@ -51,9 +51,9 @@ const Game = (() => {
     Sky.update(t, R.camera);
     Sound.listener(R.camera);
     HUD.crosshair(
-      (role === 'dame' && !!Player.targets && Player.targets().length > 0) ||
+      (Story.role === 'dame' && !!Player.targets && Player.targets().length > 0) ||
         Combat.on ||
-        (role === 'dame' && Story.S && Story.S.phase === 'portes'),
+        (Story.role === 'dame' && Story.S && Story.S.phase === 'portes'),
       Player.lockTarget >= 0,
     );
 
@@ -84,10 +84,10 @@ const Game = (() => {
       await Intro.play();
     }
     Player.init(role);
-    Remote.init(role === 'dame' ? 'valet' : 'dame');
+    Remote.init(role === 'yoline' ? 'william' : 'yoline');
     Net.on('p', (s) => Remote.push(s));
     Story.init(role, progress);
-    HUD.role(role);
+    HUD.role(Story.role);
     HUD.show(true);
     Input.enabled = true;
     Input.lock();

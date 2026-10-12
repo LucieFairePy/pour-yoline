@@ -29,6 +29,25 @@ const Combat = (() => {
 
   const act = (d) => Story.ctx.act(d);
 
+  // sword arc in front of the player
+  const slashMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color('#9fdcff').multiplyScalar(2.4),
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  });
+  const slashGeo = new THREE.RingGeometry(1.1, 1.9, 24, 1, -0.9, 1.8).rotateX(-Math.PI / 2);
+  const slashes = [];
+  const slash = (p, yaw) => {
+    const m = new THREE.Mesh(slashGeo, slashMat.clone());
+    m.position.set(p.x, p.y + 1.05, p.z);
+    m.rotation.set(0.25, yaw - Math.PI / 2, 0);
+    R.scene.add(m);
+    slashes.push({ m, t: 0.18 });
+  };
+
   const shoot = () => {
     const cam = R.camera;
     fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
@@ -38,6 +57,7 @@ const Combat = (() => {
       ? cam.position.clone().addScaledVector(fwd, hit.d)
       : cam.position.clone().addScaledVector(fwd, 60);
     tracer(from, to);
+    Player.weapon.fire();
     Sound.play('shoot');
     if (hit) {
       Fx.burst(to, hit.weak ? '#ffcf8a' : '#ff8fb0', hit.weak ? 30 : 12, 4, 0.4, 0);
@@ -55,7 +75,8 @@ const Combat = (() => {
     C.punch = 0.25;
     const p = Player.body.p;
     Sound.play('punch');
-    Fx.burst(p.clone().add(V3(fx * 1.2, 1.1, fz * 1.2)), '#6cc8ff', 40, 5, 0.35, 0);
+    Fx.burst(p.clone().add(V3(fx * 1.4, 1.1, fz * 1.4)), '#6cc8ff', 40, 5, 0.35, 0);
+    slash(p, yaw);
     for (const e of Enemies.list.values()) {
       const dx = e.pos.x - p.x;
       const dz = e.pos.z - p.z;
@@ -125,6 +146,17 @@ const Combat = (() => {
           tracers[i].l.geometry.dispose();
           tracers.splice(i, 1);
         }
+      for (let i = slashes.length - 1; i >= 0; i--) {
+        const s = slashes[i];
+        s.t -= dt;
+        s.m.material.opacity = Math.max(0, s.t / 0.18);
+        s.m.scale.setScalar(1 + (0.18 - s.t) * 1.5);
+        if (s.t <= 0) {
+          R.scene.remove(s.m);
+          s.m.material.dispose();
+          slashes.splice(i, 1);
+        }
+      }
       if (!C.on) return null;
       C.atkCd -= dt;
       C.cloakCd = Math.max(0, C.cloakCd - dt);
@@ -162,11 +194,7 @@ const Combat = (() => {
             act({ a: 'revive' });
           }
         } else C.revive = 0;
-        prompt = [
-          'E',
-          'Relever ' + (Story.role === 'dame' ? 'le Valet' : 'la Dame') + ' (maintenir)',
-          true,
-        ];
+        prompt = ['E', 'Relever ' + Story.name(Story.ctx.other) + ' (maintenir)', true];
       } else C.revive = 0;
       HUD.vitals(
         C.hp / C.max,

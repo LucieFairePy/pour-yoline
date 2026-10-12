@@ -28,11 +28,19 @@ const Player = (() => {
   const tmp = V3();
   const dir = V3();
 
-  P.init = (role) => {
-    P.role = role;
-    P.avatar = Avatar.build(role);
+  P.init = (who) => {
+    const look = CONFIG.players[who].look;
+    P.who = who;
+    P.role = look;
+    P.avatar = Avatar.build(look);
     P.avatar.addTo(R.scene);
-    P.teleport(City.spawns[role], 0);
+    P.weapon = Weapons.attach(P.avatar);
+    P.teleport(City.spawns[look], 0);
+  };
+  P.setKit = (kit) => {
+    P.role = kit;
+    P.lockTarget = -1;
+    if (P.mode === 'grapple') P.mode = 'walk';
   };
 
   P.teleport = (pos, yaw) => {
@@ -216,7 +224,8 @@ const Player = (() => {
       },
       t,
     );
-    if (!P.rope) P.rope = Rope.create(P.role === 'dame' ? '#ff5f8a' : '#6cc8ff');
+    if (!P.rope) P.rope = Rope.create(Avatar.LOOK[P.avatar.role].glow);
+    P.weapon.update(dt, Combat.on ? (P.role === 'dame' ? 'rifle' : 'sword') : null, P.punch || 0);
     const tg = P.mode === 'grapple' && P.targets && P.targets()[P.target];
     P.rope.update(dt, a.hand(handV), !!tg, tg || null);
   };
@@ -242,6 +251,7 @@ const Player = (() => {
     Combat.on ? Math.round(Combat.hp) : 100,
     Combat.down ? 1 : 0,
     Combat.cloak > 0 ? 1 : 0,
+    +(Combat.punch || 0).toFixed(2),
   ];
 
   return P;

@@ -23,12 +23,18 @@ const Remote = (() => {
     get has() {
       return buf.length > 0;
     },
-    init(role) {
-      this.role = role;
-      avatar = Avatar.build(role);
+    init(who) {
+      const look = CONFIG.players[who].look;
+      this.who = who;
+      this.role = look;
+      avatar = Avatar.build(look);
       avatar.addTo(R.scene);
       avatar.visible = false;
-      line = Rope.create(role === 'dame' ? '#ff5f8a' : '#6cc8ff');
+      this.weapon = Weapons.attach(avatar);
+      line = Rope.create(Avatar.LOOK[look].glow);
+    },
+    setKit(kit) {
+      this.role = kit;
     },
     push(s) {
       const now = performance.now();
@@ -70,6 +76,7 @@ const Remote = (() => {
         hp: s[13] == null ? 100 : s[13],
         down: !!s[14],
         cloak: !!s[15],
+        punch: s[16] || 0,
       };
       if (s[9]) tgt.set(s[10], s[11], s[12]);
       avatar.ghost(state.cloak ? 1 : 0);
@@ -78,6 +85,11 @@ const Remote = (() => {
       avatar.root.rotation.y = yaw;
       const gy = Phys.groundAt(pos.x, pos.y + 0.1, pos.z);
       avatar.update(dt, { ...state, groundY: gy, hand: this.handPose }, t);
+      this.weapon.update(
+        dt,
+        Combat.on ? (this.role === 'dame' ? 'rifle' : 'sword') : null,
+        state.punch || 0,
+      );
       const on = state.mode === 'grapple' && !!s[9];
       line.update(dt, avatar.hand(handV), on, on ? tgt : null);
     },

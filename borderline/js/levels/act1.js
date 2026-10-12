@@ -26,7 +26,7 @@
       Sound.play('reveal');
     }
     if (st === 3) {
-      HUD.objective(r === 'dame' ? A.winch.grapple : 'Elle arrive. Attends-la de l’autre côté.');
+      HUD.objective(r === 'dame' ? A.winch.grapple : '{Il} arrive. Attends-{le} de l’autre côté.');
       if (r === 'valet') c.spawn(Arena.spawn(3, 'valet'), 0);
       Arena.screen.show('Le grappin', 'Vise les anneaux · F', '#ff5f8a');
       Sound.play('reveal');

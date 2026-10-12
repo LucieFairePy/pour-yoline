@@ -1,4 +1,7 @@
 const HUD = (() => {
+  // names and pronouns depend on who carries which kit this chapter
+  const F = (s) => (typeof Story !== 'undefined' && Story.fmt ? Story.fmt(s) : s);
+  const put = (el, t) => Icons.set(el, F(t));
   const el = {
     root: $('hud'),
     obj: $('objective'),
@@ -58,11 +61,11 @@ const HUD = (() => {
       const { who, text, hold } = queue.shift();
       typing = true;
       el.sub.hidden = false;
-      Icons.set(el.subWho, who || '');
+      put(el.subWho, who || '');
       el.subText.textContent = '';
       const chars = Array.from(text);
       for (let i = 1; i <= chars.length; i++) {
-        Icons.set(el.subText, chars.slice(0, i).join(''));
+        put(el.subText, chars.slice(0, i).join(''));
         await sleep(chars[i - 1] === ' ' ? 18 : 28);
       }
       await sleep(hold || 1600 + text.length * 35);
@@ -76,19 +79,19 @@ const HUD = (() => {
       el.root.hidden = !v;
     },
     role(r) {
-      Icons.set(el.suit, CONFIG.roles[r].suit);
+      put(el.suit, CONFIG.roles[r].suit);
     },
     objective(t) {
       if (t === lastObj) return;
       lastObj = t;
       el.obj.classList.add('off');
       setTimeout(() => {
-        Icons.set(el.objText, t || '');
+        put(el.objText, t || '');
         el.obj.classList.toggle('off', !t);
       }, 300);
     },
     say(text, who = CONFIG.master, hold) {
-      queue.push({ who, text, hold });
+      queue.push({ who: F(who), text: F(text), hold });
       runQueue();
     },
     get talking() {
@@ -101,11 +104,11 @@ const HUD = (() => {
       el.prompt.hidden = !key;
       if (!key) return;
       el.pKey.textContent = Input.pad ? { E: 'X', F: 'RB', C: 'Y', Espace: 'A' }[key] || key : key;
-      Icons.set(el.pText, text);
+      put(el.pText, text);
       el.prompt.classList.toggle('hold', !!hold);
     },
     visa(t) {
-      Icons.set(el.visa, t);
+      put(el.visa, t);
     },
     status(t) {
       el.status.innerHTML = Icons.glyphs(t);
@@ -148,11 +151,11 @@ const HUD = (() => {
       el.partner.classList.add('on');
     },
     card(corner, big, title, sub) {
-      Icons.set($('cardCorner'), corner);
-      Icons.set($('cardCorner2'), corner);
-      Icons.set($('cardBig'), big);
-      Icons.set($('cardTitle'), title);
-      Icons.set($('cardSub'), sub);
+      put($('cardCorner'), corner);
+      put($('cardCorner2'), corner);
+      put($('cardBig'), big);
+      put($('cardTitle'), title);
+      put($('cardSub'), sub);
       const c = $('card');
       c.hidden = false;
       c.querySelectorAll('.card-face,.card-title,.card-sub').forEach((n) => {
@@ -167,8 +170,8 @@ const HUD = (() => {
     combat(on) {
       $('combat').hidden = !on;
       if (!on) $('bossbar').hidden = true;
-      $('vMeName').textContent = Story.role === 'dame' ? 'La Dame' : 'Le Valet';
-      $('vMateName').textContent = Story.role === 'dame' ? 'Le Valet' : 'La Dame';
+      $('vMeName').textContent = Story.name(Story.role);
+      $('vMateName').textContent = Story.name(Story.ctx.other);
       $('vAbil').hidden = Story.role !== 'valet';
     },
     vitals(me, mate, down, mateDown, revive, abil, cloaked) {
@@ -191,9 +194,9 @@ const HUD = (() => {
         return;
       }
       b.hidden = false;
-      Icons.set($('bossName'), name);
+      put($('bossName'), name);
       $('bossFill').style.transform = `scaleX(${clamp(frac, 0, 1)})`;
-      Icons.set($('bossPhase'), phase || '');
+      put($('bossPhase'), phase || '');
     },
     hurt() {
       const h = $('hurt');
@@ -221,15 +224,15 @@ const HUD = (() => {
         m.hidden = true;
         return;
       }
-      Icons.set($('manTitle'), spec.title);
-      Icons.set($('manIntro'), spec.intro);
+      put($('manTitle'), spec.title);
+      put($('manIntro'), spec.intro);
       $('manRules').innerHTML = spec.rules
         .map(
           ([s, r]) =>
             `<li><span class="sym">${Icons.glyphs(s)}</span><span>${Icons.glyphs(r)}</span></li>`,
         )
         .join('');
-      Icons.set($('manOutro'), spec.outro);
+      put($('manOutro'), spec.outro);
       m.hidden = false;
     },
     closeLetter() {
@@ -262,7 +265,7 @@ const HUD = (() => {
           }
           await sleep(700);
         }
-        Icons.set($('letterSig'), sig);
+        put($('letterSig'), sig);
         $('letterBtn').hidden = false;
         await dismiss($('letterBtn'));
         if (over) return;
@@ -283,9 +286,9 @@ const HUD = (() => {
     },
     memory(tag, title, text) {
       return new Promise((res) => {
-        Icons.set($('memTag'), tag);
-        Icons.set($('memTitle'), title);
-        Icons.set($('memText'), text);
+        put($('memTag'), tag);
+        put($('memTitle'), title);
+        put($('memText'), text);
         $('memory').hidden = false;
         Input.unlock();
         Input.enabled = false;

@@ -1,6 +1,18 @@
 const CONFIG = {
   her: 'Yoline',
-  me: 'Moi',
+  me: 'William',
+  // who picks which astronaut in the lobby; the kit (dame / valet) changes per chapter
+  players: {
+    yoline: { name: 'Yoline', look: 'dame', fem: true },
+    william: { name: 'William', look: 'valet', fem: false },
+  },
+  kits: {
+    swap: {
+      dame: 'Les rôles s’inversent. Ce chapitre, c’est toi qui vois ce que {mate} ne voit pas.',
+      valet:
+        'Les rôles s’inversent. Ce chapitre, c’est toi qui protèges {mate}, et qui portes ce qu’{il} ne peut pas porter.',
+    },
+  },
   master: 'Le Maître du jeu',
   joker: 'Le Joker',
   intro: {
@@ -24,14 +36,15 @@ const CONFIG = {
     objective:
       'Retrouve l’autre joueur. Pas de carte, pas de flèche : écoute son signal. Appelle avec C.',
     welcome: [
-      'Bienvenue, Yoline.',
+      'Bienvenue, Yoline. Bienvenue, William.',
       'Joueurs : 2. Visa : 3 jours.',
       'Réunissez les cartes pour rentrer.',
       'Une seule règle : ici, on ne gagne jamais seul.',
     ],
     abilities: {
-      dame: 'Capacité reçue : le grappin. Et tes yeux voient ce que les siens ne voient pas.',
-      valet: 'Capacité reçue : le double saut. Et tu portes ce qu’elle ne peut pas porter.',
+      dame: 'Capacités de ce chapitre : le grappin, et tes yeux voient ce que les siens ne voient pas.',
+      valet:
+        'Capacités de ce chapitre : le double saut renforcé, et tu portes ce que {mate} ne peut pas porter.',
     },
   },
   city: {
@@ -55,7 +68,7 @@ const CONFIG = {
     hint: {
       dame: 'Clic gauche : portail bleu. Clic droit (ou F) : portail orange. Seulement sur les panneaux blancs.',
       valet:
-        'Elle pose les portails. Toi, tu passes. Et plus tu entres vite, plus tu ressors vite.',
+        '{Il} pose les portails. Toi, tu passes. Et plus tu entres vite, plus tu ressors vite.',
     },
     s1: {
       dame: 'Un bouton derrière la vitre. Pose un portail sur le panneau près de vous, l’autre sur celui de la pièce.',
@@ -79,24 +92,24 @@ const CONFIG = {
     intro: 'Épreuve de combat. Les Veilleurs veulent voir si vous savez vous battre ensemble.',
     entrance: 'Entrez dans la salle. Ensemble.',
     hint: {
-      dame: 'Ton arc de lumière : clic gauche (ou RT). Vise, tire. C’est toi qui fais les dégâts.',
+      dame: 'Ton fusil : clic gauche (ou RT), maintiens pour tirer en rafale. C’est toi qui fais les dégâts.',
       valet:
-        'Ton gantelet : clic gauche (ou RT), il étourdit. Clic droit (ou F) : le Voile, tu deviens invisible.',
+        'Ton épée : clic gauche (ou RT), elle étourdit. Clic droit (ou F) : le Voile, tu deviens invisible.',
     },
     wave1: 'Vague 1 : débarrassez-vous des Pions.',
-    wave2: 'Vague 2 : les Tours ont un bouclier. Lui l’étourdit, elle tire.',
-    towers: 'Un bouclier ne tombe que si le Valet frappe. Ensuite, la Dame peut tirer.',
+    wave2: 'Vague 2 : les Tours ont un bouclier. L’épée l’étourdit, le fusil l’achève.',
+    towers: 'Un bouclier ne tombe que sous l’épée. Ensuite, le fusil peut tirer.',
     gate: 'La porte s’ouvre. Le Roi vous attend.',
     phase1: 'Personne ne touche le Roi. Personne.',
     phase2: 'Assez joué. À genoux.',
     phase3: 'Je garde votre Oui dans ce cristal.',
     phase1Obj: {
-      dame: 'Phase 1 : il est sous bouclier. Garde les Pions loin pendant que le Valet passe la grille.',
+      dame: 'Phase 1 : le Roi est sous bouclier. Garde les Pions loin pendant que {mate} passe la grille.',
       valet:
         'Phase 1 : deviens invisible (clic droit), traverse la grille laser derrière le trône, coupe le bouclier.',
     },
     phase2Obj: {
-      dame: 'Phase 2 : esquive les cercles rouges. Quand il est étourdi, vise le cœur lumineux.',
+      dame: 'Phase 2 : esquive les cercles rouges. Quand le Roi est étourdi, vise le cœur lumineux.',
       valet:
         'Phase 2 : esquive les cercles rouges. Juste après sa frappe, frappe-le pour l’étourdir.',
     },
@@ -116,23 +129,24 @@ const CONFIG = {
     intro: 'Épreuve d’adresse. Les Veilleurs ont trouvé ce jeu dans vos souvenirs d’enfance.',
     rule: 'Quand elle chante, avancez. Quand elle se retourne, plus un geste.',
     hint: {
-      dame: 'Tes yeux voient ce que les siens ne voient pas : quand ses yeux s’allument en rose, elle va vraiment regarder. Préviens-le.',
+      dame: 'Tu vois ce que {mate} ne voit pas : quand les yeux de la Poupée s’allument en rose, elle va vraiment regarder. Préviens-{le}.',
       valet:
-        'Toi, tu ne vois pas ses yeux. Elle, si. Écoute-la : quand elle dit « stop », tu t’arrêtes.',
+        'Toi, tu ne vois pas les yeux de la Poupée. {mate}, si. Écoute-{le} : quand {il} dit « stop », tu t’arrêtes.',
     },
     zone1: 'Zone 1 · Avancez quand elle chante.',
     zone2: {
-      dame: 'Zone 2 · Elle fait semblant. Seuls ses yeux disent la vérité : dis-lui si c’est un vrai regard.',
-      valet: 'Zone 2 · Elle fait semblant de se retourner. Demande-lui si c’est pour de vrai.',
+      dame: 'Zone 2 · La Poupée fait semblant. Seuls ses yeux disent la vérité : dis à {mate} si c’est un vrai regard.',
+      valet:
+        'Zone 2 · La Poupée fait semblant de se retourner. Demande à {mate} si c’est pour de vrai.',
     },
     zone3: {
-      dame: 'Zone 3 · Elle ne regarde plus que toi. Cache-toi derrière lui et avance dans son ombre.',
+      dame: 'Zone 3 · La Poupée ne regarde plus que toi. Cache-toi derrière {mate} et avance dans son ombre.',
       valet:
-        'Zone 3 · Elle ne quitte plus la Dame des yeux. Mets-toi entre elles deux et avancez ensemble.',
+        'Zone 3 · La Poupée ne quitte plus {mate} des yeux. Mets-toi entre la Poupée et {lui}, et avancez ensemble.',
     },
     finish: 'Touchez la Poupée. Ensemble.',
     caught: 'Touché·e. Retour à la ligne.',
-    shielded: 'Il te cache. Elle ne te voit pas.',
+    shielded: '{Il} te cache. La Poupée ne te voit pas.',
     sing: 'Un, deux, trois…',
     turn: 'Soleil !',
     fake: '… ou pas.',
@@ -145,22 +159,22 @@ const CONFIG = {
     intro:
       'Épreuve de combat. Sous la ville, les Veilleurs gardent leurs trésors… et leurs gardiens.',
     hint: {
-      dame: 'Ton arc de lumière : clic gauche. Et tes yeux voient les spectres que lui ne voit pas.',
+      dame: 'Ton fusil : clic gauche. Et tes yeux voient les spectres que {mate} ne voit pas.',
       valet:
-        'Ton gantelet : clic gauche. Le Voile : clic droit. Les spectres, seule elle les voit.',
+        'Ton épée : clic gauche. Le Voile : clic droit. Les spectres, seul{pe} {mate} les voit.',
     },
     room1: 'L’Antichambre : nettoyez la salle.',
     levers: 'Deux leviers, deux mains. Tenez-les en même temps (E).',
     room2: 'La Nef : les Cavaliers chargent en ligne droite. Esquivez sur le côté.',
     room3: {
-      dame: 'L’Ossuaire : des spectres. Toi seule les vois. Tire dessus pour les révéler, il les achève.',
+      dame: 'L’Ossuaire : des spectres. Toi seul{e} les vois. Tire dessus pour les révéler, {mate} les achève.',
       valet:
-        'L’Ossuaire : des spectres invisibles. Quand elle les touche, ils apparaissent. Frappe-les.',
+        'L’Ossuaire : des spectres invisibles. Quand {mate} les touche, ils apparaissent. Frappe-les.',
     },
     bossIn: 'Le Cavalier noir garde la carte.',
     bossObj: {
-      dame: 'Quand il charge, écarte-toi. S’il percute un pilier, il est sonné : vise son cœur.',
-      valet: 'Attire sa charge vers un pilier. Sonné, frappe-le. Puis elle vise le cœur.',
+      dame: 'Quand le Cavalier charge, écarte-toi. S’il percute un pilier, il est sonné : vise son cœur.',
+      valet: 'Attire sa charge vers un pilier. Sonné, frappe-le. Puis {mate} vise le cœur.',
     },
     bossStun: 'Il s’est assommé contre le pilier !',
     chest: 'Le coffre. Ouvrez-le ensemble (E).',
@@ -202,25 +216,25 @@ const CONFIG = {
     },
     door: 'Les portes du Caveau. Entrez ensemble.',
     roles: {
-      dame: 'Ton rôle : l’Œil. Toi seule vois la séquence de symboles que montre l’Oracle.',
+      dame: 'Ton rôle : l’Œil. Toi seul{e} vois la séquence de symboles que montre l’Oracle.',
       valet:
-        'Ton rôle : l’Égide. Toi seul peux activer les piliers, et ton bouclier (F) protège quand l’Oracle regarde.',
+        'Ton rôle : l’Égide. Toi seul{e} peux activer les piliers, et ton bouclier (F) protège quand l’Oracle regarde.',
     },
     ritual: {
-      dame: 'Rituel : lis-lui la séquence (♥ ♣ ♦ ♠). Garde les sbires loin de lui.',
-      valet: 'Rituel : elle voit la séquence. Active les piliers dans son ordre (E).',
+      dame: 'Rituel : lis la séquence à {mate} (♥ ♣ ♦ ♠). Garde les sbires loin de {lui}.',
+      valet: 'Rituel : {mate} voit la séquence. Active les piliers dans son ordre (E).',
     },
     ritualSwap: {
-      dame: 'Dernier rituel : l’Œil est passé à lui. Il voit la séquence, toi tu actives les piliers (E).',
-      valet: 'Dernier rituel : l’Œil est à toi. Lis-lui la séquence, elle active les piliers.',
+      dame: 'Dernier rituel : l’Œil est passé à {mate}. {Il} voit la séquence, toi tu actives les piliers (E).',
+      valet: 'Dernier rituel : l’Œil est à toi. Lis-lui la séquence, {il} active les piliers.',
     },
     wrong: 'Dissonance. Mauvais symbole : la séquence recommence.',
     good: 'Symbole juste.',
     broken: 'L’Oracle est brisé ! Il descend : tout ce que vous avez.',
     gaze: 'Le Regard arrive : tous sous l’Égide !',
     gazeObj: {
-      dame: 'Le Regard : rejoins-le sous son bouclier.',
-      valet: 'Le Regard : lève l’Égide (F), qu’elle soit dessous.',
+      dame: 'Le Regard : rejoins {mate} sous son bouclier.',
+      valet: 'Le Regard : lève l’Égide (F), que {mate} soit dessous.',
     },
     rise: 'L’Oracle remonte. Nouveau rituel.',
     enrage: 'Le Caveau se referme. On recommence la rencontre.',
@@ -235,8 +249,8 @@ const CONFIG = {
       title: 'Un, deux, trois, Soleil',
       sub: 'Épreuve d’adresse · réussie',
       lines: [
-        'Elle voyait le danger.',
-        'Il se mettait devant.',
+        'L’un voyait le danger.',
+        'L’autre se mettait devant.',
         'Deux cartes. Le Borderland commence à vous craindre un peu.',
       ],
     },
@@ -246,8 +260,8 @@ const CONFIG = {
       title: 'La Crypte',
       sub: 'Épreuve de combat · réussie',
       lines: [
-        'Dans le noir, elle voyait.',
-        'Il frappait là où elle visait.',
+        'Dans le noir, l’un voyait.',
+        'L’autre frappait là où il fallait.',
         'Quatre cartes. Le Oui reprend des couleurs.',
       ],
     },
@@ -290,8 +304,8 @@ const CONFIG = {
       title: 'Les Portes',
       sub: 'Épreuve de logique · réussie',
       lines: [
-        'Elle ouvrait les chemins.',
-        'Il les traversait sans hésiter.',
+        'L’un ouvrait les chemins.',
+        'L’autre les traversait sans hésiter.',
         'Six cartes. Le Oui se souvient de vous.',
       ],
     },
@@ -301,8 +315,8 @@ const CONFIG = {
       title: 'Le Roi de Pique',
       sub: 'Épreuve de combat · réussie',
       lines: [
-        'Elle frappait, il protégeait.',
-        'Ou l’inverse. Personne n’a su dire.',
+        'Un fusil, une épée.',
+        'Et chacun son tour. Personne n’a su dire qui portait l’autre.',
         'Cinq cartes. Le Oui recommence à briller.',
       ],
     },
@@ -323,21 +337,21 @@ const CONFIG = {
     title: 'La Balance',
     intro: 'Épreuve de confiance. Ce que l’un ne voit pas, l’autre le voit.',
     bridge: {
-      dame: 'Le pont de gauche est invisible pour lui. Toi, tu le vois. Guide-le.',
-      valet: 'Le pont de gauche est invisible pour toi. Elle, elle le voit. Écoute-la.',
-      dame2: 'Le pont de droite a des dalles fausses. Lui seul sait lesquelles.',
-      valet2: 'Le pont de droite a des dalles fausses pour elle. Toi seul vois les vraies.',
+      dame: 'Le pont de gauche est invisible pour {mate}. Toi, tu le vois. Guide-{le}.',
+      valet: 'Le pont de gauche est invisible pour toi. {mate}, {lui}, le voit. Écoute-{le}.',
+      dame2: 'Le pont de droite a des dalles fausses. {mate} seul{pe} sait lesquelles.',
+      valet2: 'Le pont de droite a des dalles fausses pour {mate}. Toi seul{e} vois les vraies.',
     },
     winch: {
-      dame: 'Tiens le treuil. Tant que tu tiens, il avance.',
-      valet: 'Accroche-toi au harnais. Elle seule peut te faire traverser.',
+      dame: 'Tiens le treuil. Tant que tu tiens, {il} avance.',
+      valet: 'Accroche-toi au harnais. {mate} seul{pe} peut te faire traverser.',
       grapple: 'À toi. Vise les anneaux et lance ton grappin.',
     },
     cabins: {
       enter: 'Chacun dans sa cabine.',
       rule: 'Un seul sortira. Appuie pour te sauver.',
-      failDame: 'Raté. Tu as pensé à toi. Réessaie, et pense à lui.',
-      failValet: 'Raté. Tu as pensé à toi. Réessaie, et pense à elle.',
+      failDame: 'Raté. Tu as pensé à toi. Réessaie, et pense à {lui}.',
+      failValet: 'Raté. Tu as pensé à toi. Réessaie, et pense à {lui}.',
       failBoth: 'Vous avez appuyé tous les deux. Chacun a voulu se sauver.',
       hints: [
         'Le plafond ralentit à la fin. Personne n’a dit qu’il vous écraserait.',
@@ -352,22 +366,22 @@ const CONFIG = {
     title: 'Le Labyrinthe noir',
     intro: 'Épreuve de communication. Chacun sait ce que l’autre ignore.',
     maze: {
-      dame: 'Il est dans le noir. Toi, tu vois tout d’en haut : les murs, les pièges rouges. Guide-le jusqu’à la sortie.',
+      dame: '{mate} est dans le noir. Toi, tu vois tout d’en haut : les murs, les pièges rouges. Guide-{le} jusqu’à la sortie.',
       valet:
-        'Tu es dans le noir. Elle voit tout d’en haut. Écoute-la, et évite les pièges que tu ne vois pas.',
+        'Tu es dans le noir. {mate} voit tout d’en haut. Écoute-{le}, et évite les pièges que tu ne vois pas.',
       trap: 'Piège. Retour à l’entrée.',
     },
     bomb: {
-      dame: 'Il a une bombe à cœurs entre les mains. Toi, tu as le manuel. Ouvre-le au pupitre.',
+      dame: '{mate} a une bombe à cœurs entre les mains. Toi, tu as le manuel. Ouvre-le au pupitre.',
       valet:
-        'Une bombe à cœurs. Décris-lui l’écran : elle a le manuel. Coupe le bon fil. 3 modules.',
+        'Une bombe à cœurs. Décris-lui l’écran : {mate} a le manuel. Coupe le bon fil. 3 modules.',
       ok: 'Module désamorcé.',
       boom: 'Boum. Des cœurs partout. On recommence ce module.',
       done: 'Bombe désamorcée.',
     },
     swap: {
-      dame: 'À toi le noir, maintenant. Il voit les pièges d’en haut. Écoute-le.',
-      valet: 'À toi de guider. Elle est dans le noir. Les pièges rouges, toi seul les vois.',
+      dame: 'À toi le noir, maintenant. {mate} voit les pièges d’en haut. Écoute-{le}.',
+      valet: 'À toi de guider. {mate} est dans le noir. Les pièges rouges, toi seul{e} les vois.',
     },
     cardLine: 'La carte vous attend. Ensemble.',
     manual: {
@@ -402,22 +416,22 @@ const CONFIG = {
     intro: 'Vous êtes séparés. Ce que l’un fait ouvre le chemin de l’autre.',
     dame: [
       'Allume les 9 dalles. Chaque dalle change aussi ses voisines.',
-      'Un pont est apparu dans son monde. Attends qu’il trouve l’interrupteur.',
-      'Ta porte s’est ouverte. Active les symboles dans le bon ordre : lui seul le connaît.',
+      'Un pont est apparu dans son monde. Attends que {mate} trouve l’interrupteur.',
+      'Ta porte s’est ouverte. Active les symboles dans le bon ordre : {lui} seul{pe} le connaît.',
       '',
-      'Son second pont est là. Attends qu’il actionne le dernier interrupteur.',
+      'Son second pont est là. Attends que {mate} actionne le dernier interrupteur.',
       'La dernière porte est ouverte. Va au bout.',
     ],
     valet: [
-      'Cours. Le Joker te suit. Il te faut un pont : elle seule peut le créer.',
+      'Cours. Le Joker te suit. Il te faut un pont : {mate} seul{pe} peut le créer.',
       'Le pont est apparu. Trouve l’interrupteur au bout.',
-      'Lis les symboles sur le mur : elle en a besoin. Attends le second pont.',
+      'Lis les symboles sur le mur : {mate} en a besoin. Attends le second pont.',
       'Le second pont est là. Dernier interrupteur, au bout.',
     ],
     voice: 'Vos voix reviennent, à mesure que vos mondes se rapprochent.',
     converge: 'Sautez. Ensemble. Attrapez-vous.',
     caught: 'Vous vous êtes rattrapés.',
-    wall: 'Le Joker t’a rattrapé.',
+    wall: 'Le Joker t’a rattrapé{e}.',
   },
   final: {
     title: 'Dame de Cœur',
@@ -533,7 +547,7 @@ const CONFIG = {
     ['role', 'Écrit, imaginé et construit par'],
     ['name', 'Moi'],
     ['role', 'Joué par'],
-    ['name', 'La Dame & le Valet'],
+    ['name', 'Yoline & William'],
     ['role', 'Inspiré par'],
     ['name', 'Alice in Borderland · Split Fiction · Big Walk · Valorant · Squid Game · Destiny'],
     ['role', 'Merci d’avoir joué'],
