@@ -201,5 +201,7 @@ const Icons = (() => {
 
   if (typeof document !== 'undefined') mount();
 
-  return { svg, rich, glyphs, set, has, draw, fillText, mount, esc };
+  const of = (glyph) => GLYPH[glyph] || glyph;
+
+  return { svg, rich, glyphs, set, has, draw, fillText, mount, esc, of };
 })();

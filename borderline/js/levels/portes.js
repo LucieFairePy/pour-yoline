@@ -27,8 +27,13 @@
       Portes.screen.show('♦ 9', A.title, '#ff9a3a');
       Sound.play('reveal');
     }
-    if (prev && st === 3 && r === 'dame' && Portes.rel(Player.body.p).z < 60)
-      c.spawn(Portes.spawn(3, r), 0);
+    const q = Portes.rel(Player.body.p);
+    if (prev && st === 3 && r === 'dame' && q.z < 60) c.spawn(Portes.spawn(3, r), 0);
+    else if (prev && Portes.inCage(q)) {
+      c.spawn(st === 4 ? Portes.P(-6, 2, 80) : Portes.spawn(st, r), 0);
+      Fx.burst(Player.body.p.clone().add(V3(0, 1, 0)), '#bfe6ff', 40, 4, 0.5, 0);
+      Sound.play('portal');
+    }
   };
 
   const teleport = (from, to) => {
@@ -40,8 +45,9 @@
     const dn = d.dot(from.normal);
     if (dn < -0.3 || dn > 0.75) return false;
     const lat = d.clone().addScaledVector(from.normal, -dn);
-    const u = lat.dot(from.panel.right) / (up ? 1.25 : 0.75);
-    const v = lat.dot(from.panel.up) / (up ? 1.25 : 1.0);
+    // floor and ceiling portals catch a falling player more generously
+    const u = lat.dot(from.panel.right) / (up ? 1.6 : 0.75);
+    const v = lat.dot(from.panel.up) / (up ? 1.6 : 1.0);
     if (u * u + v * v > 1.2) return false;
     if (b.v.dot(from.normal) > 1 && dn > 0.2) return false;
     const speed = Math.max(b.v.length(), Player.preSpeed || 0, 4);

@@ -10,7 +10,9 @@ const Raid = (() => {
   const ARENA = V3(0, FLOOR, 96);
   const AR = 22;
   const SYMS = ['♥', '♣', '♦', '♠'];
-  const SCOL = ['#ff5f8a', '#7cf0c8', '#ffb050', '#9fb4ff'];
+  // real card colours: hearts and diamonds red, clubs and spades black (lit silver)
+  const SCOL = ['#ff2a48', '#dfe6f2', '#ff5a2a', '#dfe6f2'];
+  const INK = ['#e0102e', '#0c0c10', '#e8202a', '#0c0c10'];
   let built = false;
   let screen = null;
   let card = null;
@@ -48,39 +50,16 @@ const Raid = (() => {
     1,
     1,
   );
-  const stoneTex = LvKit.tex(512, 512, (g, w, h) => {
-    LvKit.grain(g, w, h, '#2e3238', 0.12, 9000);
-    g.strokeStyle = 'rgba(0,0,0,0.3)';
-    g.lineWidth = 4;
-    for (let i = 0; i <= 4; i++) {
-      g.beginPath();
-      g.moveTo(0, (i * h) / 4);
-      g.lineTo(w, (i * h) / 4);
-      g.stroke();
-      g.beginPath();
-      g.moveTo((i * w) / 4, 0);
-      g.lineTo((i * w) / 4, h);
-      g.stroke();
-    }
-  });
-  const stone = new THREE.MeshStandardMaterial({
-    map: stoneTex,
-    color: '#a8b4b8',
-    roughness: 0.75,
-    metalness: 0.1,
-  });
-  const trim = new THREE.MeshStandardMaterial({
-    color: '#d6ad5e',
-    metalness: 1,
-    roughness: 0.25,
+  // 1024² procedural surfaces, triplanar in world space (js/world/textures.js)
+  const stone = Tex.mat('stone', { color: '#a2aeb2', scale: 3.5, bump: 1.2 });
+  const trim = Tex.mat('metal', {
+    color: '#e0b868',
+    metal: 1,
+    rough: 0.8,
+    scale: 1.5,
     emissive: '#2a1a04',
   });
-  const dark = new THREE.MeshStandardMaterial({
-    color: '#1a2024',
-    metalness: 0.6,
-    roughness: 0.4,
-    emissive: '#04100c',
-  });
+  const dark = Tex.mat('rock', { color: '#3a4448', scale: 8, metal: 0.2, emissive: '#04100c' });
 
   const plat = (x, y, z, sx, sz, edge = '#7cf0c8') => {
     K.solid(x, y - 0.5, z, sx, 1, sz, stone);
@@ -104,13 +83,14 @@ const Raid = (() => {
   const symTex = (i) =>
     LvKit.tex(256, 256, (g) => {
       g.clearRect(0, 0, 256, 256);
-      g.fillStyle = SCOL[i];
-      g.shadowColor = SCOL[i];
-      g.shadowBlur = 30;
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.font = '190px Georgia';
-      Icons.fillText(g, SYMS[i], 128, 140);
+      // a white glowing halo keeps the black suits readable against the dark sky
+      g.shadowColor = INK[i] === '#0c0c10' ? '#ffffff' : '#ff4a5a';
+      g.shadowBlur = 34;
+      g.fillStyle = '#ffffff';
+      Icons.draw(g, Icons.of(SYMS[i]), 128, 128, 196);
+      g.shadowBlur = 0;
+      g.fillStyle = INK[i];
+      Icons.draw(g, Icons.of(SYMS[i]), 128, 128, 176);
     });
 
   const build = () => {
@@ -148,18 +128,20 @@ const Raid = (() => {
     plat(0, FLOOR, 57, 26, 18);
     // signs: suits on each route start
     [
-      [-7, '♥', '#ff5f8a'],
-      [7, '♠', '#6cc8ff'],
+      [-7, '♥', '#e0102e'],
+      [7, '♠', '#0c0c10'],
     ].forEach(([x, s, c]) => {
       const sp = new THREE.Mesh(
         new THREE.PlaneGeometry(1.6, 1.6),
         new THREE.MeshBasicMaterial({
-          map: LvKit.tex(128, 128, (g) => {
+          map: LvKit.tex(256, 256, (g) => {
+            g.shadowColor = '#ffffff';
+            g.shadowBlur = 24;
+            g.fillStyle = '#ffffff';
+            Icons.draw(g, Icons.of(s), 128, 128, 190);
+            g.shadowBlur = 0;
             g.fillStyle = c;
-            g.textAlign = 'center';
-            g.textBaseline = 'middle';
-            g.font = '100px Georgia';
-            Icons.fillText(g, s, 64, 70);
+            Icons.draw(g, Icons.of(s), 128, 128, 170);
           }),
           transparent: true,
           toneMapped: false,

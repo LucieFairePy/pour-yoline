@@ -6,33 +6,18 @@ const Finale = (() => {
   R.scene.add(group);
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
-  const stone = new THREE.MeshStandardMaterial({ color: '#2a1a2e', roughness: 0.8 });
-  const wood = new THREE.MeshStandardMaterial({ color: '#3a2418', roughness: 0.7 });
+  const stone = Tex.mat('marble', { color: '#433848', scale: 7, rough: 0.9 });
+  const poleMat = Tex.mat('stone', { color: '#6a5a6e', scale: 1.5 });
+  const wood = Tex.mat('wood', { color: '#a87850', scale: 1.5 });
+  // radius of the meeting circle at the centre, shared with the level logic
+  const RING = 3.8;
   let built = false;
   let joker = null;
   let screen = null;
   let queen = null;
   let broken = false;
-
-  const cardTex = (top, mid, fg, bg) => {
-    const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 360;
-    const g = c.getContext('2d');
-    g.fillStyle = bg;
-    g.fillRect(0, 0, 256, 360);
-    g.strokeStyle = fg;
-    g.lineWidth = 6;
-    g.strokeRect(12, 12, 232, 336);
-    g.fillStyle = fg;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.font = 'bold 44px Georgia';
-    Icons.fillText(g, top, 40, 44);
-    g.font = '150px Georgia';
-    Icons.fillText(g, mid, 128, 190);
-    return new THREE.CanvasTexture(c);
-  };
+  let heart = null;
+  let column = null;
 
   const build = () => {
     if (built) return;
@@ -41,19 +26,43 @@ const Finale = (() => {
     const floor = new THREE.Mesh(new THREE.CylinderGeometry(17, 15, 2, 48), stone);
     floor.position.copy(P(0, -1, 0));
     group.add(floor);
-    Phys.box(O.x, O.y - 1, O.z, 24, 2, 24);
+    // the round floor (radius 17) as a union of boxes: walkable right up to its edge
+    [
+      [33.2, 7.2],
+      [31.2, 13.6],
+      [28, 19.2],
+      [24, 24],
+    ].forEach(([a, b]) => {
+      Phys.box(O.x, O.y - 1, O.z, a, 2, b);
+      Phys.box(O.x, O.y - 1, O.z, b, 2, a);
+    });
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(16.8, 0.08, 6, 96).rotateX(Math.PI / 2),
       glow('#ff5f8a', 1.6),
     );
     ring.position.copy(P(0, 0.02, 0));
     group.add(ring);
-    const heart = new THREE.Mesh(
-      new THREE.RingGeometry(2.6, 2.8, 64).rotateX(-Math.PI / 2),
-      glow('#ff5f8a', 1.4),
+    heart = new THREE.Mesh(
+      new THREE.RingGeometry(RING - 0.22, RING, 72).rotateX(-Math.PI / 2),
+      glow('#ff5f8a', 1),
     );
     heart.position.copy(P(0, 0.03, 0));
     group.add(heart);
+    // light column that rises while the two of you stand in the circle
+    column = new THREE.Mesh(
+      new THREE.CylinderGeometry(RING, RING, 8, 48, 1, true).translate(0, 4, 0),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#ff7aa0').multiplyScalar(1.4),
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      }),
+    );
+    column.position.copy(P(0, 0, 0));
+    group.add(column);
     [
       [-8, 6],
       [-5, 9],
@@ -77,23 +86,25 @@ const Finale = (() => {
         ch.position.copy(P(x + s * 0.9, 0.45, z));
         group.add(ch);
       }
-      Phys.box(O.x + x, O.y + 0.4, O.z + z, 1.2, 0.8, 1.2);
+      Phys.box(O.x + x, O.y + 0.4, O.z + z, 2.3, 0.8, 1.2);
     });
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * TAU;
       const pole = new THREE.Mesh(
         new THREE.CylinderGeometry(0.07, 0.1, 4.5, 6).translate(0, 2.25, 0),
-        stone,
+        poleMat,
       );
       pole.position.copy(P(Math.cos(a) * 15, 0, Math.sin(a) * 15));
       const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), glow('#ffb070', 2.2));
       b.position.copy(P(Math.cos(a) * 15, 4.6, Math.sin(a) * 15));
       group.add(pole, b);
+      Phys.box(O.x + Math.cos(a) * 15, O.y + 2.25, O.z + Math.sin(a) * 15, 0.25, 4.5, 0.25);
     }
     queen = new THREE.Mesh(
       new THREE.PlaneGeometry(3.6, 5),
       new THREE.MeshBasicMaterial({
-        map: cardTex('D', '♥', '#d8324f', '#fff8f0'),
+        map: Tex.card('D', '♥'),
+        alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,
       }),
@@ -105,13 +116,14 @@ const Finale = (() => {
     joker = new THREE.Mesh(
       new THREE.PlaneGeometry(1.8, 2.5),
       new THREE.MeshBasicMaterial({
-        map: cardTex('J', '\u{1F0CF}', '#ff2a3a', '#120208'),
+        map: Tex.card('J', ''),
+        alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,
         transparent: true,
       }),
     );
-    joker.material.color.setScalar(1.6);
+    joker.material.color.setScalar(1.15);
     joker.position.copy(P(0, 3, 0));
     group.add(joker);
     screen = makeScreen(14, 7, 1024);
@@ -131,6 +143,8 @@ const Finale = (() => {
       return built;
     },
     center: () => P(0, 0, 0),
+    RING,
+    inRing: (p) => Math.hypot(p.x - O.x, p.z - O.z) < RING + 0.4 && Math.abs(p.y - O.y) < 3,
     spawn: (who) => P(who === 'dame' ? -3 : 3, 0, -11),
     breakJoker() {
       if (broken || !joker) return;
@@ -139,9 +153,21 @@ const Finale = (() => {
       Sound.play('shatter');
       joker.visible = false;
     },
-    update(dt, t, step) {
+    update(dt, t, step, inside = 0) {
       if (!built) return;
       screen.update(dt, t);
+      // the circle lights up with each player standing in it
+      const want = step === 'joker' ? [0.8, 1.8, 3.2][inside] : 1.2;
+      const pulse = inside === 2 ? Math.sin(t * 9) * 0.4 : 0;
+      const k = damp(heart.userData.k || 0.8, want + pulse, 6, dt);
+      heart.userData.k = k;
+      heart.material.color.set('#ff5f8a').multiplyScalar(k);
+      column.material.opacity = damp(
+        column.material.opacity,
+        step === 'joker' && inside === 2 ? 0.28 : 0,
+        4,
+        dt,
+      );
       if (joker && joker.visible) {
         joker.rotation.y = t * 1.8;
         joker.position.y = O.y + 3 + Math.sin(t * 2.3) * 0.25;

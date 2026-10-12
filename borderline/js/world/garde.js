@@ -4,15 +4,13 @@ const Garde = (() => {
   const group = new THREE.Group();
   group.visible = false;
   R.scene.add(group);
-  const stone = new THREE.MeshStandardMaterial({
-    color: '#1e1626',
-    roughness: 0.85,
-    metalness: 0.15,
-  });
-  const trim = new THREE.MeshStandardMaterial({
-    color: '#2a1f36',
-    roughness: 0.4,
-    metalness: 0.7,
+  // dark veined marble floors and brushed metal trims (js/world/textures.js)
+  const stone = Tex.mat('marble', { color: '#2c2436', scale: 7, rough: 1.6, bump: 0.6 });
+  const trim = Tex.mat('metal', {
+    color: '#5a4a6e',
+    metal: 0.7,
+    rough: 1.2,
+    scale: 2,
     emissive: '#120a1c',
   });
   const glow = (c, k = 2) =>
@@ -53,6 +51,9 @@ const Garde = (() => {
     group.visible = true;
     solid(0, -0.5, 0, 14, 1, 12);
     edges(0, 0, 14, 12);
+    // walkway from the start platform to the hall (there was a 6 m drop into the void)
+    solid(0, -0.5, 9, 6, 1, 6.2);
+    edges(0, 9, 6, 6.2, '#ff4f6a');
     solid(0, -0.5, 30, 36, 1, 36);
     edges(0, 30, 36, 36);
     [

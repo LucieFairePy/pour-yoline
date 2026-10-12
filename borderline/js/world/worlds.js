@@ -11,18 +11,15 @@ const Worlds = (() => {
 
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
-  const wood = new THREE.MeshStandardMaterial({ color: '#2a1810', roughness: 0.8 });
-  const floorMat = new THREE.MeshStandardMaterial({ color: '#3a2418', roughness: 0.7 });
-  const plat = new THREE.MeshStandardMaterial({
-    color: '#2b1b33',
-    roughness: 0.6,
-    emissive: '#1a0a20',
-  });
-  const crumbleMat = new THREE.MeshStandardMaterial({
-    color: '#4a2030',
-    roughness: 0.6,
-    emissive: '#3a0a18',
-  });
+  const wood = Tex.mat('wood', { color: '#2e1c12', scale: 2.5 });
+  const floorMat = Tex.mat('wood', { color: '#3a2618', scale: 3.5, rough: 0.8 });
+  const ceilMat = Tex.mat('plaster', { color: '#3a2a22', scale: 4 });
+  const pedMat = Tex.mat('marble', { color: '#d8c8b8', scale: 1.5 });
+  const plat = Tex.mat('stone', { color: '#3a3044', scale: 2.5, emissive: '#1a0a20' });
+  // each crumbling slab shakes and fades on its own, so each gets its own material
+  let crumbleN = 0;
+  const crumbleMat = () =>
+    Tex.mat('cobble', { color: '#5a2a38', scale: 2, emissive: '#3a0a18', id: crumbleN++ });
   let built = false;
   let role = 'dame';
   const D = { tiles: [], peds: [], doors: [], screen: null };
@@ -75,16 +72,7 @@ const Worlds = (() => {
     box(o, -8.2, 4, 20, 0.4, 8, 44, wood);
     box(o, 8.2, 4, 20, 0.4, 8, 44, wood);
     box(o, 0, 4, -2.2, 16.8, 8, 0.4, wood);
-    box(
-      o,
-      0,
-      8.2,
-      20,
-      16.8,
-      0.4,
-      44,
-      new THREE.MeshStandardMaterial({ color: '#140a08', roughness: 1 }),
-    );
+    box(o, 0, 8.2, 20, 16.8, 0.4, 44, ceilMat);
     [14, 28].forEach((z, i) => {
       box(o, -5, 4, z, 6, 8, 0.4, wood);
       box(o, 5, 4, z, 6, 8, 0.4, wood);
@@ -121,6 +109,8 @@ const Worlds = (() => {
             0.3 + r() * 0.25,
           ]);
         }
+    // bookshelves are solid: you bump into the books, not into the wall behind them
+    for (const side of [-1, 1]) Phys.box(o.x + side * 7.7, o.y + 4, o.z + 20, 0.6, 8, 42);
     const inst = new THREE.InstancedMesh(
       new THREE.BoxGeometry(0.5, 1, 0.22),
       new THREE.MeshStandardMaterial({ roughness: 0.8 }),
@@ -152,8 +142,8 @@ const Worlds = (() => {
     }
     PED_X.forEach((x, k) => {
       const p = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.5, 0.6, 1.1, 10).translate(0, 0.55, 0),
-        wood,
+        new THREE.CylinderGeometry(0.5, 0.6, 1.1, 16).translate(0, 0.55, 0),
+        pedMat,
       );
       p.position.set(o.x + x, o.y, o.z + 21);
       group.add(p);
@@ -199,8 +189,9 @@ const Worlds = (() => {
     [3, 0, 85, 3, 3],
     [9, 1.2, 85, 2.5, 2.5],
   ];
+  // never a crumbling slab right before a moving one: you have to wait there for it
   const P_C = [
-    [-3, 1, 118.5, 2.6, 2.6, 'c'],
+    [-3, 1, 118.5, 2.6, 2.6],
     [0, 2, 124, 2.6, 2.6, 'mx'],
     [4, 2.8, 129, 2.6, 2.6],
     [1, 1.8, 135, 3, 3, 'c'],
@@ -231,7 +222,7 @@ const Worlds = (() => {
           const b = Phys.add([0, 0, 0], [0, 0, 0], { dyn: true });
           V.moving.push({ m, b, x, y, z, sx, sz, axis: kind === 'mx' ? 'x' : 'z', ph: z });
         } else if (kind === 'c') {
-          const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.6, sz), crumbleMat.clone());
+          const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.6, sz), crumbleMat());
           m.position.set(o.x + x, o.y + y - 0.3, o.z + z);
           group.add(m);
           const b = Phys.box(o.x + x, o.y + y - 0.3, o.z + z, sx, 0.6, sz, { dyn: true });
@@ -245,11 +236,12 @@ const Worlds = (() => {
       [48, 12],
       [102, 12],
     ].forEach(([z, len]) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, len), glow('#ffcf8a', 0.9));
+      // wide enough to step on from the switch side without lining up exactly
+      const m = new THREE.Mesh(new THREE.BoxGeometry(6, 0.4, len), glow('#ffcf8a', 0.9));
       m.position.set(o.x, o.y - 0.2, o.z + z);
       m.visible = false;
       group.add(m);
-      const b = Phys.box(o.x, o.y - 0.2, o.z + z, 3, 0.4, len, { dyn: true });
+      const b = Phys.box(o.x, o.y - 0.2, o.z + z, 6, 0.4, len, { dyn: true });
       b.on = false;
       V.bridges.push({ m, b });
     });
@@ -283,7 +275,7 @@ const Worlds = (() => {
     box(o, 0, -0.5, 11, 5, 1, 5, plat);
     const heart = new THREE.Mesh(new THREE.TorusGeometry(3, 0.12, 8, 48), glow('#ff5f8a', 2));
     heart.position.set(o.x, o.y + 3, o.z);
-    heart.rotation.y = Math.PI / 2;
+    // faces both platforms (they sit on the z axis)
     group.add(heart);
     C.heart = heart;
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.09, 8, 24), glow('#ff4f86', 2.2));
@@ -466,6 +458,9 @@ const Worlds = (() => {
     },
     get cp() {
       return V.cp;
+    },
+    get moving() {
+      return V.moving;
     },
   };
 })();

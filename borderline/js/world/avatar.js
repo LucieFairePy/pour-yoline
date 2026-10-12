@@ -253,6 +253,86 @@ const Avatar = (() => {
   };
   const SCALE = 0.9;
 
+  // The HQ suit is ~200 small meshes. Merge static sibling meshes that share a material into one
+  // draw call, leaving every part the rig moves (limbs, rings, knees, boots, helmet, fingers).
+  const mergeStatic = (A) => {
+    const keep = new Set();
+    const mark = (o) => o && keep.add(o);
+    [A.armL, A.armR].forEach((arm) => {
+      ['up', 'lo', 'brg', 'brg2', 'elbow', 'hand'].forEach((k) => mark(arm[k]));
+      const u = arm.hand && arm.hand.userData;
+      if (u && u.fingers) u.fingers.forEach((ch) => ch.forEach((o) => (mark(o), mark(o.parent))));
+      if (u && u.thumb) u.thumb.forEach(mark);
+    });
+    A.legs.forEach((L) =>
+      ['th', 'sh', 'brg', 'brg2', 'knee', 'kneePad', 'boot'].forEach((k) => mark(L[k])),
+    );
+    mark(A.helmet);
+    (A.flames || []).forEach(mark);
+    const nodes = [];
+    A.g.traverse((o) => nodes.push(o));
+    for (const n of nodes) {
+      const sets = new Map();
+      for (const c of n.children) {
+        if (!c.isMesh || c.isInstancedMesh || c.isSkinnedMesh || c.children.length || keep.has(c))
+          continue;
+        const g = c.geometry;
+        if (!g.isBufferGeometry || g.groups.length > 1 || Array.isArray(c.material)) continue;
+        if (Object.values(g.attributes).some((at) => at.isInterleavedBufferAttribute)) continue;
+        if (g.morphAttributes && Object.keys(g.morphAttributes).length) continue;
+        const key =
+          c.material.uuid +
+          '|' +
+          Object.keys(g.attributes).sort().join(',') +
+          '|' +
+          !!g.index +
+          c.visible;
+        if (!sets.has(key)) sets.set(key, []);
+        sets.get(key).push(c);
+      }
+      for (const list of sets.values()) {
+        if (list.length < 2) continue;
+        const geos = list.map((c) => {
+          c.updateMatrix();
+          return c.geometry.clone().applyMatrix4(c.matrix);
+        });
+        const names = Object.keys(geos[0].attributes);
+        const merged = new THREE.BufferGeometry();
+        names.forEach((nm) => {
+          const size = geos[0].attributes[nm].itemSize;
+          const total = geos.reduce((t, g) => t + g.attributes[nm].count, 0);
+          const arr = new Float32Array(total * size);
+          let o = 0;
+          geos.forEach((g) => {
+            const at = g.attributes[nm];
+            for (let i = 0; i < at.count; i++)
+              for (let k = 0; k < size; k++) arr[o++] = at.array[i * size + k];
+          });
+          merged.setAttribute(nm, new THREE.BufferAttribute(arr, size));
+        });
+        if (geos[0].index) {
+          const total = geos.reduce((t, g) => t + g.index.count, 0);
+          const idx = new Uint32Array(total);
+          let o = 0;
+          let base = 0;
+          geos.forEach((g) => {
+            for (let i = 0; i < g.index.count; i++) idx[o++] = g.index.array[i] + base;
+            base += g.attributes.position.count;
+          });
+          merged.setIndex(new THREE.BufferAttribute(idx, 1));
+        }
+        const m = new THREE.Mesh(merged, list[0].material);
+        m.castShadow = list[0].castShadow;
+        m.receiveShadow = list[0].receiveShadow;
+        m.renderOrder = list[0].renderOrder;
+        m.frustumCulled = false;
+        list.forEach((c) => n.remove(c));
+        geos.forEach((g) => g.dispose());
+        n.add(m);
+      }
+    }
+  };
+
   const buildHQ = (role) => {
     const L = LOOK[role];
     const glow = new THREE.MeshBasicMaterial({
@@ -260,6 +340,7 @@ const Avatar = (() => {
       toneMapped: false,
     });
     const rig = HQRig.build(HQ_LOOK[role]());
+    mergeStatic(rig.A);
     rig.g.scale.setScalar(SCALE);
     rig.apply(HQRig.P.stand());
     const base = -rig.groundSnap(0, true);

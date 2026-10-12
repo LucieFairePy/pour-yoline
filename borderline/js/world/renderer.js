@@ -61,6 +61,48 @@ const R = (() => {
   addEventListener('resize', resize);
   resize();
 
+  // Whole worlds (city, chapter arenas hundreds of meters apart) stay in the scene once built.
+  // Hide every big top-level group whose bounds are far beyond the fog, re-checked twice a second.
+  const regions = new Map();
+  let cullT = 0;
+  const box = new THREE.Box3();
+  const sph = new THREE.Sphere();
+  const cullRegions = () => {
+    const now = performance.now();
+    if (now - cullT < 500) return;
+    cullT = now;
+    const cam = camera.position;
+    for (const o of scene.children) {
+      if (!(o.isGroup || o.isMesh) || o.userData.noCull) continue;
+      let r = regions.get(o);
+      // small things may move (avatars, lift, props): measure them every time
+      const dyn = o.children.length <= 12;
+      if (!r || dyn || r.n !== o.children.length) {
+        const vis = o.visible;
+        o.visible = true;
+        box.setFromObject(o);
+        o.visible = vis;
+        if (box.isEmpty()) continue;
+        box.getBoundingSphere(sph);
+        r = r || { c: new THREE.Vector3() };
+        r.c.copy(sph.center);
+        r.rad = sph.radius;
+        r.n = o.children.length;
+        regions.set(o, r);
+      }
+      // objects hidden on purpose by their world (not built yet) stay hidden
+      if (!o.userData.culled && !o.visible) continue;
+      const far = cam.distanceTo(r.c) > r.rad + 520;
+      if (far && o.visible) {
+        o.visible = false;
+        o.userData.culled = true;
+      } else if (!far && o.userData.culled) {
+        o.visible = true;
+        o.userData.culled = false;
+      }
+    }
+  };
+
   return {
     renderer,
     scene,
@@ -80,6 +122,7 @@ const R = (() => {
       resize();
     },
     render() {
+      cullRegions();
       composer.render();
     },
   };

@@ -52,18 +52,20 @@ const LvKit = (() => {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
       new THREE.MeshBasicMaterial({
-        map: cardTex(rank, suit, red),
+        map: Tex.card(rank, suit),
+        alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,
       }),
     );
-    m.material.color.setScalar(1.4);
+    // just under the bloom threshold (0.9): the face stays readable instead of a white glow
+    m.material.color.setScalar(0.88);
     const halo = new THREE.Mesh(
       new THREE.RingGeometry(1.15, 1.5, 48),
       new THREE.MeshBasicMaterial({
         color: new THREE.Color(red ? '#ff5f8a' : '#ffcf8a').multiplyScalar(1.6),
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.35,
         side: THREE.DoubleSide,
         depthWrite: false,
         blending: THREE.AdditiveBlending,

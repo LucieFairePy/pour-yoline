@@ -12,6 +12,8 @@
     line: null,
   };
   const tm = { lift: 0, empty: 0 };
+  const ha = V3();
+  const hb = V3();
 
   Clues.add('c4', V3(City.TOWER.x + 4, City.TOWER.y + 0.9, City.TOWER.z - 5));
 
@@ -120,13 +122,20 @@
       const ly = x.lift.y;
       const onD = City.onLift(pd, ly);
       const onV = City.onLift(pv, ly);
+      // someone waiting at the top landing calls the cabin back up
+      const waiting = (p) =>
+        Math.abs(p.y - LIFT_TOP) < 1.5 &&
+        Math.abs(p.x - City.LIFT.x) < 3 &&
+        p.z > City.TOWER.z + 5 &&
+        p.z < City.LIFT.z + 1;
+      const atTop = waiting(pd) || waiting(pv);
       let target;
       if (ly >= LIFT_TOP - 0.01) {
-        tm.empty = onD || onV ? 0 : tm.empty + dt;
+        tm.empty = onD || onV || atTop ? 0 : tm.empty + dt;
         target = tm.empty > 5 ? 0.05 : LIFT_TOP;
       } else if (ly <= 0.06) {
         const ready = x.found.length === SPOTS.length && (x.lift.used ? onD || onV : onD && onV);
-        target = ready ? LIFT_TOP : 0.05;
+        target = ready || (x.lift.used && atTop) ? LIFT_TOP : 0.05;
       } else target = x.lift.going || LIFT_TOP;
       if (target !== ly) {
         if (!x.lift.used && target === LIFT_TOP) Sound.play('lift');
@@ -199,11 +208,11 @@
       if (l) {
         l.visible = x.hand;
         if (x.hand) {
-          const a = V3(p.x, p.y + 0.95, p.z);
-          const b = V3(rp.x, rp.y + 0.95, rp.z);
-          l.position.copy(a);
-          l.lookAt(b);
-          l.scale.set(1, 1, Math.max(0.01, a.distanceTo(b)));
+          ha.set(p.x, p.y + 0.95, p.z);
+          hb.set(rp.x, rp.y + 0.95, rp.z);
+          l.position.copy(ha);
+          l.lookAt(hb);
+          l.scale.set(1, 1, Math.max(0.01, ha.distanceTo(hb)));
         }
       }
       if (x.moment) return null;

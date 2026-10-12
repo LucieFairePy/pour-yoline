@@ -112,9 +112,16 @@ const Weapons = (() => {
     const hv = V3();
     let kind = null;
     let flashT = 0;
+    let aimK = 0;
     return {
       fire() {
         flashT = 0.05;
+      },
+      // world position of the rifle muzzle (tracers start there)
+      muzzle(out) {
+        if (kind !== 'rifle') return avatar.hand(out);
+        avatar.root.updateMatrixWorld(true);
+        return models.rifle.userData.flash.getWorldPosition(out);
       },
       update(dt, k, swing, aim) {
         if (k !== kind) {
@@ -129,7 +136,8 @@ const Weapons = (() => {
         avatar.spin.worldToLocal(hv);
         holder.position.copy(hv);
         if (k === 'rifle') {
-          holder.rotation.set(aim ? 0 : 0.5, aim ? 0.05 : 0.5, aim ? 0 : -0.3);
+          aimK = damp(aimK, aim ? 1 : 0, 16, dt);
+          holder.rotation.set(lerp(0.5, 0, aimK), lerp(0.5, 0.05, aimK), lerp(-0.3, 0, aimK));
           flashT -= dt;
           const f = models.rifle.userData.flash;
           f.visible = flashT > 0;

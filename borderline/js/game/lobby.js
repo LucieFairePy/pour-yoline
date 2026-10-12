@@ -90,13 +90,68 @@ const Lobby = (() => {
     $('waitText').textContent = 'Connecté·e·s !';
   });
 
+  // microphone choice: filled once the browser gives device labels (after permission)
+  let micStream = null;
+  const fillMics = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    const list = (await navigator.mediaDevices.enumerateDevices()).filter(
+      (d) => d.kind === 'audioinput',
+    );
+    ['optMic', 'optMic2'].forEach((id) => {
+      const sel = $(id);
+      if (!sel) return;
+      sel.innerHTML = '';
+      list.forEach((d, i) => {
+        const o = document.createElement('option');
+        o.value = d.deviceId;
+        o.textContent = d.label || 'Micro ' + (i + 1);
+        sel.appendChild(o);
+      });
+      if (SETTINGS.mic && list.some((d) => d.deviceId === SETTINGS.mic)) sel.value = SETTINGS.mic;
+      sel.closest('.opt').hidden = list.length < 2 && !micStream;
+    });
+  };
+  const openMic = () =>
+    navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: SETTINGS.mic ? { exact: SETTINGS.mic } : undefined,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+  const switchMic = async (id) => {
+    SETTINGS.mic = id;
+    saveSettings();
+    ['optMic', 'optMic2'].forEach((k) => $(k) && ($(k).value = id));
+    if (!micStream) return;
+    try {
+      const s = await openMic();
+      micStream.getTracks().forEach((t) => t.stop());
+      micStream = s;
+      Net.voice(s);
+    } catch (e) {}
+  };
+  ['optMic', 'optMic2'].forEach(
+    (id) => $(id) && ($(id).onchange = (e) => switchMic(e.target.value)),
+  );
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener)
+    navigator.mediaDevices.addEventListener('devicechange', fillMics);
+
   const mic = async (btn) => {
     try {
       Sound.init();
-      const s = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
+      let s;
+      try {
+        s = await openMic();
+      } catch (e) {
+        // the saved device is gone: fall back to the default one
+        SETTINGS.mic = '';
+        s = await openMic();
+      }
+      micStream = s;
       Net.voice(s);
+      fillMics();
       ['btnMic', 'btnMic2'].forEach((id) => {
         $(id).classList.add('on');
         $(id).lastElementChild.textContent = 'Micro activé';

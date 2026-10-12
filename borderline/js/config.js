@@ -75,9 +75,9 @@ const CONFIG = {
       valet: 'Le bouton est derrière la vitre. Passe par ses portails et appuie dessus.',
     },
     s2: {
-      dame: 'Monte sur la corniche : portail au fond du puits. Puis sur le balcon : portail sur le mur face au vide.',
+      dame: 'Lance {mate} au-dessus du vide : un portail sur le panneau au sol sous la corniche, l’autre sur le mur face au vide.',
       valet:
-        'Saute de la corniche dans le puits. Tu ressortiras du mur assez vite pour traverser le vide.',
+        'Monte l’escalier jusqu’à la corniche et laisse-toi tomber dans le portail au sol. Plus tu tombes de haut, plus tu ressors vite.',
     },
     s3: {
       dame: 'Ton bouton est dans la cage de verre : utilise tes portails. Le sien est tout en haut.',
@@ -437,7 +437,7 @@ const CONFIG = {
     title: 'Dame de Cœur',
     place: 'L’endroit de notre rencontre',
     joker: 'Vous croyez vraiment qu’il suffit d’être ensemble ?',
-    approach: 'Approchez-vous du centre. Ensemble.',
+    approach: 'Entrez ensemble dans le cercle lumineux, au centre.',
     broken: 'Le Joker n’a aucune prise sur vous deux.',
     reveal: [
       'Le Maître du jeu, c’était moi.',

@@ -231,10 +231,8 @@
         if (hs.aegis <= 0) c.set((s) => (s.x.aegis = false));
       }
       if (x.stage !== 3) {
-        if (Enemies.alive()) {
-          Enemies.simulate(dt, ps);
-          Enemies.netTick(dt);
-        }
+        if (Enemies.alive()) Enemies.simulate(dt, ps);
+        Enemies.netTick(dt);
         return;
       }
       const o = oracle();

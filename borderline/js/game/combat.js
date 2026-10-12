@@ -12,20 +12,42 @@ const Combat = (() => {
     punch: 0,
     aim: 0,
   };
-  const tracerMat = new THREE.LineBasicMaterial({
-    color: new THREE.Color('#ff8fb0').multiplyScalar(3),
-    transparent: true,
-    toneMapped: false,
-  });
+  // bullet tracers: pooled glowing beams (a 1 px line was invisible from the other player)
+  const TRACER_T = 0.14;
+  const tracerGeo = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true)
+    .translate(0, 0.5, 0)
+    .rotateX(Math.PI / 2);
   const tracers = [];
   const handV = V3();
   const fwd = V3();
-
-  const tracer = (a, b) => {
-    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), tracerMat.clone());
-    l.frustumCulled = false;
-    R.scene.add(l);
-    tracers.push({ l, t: 0.12 });
+  const tmp = V3();
+  const tracer = (a, b, col = '#ffb0c8') => {
+    let tr = tracers.find((x) => x.t <= 0);
+    if (!tr) {
+      if (tracers.length >= 24) tr = tracers[0];
+      else {
+        const m = new THREE.Mesh(
+          tracerGeo,
+          new THREE.MeshBasicMaterial({
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            toneMapped: false,
+          }),
+        );
+        m.frustumCulled = false;
+        R.scene.add(m);
+        tr = { m, t: 0 };
+        tracers.push(tr);
+      }
+    }
+    tr.m.material.color.set(col).multiplyScalar(2.2);
+    tr.m.position.copy(a);
+    tr.m.lookAt(b);
+    tr.len = a.distanceTo(b);
+    tr.m.scale.set(0.022, 0.022, tr.len);
+    tr.m.visible = true;
+    tr.t = TRACER_T;
   };
 
   const act = (d) => Story.ctx.act(d);
@@ -42,18 +64,23 @@ const Combat = (() => {
   const slashGeo = new THREE.RingGeometry(1.1, 1.9, 24, 1, -0.9, 1.8).rotateX(-Math.PI / 2);
   const slashes = [];
   const slash = (p, yaw) => {
-    const m = new THREE.Mesh(slashGeo, slashMat.clone());
-    m.position.set(p.x, p.y + 1.05, p.z);
-    m.rotation.set(0.25, yaw - Math.PI / 2, 0);
-    R.scene.add(m);
-    slashes.push({ m, t: 0.18 });
+    let sl = slashes.find((x) => x.t <= 0);
+    if (!sl) {
+      sl = { m: new THREE.Mesh(slashGeo, slashMat.clone()), t: 0 };
+      R.scene.add(sl.m);
+      slashes.push(sl);
+    }
+    sl.m.visible = true;
+    sl.m.position.set(p.x, p.y + 1.05, p.z);
+    sl.m.rotation.set(0.25, yaw - Math.PI / 2, 0);
+    sl.t = 0.18;
   };
 
   const shoot = () => {
     const cam = R.camera;
     fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
     const hit = Enemies.raycast(cam.position, fwd, 80);
-    const from = Player.avatar.hand(handV).clone();
+    const from = Player.weapon.muzzle(handV).clone();
     const to = hit
       ? cam.position.clone().addScaledVector(fwd, hit.d)
       : cam.position.clone().addScaledVector(fwd, 60);
@@ -62,12 +89,19 @@ const Combat = (() => {
     Sound.play('shoot');
     C.aim = 0.7;
     if (hit) {
-      Fx.burst(to, hit.weak ? '#ffcf8a' : '#ff8fb0', hit.weak ? 30 : 12, 4, 0.4, 0);
+      Fx.burst(to, hit.weak ? '#ffcf8a' : '#ff8fb0', hit.weak ? 16 : 8, 3.5, 0.35, 0);
       HUD.hitmark(hit.weak);
+      Enemies.flash(hit.e.id);
       act({ a: 'hit', id: hit.e.id, dmg: 9, weak: hit.weak });
     }
     // the other player sees the shot, the muzzle flash and the impact
-    Net.send('shot', [...to.toArray().map((v) => +v.toFixed(2)), hit ? (hit.weak ? 2 : 1) : 0]);
+    Net.send('shot', [
+      +to.x.toFixed(2),
+      +to.y.toFixed(2),
+      +to.z.toFixed(2),
+      hit ? (hit.weak ? 2 : 1) : 0,
+      hit ? hit.e.id : 0,
+    ]);
     Player.yaw = Math.atan2(fwd.x, fwd.z);
   };
 
@@ -79,7 +113,7 @@ const Combat = (() => {
     C.punch = 0.25;
     const p = Player.body.p;
     Sound.play('punch');
-    Fx.burst(p.clone().add(V3(fx * 1.4, 1.1, fz * 1.4)), '#6cc8ff', 40, 5, 0.35, 0);
+    Fx.burst(p.clone().add(V3(fx * 1.4, 1.1, fz * 1.4)), '#6cc8ff', 16, 4, 0.3, 0);
     slash(p, yaw);
     Net.send('slash', +yaw.toFixed(3));
     for (const e of Enemies.list.values()) {
@@ -88,13 +122,16 @@ const Combat = (() => {
       const d = Math.hypot(dx, dz);
       const T = Enemies.TYPES[e.type];
       const reach = T.reach || 3.2;
-      if (d < reach && (dx * fx + dz * fz) / (d || 1) > 0.35)
+      if (d < reach && (dx * fx + dz * fz) / (d || 1) > 0.35) {
+        Enemies.flash(e.id);
+        Fx.burst(tmp.set(e.pos.x, p.y + 1.2, e.pos.z), '#bfe6ff', 10, 3, 0.3, 0);
         act({
           a: 'hit',
           id: e.id,
           dmg: 12,
-          stun: T.stunP || (e.type === 'tour' ? 4.5 : 2.5),
+          stun: T.stunP != null ? T.stunP : e.type === 'tour' ? 4.5 : 2.5,
         });
+      }
     }
   };
 
@@ -135,33 +172,32 @@ const Combat = (() => {
     },
     revived() {
       C.down = false;
+      C.revR = 0;
       C.hp = 50;
       Player.locked = false;
       Player.mode = 'walk';
       Sound.play('reveal');
     },
     update(dt) {
-      tracers.forEach((t) => {
+      for (const t of tracers) {
+        if (t.t <= 0) continue;
         t.t -= dt;
-        t.l.material.opacity = Math.max(0, t.t / 0.12);
-      });
-      for (let i = tracers.length - 1; i >= 0; i--)
-        if (tracers[i].t <= 0) {
-          R.scene.remove(tracers[i].l);
-          tracers[i].l.geometry.dispose();
-          tracers.splice(i, 1);
-        }
-      for (let i = slashes.length - 1; i >= 0; i--) {
-        const s = slashes[i];
+        t.m.material.opacity = Math.max(0, t.t / TRACER_T);
+        if (t.t <= 0) t.m.visible = false;
+      }
+      for (const s of slashes) {
+        if (s.t <= 0) continue;
         s.t -= dt;
         s.m.material.opacity = Math.max(0, s.t / 0.18);
         s.m.scale.setScalar(1 + (0.18 - s.t) * 1.5);
-        if (s.t <= 0) {
-          R.scene.remove(s.m);
-          s.m.material.dispose();
-          slashes.splice(i, 1);
-        }
+        if (s.t <= 0) s.m.visible = false;
       }
+      C.revR = Math.max(0, (C.revR || 0) - dt * 0.6);
+      // downed with nothing left to fight (wave over, stray orb): get up on your own
+      if (C.on && C.down && Enemies.alive() === 0) {
+        C.downT = (C.downT || 0) + dt;
+        if (C.downT > 3) C.revived();
+      } else C.downT = 0;
       if (!C.on) return null;
       C.atkCd -= dt;
       C.cloakCd = Math.max(0, C.cloakCd - dt);
@@ -195,6 +231,12 @@ const Combat = (() => {
       if (!C.down && rs.down && Math.hypot(rp.x - p.x, rp.z - p.z) < 2.2) {
         if (Input.held('interact')) {
           C.revive += dt;
+          // the downed player sees the revive filling up
+          C.revSend = (C.revSend || 0) - dt;
+          if (C.revSend <= 0) {
+            C.revSend = 0.15;
+            Net.send('rv', +(C.revive / 2.2).toFixed(2));
+          }
           if (C.revive > 2.2) {
             C.revive = 0;
             act({ a: 'revive' });
@@ -207,7 +249,7 @@ const Combat = (() => {
         rs.hp != null ? rs.hp / 100 : 1,
         C.down,
         rs.down,
-        C.revive / 2.2,
+        C.down ? C.revR || 0 : C.revive / 2.2,
         Story.role === 'valet' ? (C.abil != null ? C.abil : 1 - C.cloakCd / 15) : -1,
         C.cloak > 0,
       );
@@ -218,11 +260,17 @@ const Combat = (() => {
   Net.on('shot', (d) => {
     if (!Remote.has) return;
     const to = V3(d[0], d[1], d[2]);
-    const from = Remote.hand(handV).clone();
-    tracer(from, to);
+    const from = (Remote.weapon ? Remote.weapon.muzzle(handV) : Remote.hand(handV)).clone();
+    tracer(from, to, '#ffd0a0');
     Remote.weapon.fire();
     Sound.play('shoot', from);
-    if (d[3]) Fx.burst(to, d[3] === 2 ? '#ffcf8a' : '#ff8fb0', d[3] === 2 ? 30 : 12, 4, 0.4, 0);
+    if (d[3]) {
+      Fx.burst(to, d[3] === 2 ? '#ffcf8a' : '#ff8fb0', d[3] === 2 ? 16 : 8, 3.5, 0.35, 0);
+      if (d[4]) Enemies.flash(d[4]);
+    }
+  });
+  Net.on('rv', (k) => {
+    if (C.down) C.revR = k;
   });
   Net.on('slash', (yaw) => {
     if (!Remote.has) return;
@@ -231,9 +279,9 @@ const Combat = (() => {
     Fx.burst(
       p.clone().add(V3(Math.sin(yaw) * 1.4, 1.1, Math.cos(yaw) * 1.4)),
       '#6cc8ff',
-      40,
-      5,
-      0.35,
+      16,
+      4,
+      0.3,
       0,
     );
     slash(p, yaw);

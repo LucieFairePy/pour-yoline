@@ -1,6 +1,6 @@
 const Enemies = (() => {
   const TYPES = {
-    pion: { hp: 40, speed: 3.8, radius: 0.7, height: 1.1 },
+    pion: { hp: 50, speed: 3.8, radius: 0.7, height: 1.1 },
     tour: { hp: 90, speed: 0, radius: 0.9, height: 2.6 },
     roi: { hp: 900, speed: 0, radius: 2.4, height: 5.5, boss: true, reach: 5, stunP: 6 },
   };
@@ -176,6 +176,70 @@ const Enemies = (() => {
   });
   let nextId = 1;
   let netT = 0;
+  let sentEmpty = false;
+  const tmpV = V3();
+  const tmpV2 = V3();
+  const m4 = new THREE.Matrix4();
+  // interpolation delay for enemies on the guest (host sends ~15 packs/s)
+  const LERP_DELAY = 120;
+
+  // floating damage numbers, pooled sprites
+  const nums = [];
+  const numTex = new Map();
+  const numMat = (txt, gold) => {
+    const k = txt + (gold ? 'g' : '');
+    if (!numTex.has(k)) {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 64;
+      const g = c.getContext('2d');
+      g.font = 'bold 44px Georgia, serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.lineWidth = 7;
+      g.strokeStyle = 'rgba(20,6,14,0.85)';
+      g.strokeText(txt, 64, 34);
+      g.fillStyle = gold ? '#ffd27a' : '#ffffff';
+      g.fillText(txt, 64, 34);
+      numTex.set(
+        k,
+        new THREE.SpriteMaterial({
+          map: new THREE.CanvasTexture(c),
+          transparent: true,
+          depthWrite: false,
+          toneMapped: false,
+        }),
+      );
+    }
+    return numTex.get(k);
+  };
+  const popNumber = (pos, amount, gold) => {
+    const v = Math.round(amount);
+    if (v <= 0) return;
+    let n = nums.find((x) => x.t <= 0);
+    if (!n) {
+      if (nums.length >= 24) return;
+      n = { s: new THREE.Sprite(numMat('0')), t: 0 };
+      n.s.renderOrder = 10;
+      R.scene.add(n.s);
+      nums.push(n);
+    }
+    n.s.material = numMat(String(v), gold);
+    n.s.visible = true;
+    n.s.position.set(
+      pos.x + (Math.random() - 0.5) * 0.8,
+      pos.y,
+      pos.z + (Math.random() - 0.5) * 0.8,
+    );
+    n.s.scale.set(1.1, 0.55, 1);
+    n.t = 0.9;
+  };
+  const headPos = (e) =>
+    tmpV2.set(
+      e.pos.x,
+      e.pos.y + (e.type === 'pion' ? 1.9 : (TYPES[e.type].height || 2) + 0.6),
+      e.pos.z,
+    );
 
   const view = (e) => {
     if (e.view) return e.view;
@@ -186,14 +250,16 @@ const Enemies = (() => {
   };
 
   const kill = (e) => {
+    // host: send the death right away instead of waiting for the next pack
+    netT = 1;
     if (e.view) {
       R.scene.remove(e.view.g);
       Fx.burst(
         e.pos.clone().add(V3(0, 1, 0)),
         TYPES[e.type].boss ? '#ffcf8a' : TYPES[e.type].dieColor || '#ff3a5a',
-        TYPES[e.type].boss ? 500 : 120,
-        8,
-        1.4,
+        TYPES[e.type].boss ? 260 : 45,
+        TYPES[e.type].boss ? 8 : 5,
+        TYPES[e.type].boss ? 1.4 : 0.9,
         -6,
       );
       Sound.play('enemyDie');
@@ -233,6 +299,10 @@ const Enemies = (() => {
         if (e.view) R.scene.remove(e.view.g);
       });
       list.clear();
+      nums.forEach((n) => {
+        n.t = 0;
+        n.s.visible = false;
+      });
       orbs.length = 0;
       telegraphs.forEach((t) => R.scene.remove(t.m));
       telegraphs.length = 0;
@@ -248,7 +318,12 @@ const Enemies = (() => {
     damage(id, dmg, stun, weak) {
       const e = list.get(id);
       if (!e) return;
-      if (stun) e.stun = Math.max(e.stun, stun);
+      // a stunned enemy cannot be stunned again right after: no stun-lock
+      if (stun && e.type === 'roi' && !Boss.canStun(e)) stun = 0;
+      if (stun && !(e.stunImm > 0) && !(e.stun > 0)) {
+        e.stun = stun;
+        e.stunImm = stun + 1.5;
+      }
       let k = 1;
       if (e.type === 'tour' && e.shield && e.stun <= 0) k = 0;
       if (e.type === 'roi') k = Boss.mult(e, weak);
@@ -258,7 +333,10 @@ const Enemies = (() => {
         return;
       }
       e.hp -= dmg * k;
+      // the King cannot skip a phase in one vulnerability window
+      if (e.type === 'roi') e.hp = Math.max(e.hp, Boss.floor(e));
       e.hitT = 0.15;
+      popNumber(headPos(e), dmg * k, weak && k > 1);
       if (e.hp <= 0) kill(e);
     },
     telegraph(pos, r, t) {
@@ -286,6 +364,7 @@ const Enemies = (() => {
       const targets = players.filter((p) => !p.down && !p.cloak);
       for (const e of list.values()) {
         e.stun = Math.max(0, e.stun - dt);
+        e.stunImm = Math.max(0, (e.stunImm || 0) - dt);
         e.atk -= dt;
         if (e.type === 'roi') {
           Boss.simulate(e, dt, players, targets);
@@ -333,7 +412,7 @@ const Enemies = (() => {
         o.p.addScaledVector(o.v, dt);
         let hit = false;
         players.forEach((p) => {
-          if (!hit && !p.down && o.p.distanceTo(V3(p.pos.x, p.pos.y + 1.1, p.pos.z)) < 0.85) {
+          if (!hit && !p.down && o.p.distanceTo(tmpV.set(p.pos.x, p.pos.y + 1.1, p.pos.z)) < 0.85) {
             hit = true;
             Combat.hurt(p.who, o.dmg, o.p);
           }
@@ -366,7 +445,14 @@ const Enemies = (() => {
           e.reveal > 0 ? 1 : 0,
           e.vuln ? 1 : 0,
         ]),
-        o: orbs.map((o) => [+o.p.x.toFixed(2), +o.p.y.toFixed(2), +o.p.z.toFixed(2)]),
+        o: orbs.map((o) => [
+          +o.p.x.toFixed(2),
+          +o.p.y.toFixed(2),
+          +o.p.z.toFixed(2),
+          +o.v.x.toFixed(2),
+          +o.v.y.toFixed(2),
+          +o.v.z.toFixed(2),
+        ]),
       };
     },
     unpack(d) {
@@ -396,9 +482,16 @@ const Enemies = (() => {
             e = { id, type, pos: V3(x, y, z), yaw, hp, max, stun: 0, shield: !!shield };
             list.set(id, e);
           }
-          e.target = V3(x, y, z);
+          // snapshot buffer for smooth interpolation
+          const now = performance.now();
+          if (!e.snaps) e.snaps = [];
+          e.snaps.push({ t: now, x, y, z });
+          if (e.snaps.length > 6) e.snaps.shift();
           e.yawT = yaw;
-          if (hp < e.hp) e.hitT = 0.15;
+          if (hp < e.hp) {
+            e.hitT = 0.15;
+            popNumber(headPos(e), e.hp - hp, false);
+          }
           e.hp = hp;
           e.max = max;
           e.stun = stun ? 1 : 0;
@@ -413,19 +506,46 @@ const Enemies = (() => {
       );
       [...list.values()].forEach((e) => !seen.has(e.id) && kill(e));
       orbs.length = 0;
-      d.o.forEach(([x, y, z]) => orbs.push({ p: V3(x, y, z) }));
+      d.o.forEach(([x, y, z, vx, vy, vz]) =>
+        orbs.push({ p: V3(x, y, z), v: V3(vx || 0, vy || 0, vz || 0), guest: true }),
+      );
     },
+    // host: call every frame; an empty world is sent once so the guest drops the last enemy
     netTick(dt) {
       netT += dt;
-      if (netT > 1 / 12) {
+      if (netT > 1 / 15) {
         netT = 0;
+        const empty = !list.size && !orbs.length;
+        if (empty && sentEmpty) return;
+        sentEmpty = empty;
         Net.send('en', api.pack());
       }
     },
     render(dt, t) {
+      const rt = performance.now() - LERP_DELAY;
       for (const e of list.values()) {
         const m = view(e);
-        if (e.target) e.pos.lerp(e.target, 1 - Math.exp(-12 * dt));
+        if (e.snaps && e.snaps.length) {
+          // guest: render slightly in the past, between the two packs around that time
+          const sn = e.snaps;
+          let a = sn[0];
+          let b = sn[sn.length - 1];
+          for (let i = 0; i < sn.length - 1; i++)
+            if (sn[i].t <= rt && sn[i + 1].t >= rt) {
+              a = sn[i];
+              b = sn[i + 1];
+              break;
+            }
+          let k = b.t === a.t ? 1 : (rt - a.t) / (b.t - a.t);
+          if (rt > b.t && sn.length > 1) {
+            // short extrapolation when a pack is late
+            const p = sn[sn.length - 2];
+            a = p;
+            k = 1 + Math.min(0.12, (rt - b.t) / 1000) / Math.max(0.03, (b.t - p.t) / 1000);
+          }
+          k = Math.max(0, k);
+          e.pos.set(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k);
+        }
         if (e.yawT != null) e.yaw = angleDamp(e.yaw, e.yawT, 10, dt);
         m.g.position.copy(e.pos);
         if (e.type === 'pion') m.g.position.y += 1 + Math.sin(t * 3 + e.id) * 0.12;
@@ -444,12 +564,19 @@ const Enemies = (() => {
         if (DEF[e.type] && DEF[e.type].render) DEF[e.type].render(e, m, dt, t);
       }
       orbMesh.count = Math.min(64, orbs.length);
-      const m4 = new THREE.Matrix4();
       for (let i = 0; i < orbMesh.count; i++) {
+        if (orbs[i].guest) orbs[i].p.addScaledVector(orbs[i].v, dt);
         m4.makeTranslation(orbs[i].p.x, orbs[i].p.y, orbs[i].p.z);
         orbMesh.setMatrixAt(i, m4);
       }
       orbMesh.instanceMatrix.needsUpdate = true;
+      for (const n of nums) {
+        if (n.t <= 0) continue;
+        n.t -= dt;
+        n.s.position.y += dt * 1.6;
+        n.s.material.opacity = Math.min(1, n.t * 2.5);
+        if (n.t <= 0) n.s.visible = false;
+      }
       for (let i = lineTel.length - 1; i >= 0; i--) {
         const tg = lineTel[i];
         tg.t -= dt;
@@ -470,6 +597,11 @@ const Enemies = (() => {
         }
       }
     },
+    // local feedback before the host confirms: flash the enemy that was just hit
+    flash(id) {
+      const e = list.get(id);
+      if (e) e.hitT = 0.15;
+    },
     raycast(origin, dir, max = 70) {
       let best = null;
       let bd = max;
@@ -477,8 +609,9 @@ const Enemies = (() => {
       for (const e of list.values()) {
         const T = TYPES[e.type];
         if (DEF[e.type] && DEF[e.type].hidden && DEF[e.type].hidden(e)) continue;
-        const c = e.pos.clone().add(V3(0, e.type === 'pion' ? 1 : T.height * 0.55, 0));
-        const oc = c.clone().sub(origin);
+        const oc = tmpV
+          .set(e.pos.x, e.pos.y + (e.type === 'pion' ? 1 : T.height * 0.55), e.pos.z)
+          .sub(origin);
         const tca = oc.dot(dir);
         if (tca < 0) continue;
         const d2 = oc.lengthSq() - tca * tca;
@@ -488,8 +621,7 @@ const Enemies = (() => {
         best = e;
         weak = false;
         if (T.boss && e.view && e.view.heart) {
-          const hp = e.view.heart.getWorldPosition(V3());
-          const oh = hp.sub(origin);
+          const oh = e.view.heart.getWorldPosition(tmpV2).sub(origin);
           const th = oh.dot(dir);
           const wr = T.weakR || 0.7;
           if (oh.lengthSq() - th * th < wr * wr) weak = true;

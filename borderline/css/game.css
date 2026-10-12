@@ -1288,3 +1288,29 @@ body.rec #cine .cskip {
     width: 6.5rem;
   }
 }
+
+.opt[hidden] {
+  display: none;
+}
+
+.card-face.real {
+  background-size: cover;
+  background-position: center;
+  background-color: transparent;
+  border-radius: 1.4rem;
+}
+
+.card-face.real > span {
+  visibility: hidden;
+}
+
+.card-face.black {
+  color: #111;
+  box-shadow:
+    0 0 0 6px rgba(255, 255, 255, 0.08),
+    0 0 80px rgba(255, 240, 220, 0.45);
+}
+
+.brand .suit.black {
+  color: var(--paper);
+}

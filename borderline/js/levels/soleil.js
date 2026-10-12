@@ -10,6 +10,7 @@
     cd: 0,
     touchT: 0,
     zoneSeen: -1,
+    expT: 0,
   };
   const tm = { d: 0, win: 0 };
   const now = () => performance.now() / 1000;
@@ -37,11 +38,11 @@
     const vx = mate.x - E.x;
     const vz = mate.z - E.z;
     const k = (vx * dx + vz * dz) / L2;
-    if (k < 0.05 || k > 0.985) return false;
+    if (k < 0.03 || k > 0.99) return false;
     const px = vx - k * dx;
     const pz = vz - k * dz;
     const ahead = Math.sqrt(L2) * (1 - k);
-    return Math.hypot(px, pz) < 1.05 && ahead > 0.45 && ahead < 6 && Math.abs(me.y - mate.y) < 1.5;
+    return Math.hypot(px, pz) < 1.25 && ahead > 0.2 && ahead < 7 && Math.abs(me.y - mate.y) < 1.5;
   };
 
   const nextSing = (x, zone, short) => {
@@ -75,13 +76,18 @@
   };
 
   const caught = (c) => {
-    local.cd = 1.4;
+    local.cd = 1.2;
     const b = Player.body;
     Sound.play('caught');
     Fx.burst(b.p.clone().add(V3(0, 1, 0)), '#ff2a5a', 60, 5, 0.6, 0);
     const sp = Soleil.spawn(local.line, c.role);
     sp.x = Soleil.O.x + clamp(b.p.x - Soleil.O.x, -14, 14);
     c.spawn(sp, 0);
+    // a short freeze on the line, so holding forward doesn't carry you straight back in
+    Player.mode = 'frozen';
+    setTimeout(() => {
+      if (Player.mode === 'frozen' && Story.S && Story.S.phase === 'soleil') Player.mode = 'walk';
+    }, 700);
     Cam.shake = 0.2;
     if (!HUD.talking) HUD.say(A.caught, A.doll, 1600);
     c.send('scaught');
@@ -228,8 +234,13 @@
         if (dame && exposed) shield = Remote.has && shielded(p, Remote.pos);
         const b = Player.body;
         const moving = Math.hypot(b.v.x, b.v.z) > 0.9 || Math.abs(b.v.y) > 1.5;
-        if (exposed && moving && !shield) caught(c);
-      }
+        // a short grace so a single frame of momentum or network jitter never counts
+        local.expT = exposed && moving && !shield ? local.expT + dt : 0;
+        if (local.expT > (always && !watched ? 0.35 : 0.18)) {
+          local.expT = 0;
+          caught(c);
+        }
+      } else local.expT = 0;
       if (dame && zone === 2 && x.stage === 1)
         HUD.danger(exposed && !shield ? 0.55 : shield ? 0.12 : 0);
       else HUD.danger(0);

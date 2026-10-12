@@ -2,8 +2,8 @@
   const T = CONFIG;
   const F = T.final;
   const TOTAL = Object.keys(T.clues).length;
-  const local = { step: null, letter: false, float: 0, credits: false };
-  const tm = { step: 0 };
+  const local = { step: null, letter: false, float: 0, credits: false, inside: -1 };
+  const tm = { step: 0, ring: 0 };
 
   const allClues = () => Story.S.clues.length >= TOTAL;
 
@@ -23,6 +23,7 @@
       HUD.visa('♛ · ' + F.title);
       Finale.screen.show(F.place, F.title, '#ff5f8a');
       local.step = null;
+      local.inside = -1;
       if (!first) {
         await sleep(300);
         fadeTo(false);
@@ -79,10 +80,14 @@
       tm.step += dt;
       const pd = c.pos('dame');
       const pv = c.pos('valet');
-      const ctr = Finale.center();
-      if (x.step === 'joker' && c.near(pd, pv, 2.5) && c.near(pd, ctr, 5) && c.near(pv, ctr, 5)) {
-        c.set((s) => (s.x.step = 'broken'));
-        tm.step = 0;
+      if (x.step === 'joker') {
+        // both inside the glowing circle for a moment
+        tm.ring = Finale.inRing(pd) && Finale.inRing(pv) ? tm.ring + dt : 0;
+        if (tm.ring > 0.6) {
+          c.set((s) => (s.x.step = 'broken'));
+          tm.step = 0;
+          tm.ring = 0;
+        }
       }
       if (x.step === 'broken' && tm.step > 4) {
         c.set((s) => (s.x.step = 'reveal'));
@@ -102,7 +107,24 @@
       if (d.a === 'letter' && !c.S.x.done.includes(who)) c.set((s) => s.x.done.push(who));
     },
     update(c, dt, t) {
-      Finale.update(dt, t, c.S.x.step);
+      const x = c.S.x;
+      const meIn = Finale.inRing(Player.body.p);
+      const mateIn = Remote.has && Finale.inRing(Remote.pos);
+      const inside = (meIn ? 1 : 0) + (mateIn ? 1 : 0);
+      Finale.update(dt, t, x.step, inside);
+      if (x.step === 'joker' && inside !== local.inside) {
+        local.inside = inside;
+        HUD.objective(
+          inside === 2
+            ? F.approach
+            : meIn
+              ? 'Tu es dans le cercle. Attends {mate}.'
+              : mateIn
+                ? '{mate} t’attend dans le cercle, au centre.'
+                : F.approach,
+        );
+        if (inside > 0) Sound.play('chime');
+      }
       return null;
     },
   });

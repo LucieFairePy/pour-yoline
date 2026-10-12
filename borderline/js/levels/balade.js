@@ -11,7 +11,7 @@
     benchAdded: false,
     bridgeHint: false,
   };
-  const tm = { win: 0, sit: 0 };
+  const tm = { win: 0, sit: 0, far: 0 };
 
   const handLine = () => {
     const l = new THREE.Mesh(
@@ -64,7 +64,11 @@
       local.stage = 0;
       c.spawn(Balade.spawn(c.S.x.stage, c.role), 0);
       Player.killY = Balade.O.y - 3;
-      Player.checkpoint = () => Balade.spawn(Story.S.x.stage, c.role);
+      // falling off the light bridge brings you back to its east end, not the start
+      Player.checkpoint = () =>
+        Story.S.x.stage === 1 && Balade.rel(Player.body.p).z > 40
+          ? Balade.P(c.role === 'dame' ? 7.2 : 8.8, 0, 53)
+          : Balade.spawn(Story.S.x.stage, c.role);
       Player.targets = null;
       City.mood({ gold: 0.25 });
       c.fog(0.011);
@@ -99,7 +103,14 @@
       const pv = c.pos('valet');
       const qd = Balade.rel(pd);
       const qv = Balade.rel(pv);
-      if (x.hand && Math.hypot(pd.x - pv.x, pd.z - pv.z) > 4) c.set((s) => (s.x.hand = false));
+      // the partner is drawn a little in the past (network): only let go of the hand when
+      // they are clearly apart for a moment, never because of lag while walking together
+      const apart = Math.hypot(pd.x - pv.x, pd.z - pv.z) > 6.5;
+      tm.far = x.hand && apart ? tm.far + dt : 0;
+      if (tm.far > 0.8) {
+        tm.far = 0;
+        c.set((s) => (s.x.hand = false));
+      }
       if (x.stage === 1 && Balade.passed(qd) && Balade.passed(qv)) c.set((s) => (s.x.stage = 2));
       if (x.stage === 2 && x.lan.dame && x.lan.valet) c.set((s) => (s.x.stage = 3));
       if (x.stage === 4) {

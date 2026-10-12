@@ -16,67 +16,13 @@ const Donjon = (() => {
   const plates = {};
   let ring = null;
 
-  const bricks = LvKit.tex(
-    512,
-    512,
-    (g, w, h) => {
-      LvKit.grain(g, w, h, '#3a3040', 0.1, 9000);
-      const bh = 48;
-      for (let y = 0, r = 0; y < h; y += bh, r++)
-        for (let x = (r % 2) * -60; x < w; x += 120) {
-          const sh = 40 + Math.random() * 30;
-          g.fillStyle = `rgb(${sh + 10},${sh},${sh + 18})`;
-          g.fillRect(x + 3, y + 3, 114, bh - 6);
-          g.fillStyle = 'rgba(0,0,0,0.25)';
-          g.fillRect(x + 3, y + bh - 9, 114, 6);
-        }
-      for (let i = 0; i < 60; i++) {
-        g.fillStyle = `rgba(60,110,70,${Math.random() * 0.18})`;
-        g.beginPath();
-        g.arc(Math.random() * w, Math.random() * h, 6 + Math.random() * 20, 0, TAU);
-        g.fill();
-      }
-    },
-    1,
-    1,
-  );
-  const flags = LvKit.tex(
-    512,
-    512,
-    (g, w, h) => {
-      LvKit.grain(g, w, h, '#2a2430', 0.1, 6000);
-      for (let y = 0; y < h; y += 128)
-        for (let x = 0; x < w; x += 128) {
-          const sh = 34 + Math.random() * 22;
-          g.fillStyle = `rgb(${sh},${sh - 4},${sh + 8})`;
-          g.fillRect(x + 4, y + 4, 120, 120);
-        }
-    },
-    1,
-    1,
-  );
-  const matCache = new Map();
-  const tiled = (src, color, rx, ry) => {
-    rx = Math.max(1, Math.round(rx));
-    ry = Math.max(1, Math.round(ry));
-    const k = src.uuid + rx + ',' + ry;
-    if (!matCache.has(k)) {
-      const t = src.clone();
-      t.needsUpdate = true;
-      t.repeat.set(rx, ry);
-      matCache.set(k, new THREE.MeshStandardMaterial({ map: t, roughness: 0.88, color }));
-    }
-    return matCache.get(k);
-  };
-  const wallMat = (sx, sy) => tiled(bricks, '#a89ab8', sx / 6, sy / 6);
-  const floorM = (sx, sz) => tiled(flags, '#9a90a8', sx / 4, sz / 4);
-  const iron = new THREE.MeshStandardMaterial({
-    color: '#2a2430',
-    metalness: 0.9,
-    roughness: 0.35,
-    emissive: '#120a14',
-  });
-  const wood = new THREE.MeshStandardMaterial({ color: '#5a3a2a', roughness: 0.8 });
+  // 1024² procedural stone, triplanar in world space (js/world/textures.js)
+  const wallM = Tex.mat('stone', { color: '#9a8ea8', scale: 3.2, bump: 1.4 });
+  const floorMat = Tex.mat('cobble', { color: '#8e8496', scale: 3, bump: 1.6 });
+  const wallMat = () => wallM;
+  const floorM = () => floorMat;
+  const iron = Tex.mat('metal', { color: '#4a4452', metal: 0.75, rough: 0.9, scale: 1.5 });
+  const wood = Tex.mat('wood', { color: '#8a6450', scale: 1.6 });
   const goldM = new THREE.MeshStandardMaterial({
     color: '#d6ad5e',
     metalness: 1,
@@ -183,7 +129,9 @@ const Donjon = (() => {
     room(0, 11, 40, 28, 9, 4.4, 12);
     // lever corridor
     room(0, 40, 58, 14, 11, 4.4, 28);
-    K.solid(-5, 3, 50, 4, 6, 4, wallMat(4, 6));
+    // the grapple launch carries ~9 m forward: the Dame's ledge runs to the end wall so she
+    // lands on it instead of flying past
+    K.solid(-5, 3, 51.75, 4, 6, 11.5, wallMat(4, 6));
     K.solid(5, 1.475, 50, 4, 2.95, 4, wallMat(4, 3));
     // lever plates
     [
@@ -226,7 +174,7 @@ const Donjon = (() => {
     for (let z = 66; z < 96; z += 10)
       [-9, 9].forEach((x) => {
         K.solid(x, 6, z, 1.6, 12, 1.6, wallMat(2, 12));
-        K.deco(new THREE.BoxGeometry(2.2, 0.5, 2.2), iron, x, 0.25, z);
+        K.solid(x, 0.25, z, 2.2, 0.5, 2.2, iron);
       });
     // room 3 · l'ossuaire
     room(0, 100, 130, 24, 8, 4.4, 30);
@@ -237,9 +185,7 @@ const Donjon = (() => {
     });
     const r = rng(77);
     for (let k = 0; k < 5; k++)
-      [-1, 1].forEach((side) =>
-        K.deco(new THREE.BoxGeometry(1.2, 0.12, 27), wood, side * 11.4, 0.5 + k * 1.3, 115),
-      );
+      [-1, 1].forEach((side) => K.solid(side * 11.4, 0.5 + k * 1.3, 115, 1.2, 0.12, 27, wood));
     const skull = new THREE.SphereGeometry(0.22, 10, 8);
     for (let i = 0; i < 90; i++) {
       const side = i % 2 ? 1 : -1;

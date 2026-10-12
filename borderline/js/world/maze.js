@@ -5,22 +5,43 @@ const Maze = (() => {
   const WALL_H = 5;
   const M1 = { n: 9, x0: -14.4, z0: 0 };
   const M2 = { n: 7, x0: -11.2, z0: 50 };
-  const TOWER1 = V3(-23, 16, 14.4);
-  const TOWER2 = V3(19, 14, 61.2);
+  const TOWER1 = V3(0, 17, 14.4);
+  const TOWER2 = V3(0, 15, 61.2);
   const BOMB = V3(0, 0, 38);
   const WIRE_X = [1.2, 0.4, -0.4, -1.2];
   const WIRES = ['#ff5f8a', '#ffcf8a', '#6c8cff', '#f4eef6'];
   const CARD = V3(0, 1.6, 81);
+  // the manual's lectern sits in a corner of the deck, out of the view down
+  const LECT = { x: 2.6, z: -2.6 };
 
   const group = new THREE.Group();
   group.visible = false;
   R.scene.add(group);
-  const stone = new THREE.MeshStandardMaterial({ color: '#1c1424', roughness: 0.9 });
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: '#2b2238',
-    roughness: 0.8,
-    emissive: '#0c0814',
-  });
+  // textured surfaces, created at build time (Tex generates on first use)
+  let stone;
+  let wallMat;
+  let metal;
+  let glass;
+  let rim;
+  const mats = () => {
+    stone = Tex.mat('cobble', { color: '#6a5a78', scale: 5, bump: 1.2 });
+    wallMat = Tex.mat('stone', {
+      color: '#6a5878',
+      scale: 4,
+      bump: 0.7,
+      emissive: '#0c0814',
+    });
+    metal = Tex.mat('metal', { color: '#9a8aa8', rough: 0.55, metal: 0.25, scale: 1.5 });
+    rim = Tex.mat('concrete', { color: '#5a4c68', scale: 2 });
+    glass = new THREE.MeshStandardMaterial({
+      color: '#bfe8ff',
+      roughness: 0.05,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+    });
+  };
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
   let built = false;
@@ -31,9 +52,9 @@ const Maze = (() => {
   let bombScreen = null;
   let card = null;
 
-  const solid = (x, y, z, sx, sy, sz, mat = stone, opt) => {
+  const solid = (x, y, z, sx, sy, sz, mat = 'stone', opt) => {
     if (mat) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat === 'stone' ? stone : mat);
       m.position.copy(P(x, y, z));
       group.add(m);
     }
@@ -178,6 +199,7 @@ const Maze = (() => {
       z0,
       size,
       traps: trapCells,
+      at: m.at,
       darkFor,
       dead: dead ? { x: x0 + dead[0] * CELL + CELL / 2, z: z0 + dead[1] * CELL + CELL / 2 } : null,
       entry: V3(x0 + size / 2, 0, z0 - 1.5),
@@ -185,11 +207,32 @@ const Maze = (() => {
     };
   };
 
+  // a floating deck above the maze: metal rim, glass floor, rails, four cables to the sky
   const tower = (t, tag) => {
-    solid(t.x, t.y - 0.5, t.z, 6, 1, 6);
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2, t.y - 1, 8), stone);
-    col.position.copy(P(t.x, (t.y - 1) / 2, t.z));
-    group.add(col);
+    const S = 7;
+    const RIM = 0.7;
+    solid(t.x, t.y - 0.15, t.z, S, 0.3, S, null);
+    const gl = new THREE.Mesh(new THREE.BoxGeometry(S - RIM * 2, 0.06, S - RIM * 2), glass);
+    gl.position.copy(P(t.x, t.y - 0.05, t.z));
+    gl.renderOrder = 2;
+    group.add(gl);
+    [
+      [0, (S - RIM) / 2, S, RIM],
+      [0, -(S - RIM) / 2, S, RIM],
+      [(S - RIM) / 2, 0, RIM, S - RIM * 2],
+      [-(S - RIM) / 2, 0, RIM, S - RIM * 2],
+    ].forEach(([dx, dz, sx, sz]) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.3, sz), rim);
+      m.position.copy(P(t.x + dx, t.y - 0.15, t.z + dz));
+      group.add(m);
+    });
+    const cable = glow('#7ce0ff', 0.35);
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1]) {
+        const c = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 60, 4), cable);
+        c.position.copy(P(t.x + sx * (S / 2 - 0.2), t.y + 30, t.z + sz * (S / 2 - 0.2)));
+        group.add(c);
+      }
     const rail = glow('#7ce0ff', 0.6);
     [
       [0, 3, 6, 0.06],
@@ -198,15 +241,24 @@ const Maze = (() => {
       [-3, 0, 0.06, 6],
     ].forEach(([dx, dz, sx, sz]) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.06, sz), rail);
-      m.position.copy(P(t.x + dx, t.y + 1, t.z + dz));
+      m.position.copy(P(t.x + (dx * 7) / 6, t.y + 1, t.z + (dz * 7) / 6));
+      m.scale.set(sx > 1 ? 7 / 6 : 1, 1, sz > 1 ? 7 / 6 : 1);
       group.add(m);
+      // glass guard under the handrail, tall enough that nobody jumps into the maze
+      const gw = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max((sx * 7) / 6, 0.04), 2.6, Math.max((sz * 7) / 6, 0.04)),
+        glass,
+      );
+      gw.position.copy(P(t.x + (dx * 7) / 6, t.y + 1.3, t.z + (dz * 7) / 6));
+      gw.renderOrder = 2;
+      group.add(gw);
       Phys.box(
-        O.x + t.x + dx,
-        O.y + t.y + 0.6,
-        O.z + t.z + dz,
-        Math.max(sx, 0.2),
-        1.2,
-        Math.max(sz, 0.2),
+        O.x + t.x + (dx * 7) / 6,
+        O.y + t.y + 1.6,
+        O.z + t.z + (dz * 7) / 6,
+        Math.max((sx * 7) / 6, 0.2),
+        3.2,
+        Math.max((sz * 7) / 6, 0.2),
       );
     });
     const s = makeSprite(tag, 1.4, '#7ce0ff');
@@ -241,6 +293,7 @@ const Maze = (() => {
     built = true;
     role = myRole;
     group.visible = true;
+    mats();
     const r = rng(seed + 404);
     solid(0, -0.5, -6, 14, 1, 12);
     buildMaze(M1, 'm1', r, 'valet');
@@ -255,17 +308,25 @@ const Maze = (() => {
 
     const lectern = new THREE.Mesh(
       new THREE.BoxGeometry(0.8, 1.1, 0.6).translate(0, 0.55, 0),
-      stone,
+      metal,
     );
-    lectern.position.copy(P(TOWER1.x + 1.5, TOWER1.y, TOWER1.z));
-    const book = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.5), glow('#ffcf8a', 1.2));
-    book.position.copy(P(TOWER1.x + 1.5, TOWER1.y + 1.15, TOWER1.z));
+    lectern.position.copy(P(TOWER1.x + LECT.x, TOWER1.y, TOWER1.z + LECT.z));
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.5), glow('#ffcf8a', 0.8));
+    book.position.copy(P(TOWER1.x + LECT.x, TOWER1.y + 1.15, TOWER1.z + LECT.z));
     group.add(lectern, book);
+    Phys.box(
+      O.x + TOWER1.x + LECT.x,
+      O.y + TOWER1.y + 0.55,
+      O.z + TOWER1.z + LECT.z,
+      0.8,
+      1.1,
+      0.6,
+    );
 
     const dev = new THREE.Group();
     const box = new THREE.Mesh(
       new THREE.BoxGeometry(3.2, 1.1, 1),
-      new THREE.MeshStandardMaterial({ color: '#2a1626', roughness: 0.5, metalness: 0.4 }),
+      Tex.mat('metal', { color: '#a06a84', rough: 0.55, metal: 0.2, scale: 1.2 }),
     );
     box.position.y = 0.55;
     dev.add(box);
@@ -280,6 +341,7 @@ const Maze = (() => {
     });
     dev.position.copy(P(BOMB.x, 0, BOMB.z));
     group.add(dev);
+    Phys.box(O.x + BOMB.x, O.y + 0.55, O.z + BOMB.z, 3.2, 1.1, 1);
     bombScreen = makeScreen(1.6, 0.8, 512);
     bombScreen.mesh.position.copy(P(BOMB.x, 2.1, BOMB.z + 0.2));
     bombScreen.mesh.rotation.y = Math.PI;
@@ -292,27 +354,16 @@ const Maze = (() => {
     screen.mesh.rotation.y = Math.PI;
     group.add(screen.mesh);
 
-    const tex = (() => {
-      const c = document.createElement('canvas');
-      c.width = 256;
-      c.height = 360;
-      const g = c.getContext('2d');
-      g.fillStyle = '#fff8f0';
-      g.fillRect(0, 0, 256, 360);
-      g.fillStyle = '#1b1a2e';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.font = '160px Georgia';
-      Icons.fillText(g, '♣', 128, 190);
-      g.font = 'bold 44px Georgia';
-      Icons.fillText(g, '4', 30, 40);
-      return new THREE.CanvasTexture(c);
-    })();
     card = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
-      new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, toneMapped: false }),
+      new THREE.MeshBasicMaterial({
+        map: Tex.card('4', '♣'),
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
     );
-    card.material.color.setScalar(1.4);
+    card.material.color.setScalar(1.15);
     card.position.copy(P(CARD.x, CARD.y, CARD.z));
     card.visible = false;
     group.add(card);
@@ -335,7 +386,7 @@ const Maze = (() => {
       return bombScreen;
     },
     mazes,
-    rel: (p) => V3(p.x - O.x, p.y - O.y, p.z - O.z),
+    rel: (p, out = V3()) => out.set(p.x - O.x, p.y - O.y, p.z - O.z),
     spawn(stage, who) {
       if (stage === 1) return who === 'dame' ? P(TOWER1.x, TOWER1.y, TOWER1.z) : P(0, 0, -5);
       if (stage === 2) return who === 'dame' ? P(TOWER1.x, TOWER1.y, TOWER1.z) : P(0, 0, 35);
@@ -343,8 +394,7 @@ const Maze = (() => {
       return P(who === 'dame' ? -2.5 : 2.5, 0, 78);
     },
     yaw(stage, who) {
-      if (who === 'dame' && stage <= 2) return Math.PI / 2;
-      if (who === 'valet' && stage === 3) return -Math.PI / 2;
+      // everyone faces +z, so the guide's left and right match the walker's
       return 0;
     },
     inside(q, key) {
@@ -360,9 +410,11 @@ const Maze = (() => {
         ) && q.y < 0.5
       );
     },
-    nearLectern: (q) => Math.hypot(q.x - TOWER1.x - 1.5, q.z - TOWER1.z) < 2 && q.y > TOWER1.y - 1,
+    nearLectern: (q) =>
+      Math.hypot(q.x - TOWER1.x - LECT.x, q.z - TOWER1.z - LECT.z) < 2 && q.y > TOWER1.y - 1,
     nearWire(q) {
-      if (Math.abs(q.z - (BOMB.z + 1.2)) > 1.4) return -1;
+      // wires are read and cut from the screen side (south), left to right: rose, or, bleu, blanc
+      if (Math.abs(q.z - (BOMB.z - 1.2)) > 1.4) return -1;
       let best = -1;
       let bd = 0.45;
       WIRE_X.forEach((x, i) => {

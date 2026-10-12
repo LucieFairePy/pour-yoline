@@ -51,15 +51,12 @@ const Remote = (() => {
         delay = clamp(gapAvg * 1.6 + gapJit * 2.5, 80, 450);
       }
       lastRx = now;
-      if (
-        buf.length &&
-        Math.hypot(
-          s[0] - buf[buf.length - 1].s[0],
-          s[1] - buf[buf.length - 1].s[1],
-          s[2] - buf[buf.length - 1].s[2],
-        ) > 15
-      )
-        buf.length = 0;
+      // a jump faster than anyone can move (respawn, teleport, portal) snaps instead of sliding
+      if (buf.length) {
+        const l = buf[buf.length - 1];
+        const d = Math.hypot(s[0] - l.s[0], s[1] - l.s[1], s[2] - l.s[2]);
+        if (d > 4 && d > ((now - l.t) / 1000) * 30) buf.length = 0;
+      }
       buf.push({ t: now, s });
       while (buf.length > 30) buf.shift();
     },

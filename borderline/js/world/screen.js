@@ -78,7 +78,7 @@ const makeScreen = (w, h, res = 1024) => {
 };
 
 const BigScreen = (() => {
-  const s = makeScreen(20, 10);
+  const s = makeScreen(20, 10, 2048);
   s.mesh.position.copy(City.screenPos);
   R.scene.add(s.mesh);
   return s;

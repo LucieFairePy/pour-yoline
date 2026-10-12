@@ -4,12 +4,16 @@ const Portes = (() => {
   const group = new THREE.Group();
   group.visible = false;
   R.scene.add(group);
-  const wall = new THREE.MeshStandardMaterial({ color: '#2a2433', roughness: 0.7, metalness: 0.2 });
-  const floor = new THREE.MeshStandardMaterial({ color: '#3a3444', roughness: 0.8 });
-  const panelMat = new THREE.MeshStandardMaterial({
-    color: '#f2eef6',
-    roughness: 0.35,
-    emissive: '#3a3644',
+  // test-chamber look: concrete walls, tiled floors, metal steps, white portal panels
+  const wall = Tex.mat('concrete', { color: '#6e6878', scale: 3 });
+  const floor = Tex.mat('pavement', { color: '#5e5a68', scale: 4 });
+  const steel = Tex.mat('metal', { color: '#8b8796', scale: 2, metal: 0.5, rough: 0.9 });
+  const panelMat = Tex.mat('plaster', {
+    color: '#ffffff',
+    scale: 2,
+    rough: 0.6,
+    emissive: '#4a4654',
+    bump: 0.3,
   });
   const glassMat = new THREE.MeshStandardMaterial({
     color: '#7ce0ff',
@@ -30,6 +34,7 @@ const Portes = (() => {
   let card = null;
   let screen = null;
   const portals = {};
+  const pdCache = {};
 
   const solid = (x, y, z, sx, sy, sz, mat = wall, opt) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
@@ -65,7 +70,7 @@ const Portes = (() => {
   };
 
   const button = (id, x, y, z) => {
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.14, 24), wall);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.14, 24), steel);
     base.position.copy(P(x, y + 0.07, z));
     const top = new THREE.Mesh(
       new THREE.CylinderGeometry(0.85, 0.85, 0.1, 24),
@@ -157,16 +162,38 @@ const Portes = (() => {
     door('d1', 6, 2.5, 26.3, 6, 5, 0.6);
     solid(9.9, 3, 26.3, 1.4, 6, 0.6);
     solid(0, -0.5, 34, 20, 1, 16, floor);
-    for (let i = 0; i < 10; i++) solid(8, i * 1.15 + 0.6, 27.5 + i * 0.95, 3, 1.15, 1.1, wall);
-    solid(2.5, 11.9, 33.5, 13, 0.6, 7, floor);
-    panel('p4', 0, 0.02, 39.5, [0, 1, 0], 6, 5);
-    solid(-6, 3, 38.5, 3.4, 6, 1.6);
-    panel('p3', -6, 3.2, 39.32, [0, 0, 1], 3.2, 3.6);
+    // room 3 side walls, so nobody walks off into the void
+    solid(-10.3, 3, 34.3, 0.6, 6, 15.4);
+    solid(10.3, 3, 34.3, 0.6, 6, 15.4);
+    // switchback staircase up to the ledge (0.42 m steps: walkable without jumping)
+    const RISE = 0.42;
+    const TREAD = 0.8;
+    for (let i = 0; i < 11; i++) {
+      const top = RISE * (i + 1);
+      solid(-8.5, top / 2, 28.4 + i * TREAD + TREAD / 2, 2.8, top, TREAD, steel);
+    }
+    const land = RISE * 11;
+    solid(-7.1, land / 2, 38.7, 5.6, land, 3, steel);
+    for (let j = 0; j < 11; j++) {
+      const top = land + RISE * (j + 1);
+      solid(-5.7, top / 2, 37.2 - j * TREAD - TREAD / 2, 2.8, top, TREAD, steel);
+    }
+    const ledge = land + RISE * 11;
+    solid(-1.15, ledge - 0.3, 29.3, 6.3, 0.6, 3.4, floor);
+    // railings at the back and on the far side; the front edge is where you drop
+    solid(-1.15, ledge + 0.5, 27.7, 6.3, 1, 0.2, steel);
+    solid(2.1, ledge + 0.5, 29.3, 0.2, 1, 3.4, steel);
+    // floor panel right below the ledge edge: fall into it
+    panel('p4', -0.5, 0.02, 34, [0, 1, 0], 6, 5);
+    solid(2, 3, 38.5, 3.4, 6, 1.6);
+    panel('p3', 2, 3.2, 39.32, [0, 0, 1], 3.2, 3.6);
     solid(6, 0.9, 41.6, 3, 0.6, 1.2, wall);
-    bridge = solid(6, 1.7, 45.5, 3, 0.6, 7, glow('#ffcf8a', 0.9), { dyn: true });
+    bridge = solid(6, 1.7, 44.5, 3, 0.6, 5, glow('#ffcf8a', 0.9), { dyn: true });
     bridge.b.on = false;
     bridge.m.visible = false;
-    solid(0, 1.5, 60, 16, 1, 22, floor);
+    solid(0, 1.5, 59, 16, 1, 24, floor);
+    solid(-8.15, 2.6, 59, 0.3, 1.2, 24, steel);
+    solid(8.15, 2.6, 59, 0.3, 1.2, 24, steel);
     button('b2', -4, 2, 58);
     solid(0, 1.5, 88, 30, 1, 34, floor);
     glassWall(-9, 4.5, 88, 0.3, 5, 6);
@@ -184,27 +211,16 @@ const Portes = (() => {
     ].forEach(([x, y, z, s]) => solid(x, y, z, s, 0.5, s, wall));
     solid(9, 6.9, 95, 4, 0.6, 4, floor);
     button('b3b', 9, 7.2, 95);
-    const ct = (() => {
-      const c = document.createElement('canvas');
-      c.width = 256;
-      c.height = 360;
-      const g = c.getContext('2d');
-      g.fillStyle = '#fff8f0';
-      g.fillRect(0, 0, 256, 360);
-      g.fillStyle = '#d8324f';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.font = '160px Georgia';
-      Icons.fillText(g, '♦', 128, 190);
-      g.font = 'bold 44px Georgia';
-      Icons.fillText(g, '9', 30, 40);
-      return new THREE.CanvasTexture(c);
-    })();
     card = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
-      new THREE.MeshBasicMaterial({ map: ct, side: THREE.DoubleSide, toneMapped: false }),
+      new THREE.MeshBasicMaterial({
+        map: Tex.card('9', '♦'),
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
     );
-    card.material.color.setScalar(1.4);
+    card.material.color.setScalar(1.1);
     card.position.copy(P(0, 3.6, 100));
     card.visible = false;
     group.add(card);
@@ -280,8 +296,11 @@ const Portes = (() => {
     },
     portalData(which, data) {
       if (!data) return null;
+      // cached per placement: this runs every frame
+      const c = pdCache[which];
+      if (c && c.src === data) return c;
       const pn = panels.find((p) => p.id === data.panel);
-      return { pos: V3(...data.pos), normal: pn.normal, panel: pn };
+      return (pdCache[which] = { src: data, pos: V3(...data.pos), normal: pn.normal, panel: pn });
     },
     near(q, id, r = 1.4) {
       const b = buttons[id];
@@ -318,6 +337,11 @@ const Portes = (() => {
       card.visible = !!x.card;
       card.rotation.y = t * 1.4;
     },
+    // the glass cages are only reachable through portals: whoever is inside when the
+    // portals move on is brought back out
+    inCage: (q) =>
+      (q.x > 4 && q.x < 10.3 && q.z > 15.8 && q.z < 24.2 && q.y < 4) ||
+      (q.x < -9 && q.x > -15 && q.z > 85 && q.z < 91 && q.y < 6),
     nearCard: (q) => Math.hypot(q.x, q.z - 100) < 3 && q.y > 1,
   };
 })();

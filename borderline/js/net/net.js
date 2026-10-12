@@ -9,7 +9,7 @@
 const Net = (() => {
   const PREFIX = 'brdl-yo-';
   const BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
-  const LATEST = new Set(['p', 'S', 'en']);
+  const LATEST = new Set(['p', 'S', 'en', 'h']);
   const handlers = {};
   let peer = null;
   let conn = null;
@@ -220,14 +220,29 @@ const Net = (() => {
   const listenCalls = () => {
     peer.on('call', (c) => {
       c.answer(localStream || undefined);
+      if (localStream) outCall = c;
       c.on('stream', (s) => emit('stream', s));
     });
   };
 
+  let outCall = null;
   const call = (stream) => {
     if (!peer || !conn || !p2pOpen) return;
+    // already talking: swap the track instead of opening a second call
+    const pc = outCall && outCall.open && outCall.peerConnection;
+    const track = stream.getAudioTracks()[0];
+    if (pc && track) {
+      const snd = pc.getSenders().find((x) => x.track && x.track.kind === 'audio');
+      if (snd) {
+        snd.replaceTrack(track);
+        return;
+      }
+    }
     const c = peer.call(conn.peer, stream);
-    if (c) c.on('stream', (s) => emit('stream', s));
+    if (c) {
+      outCall = c;
+      c.on('stream', (s) => emit('stream', s));
+    }
   };
 
   const newPeer = (id) =>

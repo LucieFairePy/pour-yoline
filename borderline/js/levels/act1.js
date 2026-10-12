@@ -1,7 +1,11 @@
 (() => {
   const T = CONFIG;
   const A = T.act1;
-  const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0 };
+  const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0, hp: V3() };
+  // reused every frame
+  const qd = V3();
+  const qv = V3();
+  const q = V3();
   const tm = { release: 0, inside: 0, cab: 0, h: 0, sync: 0 };
   const showLeft = (n) => {
     const sub = A.cabins.countdown + ' ' + n + ' s';
@@ -39,7 +43,7 @@
     }
   };
 
-  const cabEnter = (k) => {
+  const cabEnter = (c, k) => {
     const C = A.cabins;
     if (k.phase === 'run') {
       Sound.play('door');
@@ -52,9 +56,16 @@
       Sound.play('door');
       Sound.mood('calm');
       HUD.danger(0);
-      const msg = k.both ? C.failBoth : k.who === 'dame' ? C.failDame : C.failValet;
+      // the one who pressed hears the lesson, the other hears what happened
+      const msg = k.both
+        ? C.failBoth
+        : k.who === c.role
+          ? k.who === 'dame'
+            ? C.failDame
+            : C.failValet
+          : C.failOther || '{mate} a appuyé pour se sauver. Ta porte reste fermée. On recommence.';
       HUD.say(msg, T.master, 2600);
-      Arena.screen.show('Raté', msg, '#ff2a3a');
+      Arena.screen.show('Raté', Story.fmt(msg), '#ff2a3a');
       Arena.cabShow('Raté', '', '#ff2a3a');
       const hint = (k.fails || 1) > 1 && C.hints[Math.min((k.fails || 1) - 2, C.hints.length - 1)];
       if (hint) HUD.say(hint, T.master, 3200);
@@ -119,7 +130,7 @@
       if (x.stage !== local.stage && x.stage <= 4) stageEnter(c, x.stage);
       if (x.cab.phase !== local.cab) {
         local.both = !!x.cab.both;
-        cabEnter(x.cab);
+        cabEnter(c, x.cab);
         local.cab = x.cab.phase;
       }
       if (x.cab.phase === 'fail' && x.cab.both && !local.both) {
@@ -131,8 +142,8 @@
     host(c, dt) {
       if (!Arena.built) return;
       const x = c.S.x;
-      const qd = Arena.rel(c.pos('dame'));
-      const qv = Arena.rel(c.pos('valet'));
+      Arena.rel(c.pos('dame'), qd);
+      Arena.rel(c.pos('valet'), qv);
       if (x.stage === 1 && Arena.onB(qd) && Arena.onB(qv)) c.set((s) => (s.x.stage = 2));
       if (x.stage === 2) {
         if (x.att) {
@@ -150,9 +161,11 @@
               s.x.stage = 3;
             });
         }
+        // stream the harness position only while it moves (15 Hz)
         tm.h += dt;
-        if (tm.h > 1 / 15) {
+        if (tm.h > 1 / 15 && x.h.t !== local.sentH) {
           tm.h = 0;
+          local.sentH = x.h.t;
           c.send('h', x.h);
         }
       }
@@ -223,7 +236,7 @@
       if (!Arena.built) return null;
       const x = c.S.x;
       Arena.update(dt, t, { a: x, h: x.h });
-      const q = Arena.rel(Player.body.p);
+      Arena.rel(Player.body.p, q);
       const r = c.role;
       let prompt = null;
       if (x.stage === 2) {
@@ -244,9 +257,10 @@
           if (Input.pressed('interact')) c.act({ a: 'attach' });
         }
         if (r === 'valet' && x.att) {
-          const hp = Arena.harnessPos(x.h.t);
+          const hp = Arena.harnessPos(x.h.t, local.hp);
           Player.mode = 'hang';
-          Player.hangPos = V3(hp.x + Math.sin(t * 1.3) * 0.15, hp.y - 2.45, hp.z);
+          if (!Player.hangPos) Player.hangPos = V3();
+          Player.hangPos.set(hp.x + Math.sin(t * 1.3) * 0.15, hp.y - 2.45, hp.z);
         }
       }
       if (x.stage === 4) {

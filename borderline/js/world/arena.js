@@ -14,18 +14,24 @@ const Arena = (() => {
   group.visible = false;
   R.scene.add(group);
 
-  const stone = new THREE.MeshStandardMaterial({
-    color: '#241628',
-    roughness: 0.85,
-    metalness: 0.1,
-  });
+  // textured surfaces (lazy: Tex generates on first use, at build time)
+  let stone;
+  let rock;
+  let metal;
+  let concrete;
+  const mats = () => {
+    stone = Tex.mat('stone', { color: '#6e5e7c', scale: 4.5, bump: 1.2 });
+    rock = Tex.mat('rock', { color: '#55445f', scale: 7 });
+    metal = Tex.mat('plaster', { color: '#5a4a6a', rough: 0.85, metal: 0.25, scale: 3 });
+    concrete = Tex.mat('concrete', { color: '#7d6e88', scale: 2 });
+  };
   const edge = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
   const rose = edge('#ff4f86');
   const gold = edge('#ffcf8a', 1.6);
 
-  const solid = (x, y, z, sx, sy, sz, mat = stone, opt) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
+  const solid = (x, y, z, sx, sy, sz, mat, opt) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat || stone);
     m.position.copy(P(x, y, z));
     group.add(m);
     const b = Phys.box(O.x + x, O.y + y, O.z + z, sx, sy, sz, opt);
@@ -45,7 +51,7 @@ const Arena = (() => {
       l.position.copy(P(0, 0.02, z));
       group.add(l);
     }
-    const under = new THREE.Mesh(new THREE.ConeGeometry(w * 0.45, 9, 6), stone);
+    const under = new THREE.Mesh(new THREE.ConeGeometry(w * 0.45, 9, 6), rock);
     under.rotation.x = Math.PI;
     under.position.copy(P(0, -6.5, (z0 + z1) / 2));
     under.scale.z = d / w;
@@ -71,33 +77,19 @@ const Arena = (() => {
     return s;
   };
 
-  const cardMesh = (() => {
-    const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 360;
-    const g = c.getContext('2d');
-    g.fillStyle = '#fff8f0';
-    g.fillRect(0, 0, 256, 360);
-    g.fillStyle = '#d8324f';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.font = '160px Georgia';
-    Icons.fillText(g, '♥', 128, 190);
-    g.font = 'bold 44px Georgia';
-    Icons.fillText(g, '10', 36, 40);
-    g.save();
-    g.translate(220, 320);
-    g.rotate(Math.PI);
-    Icons.fillText(g, '10', 0, 0);
-    g.restore();
-    const t = new THREE.CanvasTexture(c);
+  const cardMesh = () => {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
-      new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, toneMapped: false }),
+      new THREE.MeshBasicMaterial({
+        map: Tex.card('10', '♥'),
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
     );
-    m.material.color.setScalar(1.4);
+    m.material.color.setScalar(1.15);
     return m;
-  })();
+  };
 
   let built = false;
   let role = 'dame';
@@ -116,6 +108,7 @@ const Arena = (() => {
     built = true;
     role = myRole;
     group.visible = true;
+    mats();
 
     platform(0, 12, 18);
     platform(42, 52, 18);
@@ -134,23 +127,27 @@ const Arena = (() => {
 
     const tileGeo = new THREE.BoxGeometry(1.8, 0.3, 2.6);
     const tMat = {
-      seen: new THREE.MeshStandardMaterial({
-        color: '#3a2440',
-        roughness: 0.6,
+      seen: Tex.mat('metal', {
+        color: '#6a4a78',
+        rough: 0.7,
+        metal: 0.4,
+        scale: 1.8,
         emissive: '#ff4f86',
-        emissiveIntensity: 0.55,
+        emissiveIntensity: 0.32,
       }),
-      plain: new THREE.MeshStandardMaterial({ color: '#2e2236', roughness: 0.7 }),
-      real: new THREE.MeshStandardMaterial({
-        color: '#203050',
-        roughness: 0.6,
+      plain: Tex.mat('metal', { color: '#6a5a78', rough: 0.8, metal: 0.4, scale: 1.8 }),
+      real: Tex.mat('metal', {
+        color: '#3a4a70',
+        rough: 0.7,
+        metal: 0.4,
+        scale: 1.8,
         emissive: '#6cc8ff',
-        emissiveIntensity: 0.7,
+        emissiveIntensity: 0.3,
       }),
       ghost: new THREE.MeshBasicMaterial({
         color: '#6cc8ff',
         transparent: true,
-        opacity: 0.07,
+        opacity: 0.06,
         depthWrite: false,
       }),
     };
@@ -203,7 +200,7 @@ const Arena = (() => {
     tagD.position.copy(P(-4, 2.2, 10));
     group.add(tagV, tagD);
 
-    solid(-5, 0.6, 49.5, 0.5, 1.2, 0.5, stone);
+    solid(-5, 0.6, 49.5, 0.5, 1.2, 0.5, metal);
     crank = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 8, 20), gold);
     crank.position.copy(P(-5, 1.4, 49.5));
     group.add(crank);
@@ -219,9 +216,10 @@ const Arena = (() => {
     const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.022, 5), edge('#a07850', 0.7));
     group.add(cable);
     for (const p of [A, B]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 4.6, 8), stone);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 4.6, 10), metal);
       pole.position.set(p.x, O.y + 2.3, p.z);
       group.add(pole);
+      Phys.box(p.x, O.y + 2.3, p.z, 0.3, 4.6, 0.3);
     }
     harness = new THREE.Group();
     const bar = new THREE.Mesh(
@@ -253,16 +251,17 @@ const Arena = (() => {
     for (const who of ['dame', 'valet']) {
       const x = CAB[who];
       const col = who === 'dame' ? '#ff5f8a' : '#6cc8ff';
-      solid(x, 2, CAB_Z1 + 0.15, 3.6, 4, 0.3);
-      solid(x - 1.65, 2, (CAB_Z0 + CAB_Z1) / 2, 0.3, 4, CAB_Z1 - CAB_Z0 + 0.3);
-      solid(x + 1.65, 2, (CAB_Z0 + CAB_Z1) / 2, 0.3, 4, CAB_Z1 - CAB_Z0 + 0.3);
-      solid(x, 4.15, (CAB_Z0 + CAB_Z1) / 2, 3.6, 0.3, CAB_Z1 - CAB_Z0 + 0.3);
-      const doorMat = new THREE.MeshStandardMaterial({
-        color: '#1c1022',
-        roughness: 0.4,
-        metalness: 0.6,
+      solid(x, 2, CAB_Z1 + 0.15, 3.6, 4, 0.3, metal);
+      solid(x - 1.65, 2, (CAB_Z0 + CAB_Z1) / 2, 0.3, 4, CAB_Z1 - CAB_Z0 + 0.3, metal);
+      solid(x + 1.65, 2, (CAB_Z0 + CAB_Z1) / 2, 0.3, 4, CAB_Z1 - CAB_Z0 + 0.3, metal);
+      solid(x, 4.15, (CAB_Z0 + CAB_Z1) / 2, 3.6, 0.3, CAB_Z1 - CAB_Z0 + 0.3, metal);
+      const doorMat = Tex.mat('plaster', {
+        color: '#4a3858',
+        rough: 0.6,
+        metal: 0.4,
+        scale: 3,
         emissive: col,
-        emissiveIntensity: 0.08,
+        emissiveIntensity: 0.06,
       });
       const door = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 0.2), doorMat);
       group.add(door);
@@ -274,12 +273,13 @@ const Arena = (() => {
       doorB.on = false;
       const ceil = new THREE.Mesh(
         new THREE.BoxGeometry(3, 0.3, CAB_Z1 - CAB_Z0),
-        new THREE.MeshStandardMaterial({
-          color: '#2a1420',
-          roughness: 0.5,
-          metalness: 0.5,
+        Tex.mat('metal', {
+          color: '#5a3040',
+          rough: 0.6,
+          metal: 0.6,
+          scale: 1.5,
           emissive: '#ff2040',
-          emissiveIntensity: 0.15,
+          emissiveIntensity: 0.12,
         }),
       );
       group.add(ceil);
@@ -314,7 +314,7 @@ const Arena = (() => {
     screen.mesh.rotation.y = Math.PI;
     group.add(screen.mesh);
 
-    card = cardMesh;
+    card = cardMesh();
     card.position.copy(P(0, 1.6, 90));
     card.visible = false;
     group.add(card);
@@ -363,8 +363,8 @@ const Arena = (() => {
       if (stage === 3) return who === 'dame' ? P(-3, 0, 47) : P(4, 0, 87);
       return P(s * 3, 0, 88);
     },
-    rel(p) {
-      return V3(p.x - O.x, p.y - O.y, p.z - O.z);
+    rel(p, out = V3()) {
+      return out.set(p.x - O.x, p.y - O.y, p.z - O.z);
     },
     onA: (q) => q.z < 12.2 && q.y > -1,
     onB: (q) => q.z > 41.8 && q.z < 52.3 && q.y > -1 && Math.abs(q.x) < 9.3,
@@ -386,8 +386,7 @@ const Arena = (() => {
       dust.rotation.y = Math.sin(t * 0.02) * 0.02;
       const a = S.a || {};
       const h = S.h || { t: 0 };
-      const hp = harnessPos(h.t);
-      harness.position.copy(hp);
+      harnessPos(h.t, harness.position);
       if (a.hold) crank.rotation.z -= dt * 6;
       rings.forEach((rg) => {
         const on = a.stage === 3;
@@ -400,19 +399,23 @@ const Arena = (() => {
       for (const who of ['dame', 'valet']) {
         const k = cab[who];
         const closed = c.phase === 'run' || (c.phase === 'fail' && c.who !== who);
-        k.doorY = damp(k.doorY, closed ? 0 : 3.9, 6, dt);
-        k.door.position.copy(P(k.x, 2 + k.doorY, CAB_Z0));
+        k.doorY = damp(k.doorY, closed ? 0 : 3.3, 6, dt);
+        k.door.position.set(O.x + k.x + Math.sign(k.x) * k.doorY, O.y + 2, O.z + CAB_Z0);
         k.doorB.on = closed;
         let cy = CEIL_TOP;
         if (c.phase === 'run') cy = lerp(CEIL_TOP, CEIL_LOW, clamp(c.t / 20, 0, 1));
         if (c.phase === 'fail') cy = c.who === who ? CEIL_TOP : c.y || CEIL_TOP;
         k.ceilY = damp(k.ceilY, cy, 5, dt);
-        k.ceil.position.copy(P(k.x, k.ceilY + 0.15, (CAB_Z0 + CAB_Z1) / 2));
+        k.ceil.position.set(O.x + k.x, O.y + k.ceilY + 0.15, O.z + (CAB_Z0 + CAB_Z1) / 2);
         const bx = O.x + k.x;
         const bz0 = O.z + CAB_Z0;
         const bz1 = O.z + CAB_Z1;
-        k.ceilB.min = [bx - 1.5, O.y + k.ceilY, bz0];
-        k.ceilB.max = [bx + 1.5, O.y + k.ceilY + 0.3, bz1];
+        k.ceilB.min[0] = bx - 1.5;
+        k.ceilB.min[1] = O.y + k.ceilY;
+        k.ceilB.min[2] = bz0;
+        k.ceilB.max[0] = bx + 1.5;
+        k.ceilB.max[1] = O.y + k.ceilY + 0.3;
+        k.ceilB.max[2] = bz1;
         k.btn.scale.z = c.phase === 'run' ? 1 + Math.sin(t * 8) * 0.15 : 1;
         k.scr.update(dt, t);
       }

@@ -192,10 +192,8 @@
         if (local.win > 3.5) c.goto('reward', (s) => (s.x.card = 's7'));
       }
       const fight = [2, 5, 6, 8, 9, 11].includes(x.stage);
-      if (fight || Enemies.alive()) {
-        Enemies.simulate(dt, ps);
-        Enemies.netTick(dt);
-      }
+      if (fight || Enemies.alive()) Enemies.simulate(dt, ps);
+      Enemies.netTick(dt);
       if (fight && ps[0].down && ps[1].down) {
         local.wipe += dt;
         if (local.wipe > 2.2) {

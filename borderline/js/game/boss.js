@@ -8,8 +8,12 @@ const Boss = (() => {
     reset() {
       Object.assign(st, { summon: 3, volley: 4, cycle: 4, slamAt: -1, slamPos: null, plates: 0 });
     },
+    // the sword only stuns the King in phase 2, in the opening right after his slam
+    canStun: (e) => (e.phase || 1) === 2 && e.recover > 0,
+    // lowest hp allowed in the current phase (phases change one at a time)
+    floor: (e) => ((e.phase || 1) === 1 ? e.max * 0.66 - 1 : e.phase === 2 ? e.max * 0.33 - 1 : 0),
     mult(e, weak) {
-      if (e.phase === 1) return e.shieldDown > 0 ? (weak ? 2 : 1) : 0;
+      if (e.phase === 1) return e.shieldDown > 0 ? (weak ? 1.4 : 0.8) : 0;
       if (e.phase === 2) return e.stun > 0 ? (weak ? 2 : 1) : 0.12;
       return e.crystalDown > 0 ? (weak ? 2.5 : 1) : 0;
     },

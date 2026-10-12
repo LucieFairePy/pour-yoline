@@ -16,7 +16,21 @@ const Fx = (() => {
   const pts = new THREE.Points(
     geo,
     new THREE.PointsMaterial({
-      size: 0.35,
+      // soft round spark: bright core, glowing falloff
+      map: (() => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 64;
+        const g = c.getContext('2d');
+        const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gr.addColorStop(0, 'rgba(255,255,255,1)');
+        gr.addColorStop(0.18, 'rgba(255,255,255,0.85)');
+        gr.addColorStop(0.45, 'rgba(255,255,255,0.25)');
+        gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(c);
+      })(),
+      size: 0.5,
       vertexColors: true,
       transparent: true,
       depthWrite: false,
@@ -29,12 +43,20 @@ const Fx = (() => {
   for (let i = 0; i < N; i++) pos[i * 3 + 1] = -9999;
 
   const tmp = new THREE.Color();
+  const trail = V3();
   const spawn = (p, v, c, l, g) => {
     const i = head;
     head = (head + 1) % N;
-    pos.set([p.x, p.y, p.z], i * 3);
-    vel.set([v.x, v.y, v.z], i * 3);
-    col.set([c.r, c.g, c.b], i * 3);
+    const j = i * 3;
+    pos[j] = p.x;
+    pos[j + 1] = p.y;
+    pos[j + 2] = p.z;
+    vel[j] = v.x;
+    vel[j + 1] = v.y;
+    vel[j + 2] = v.z;
+    col[j] = c.r;
+    col[j + 1] = c.g;
+    col[j + 2] = c.b;
     life[i] = l;
     max[i] = l;
     active = Math.max(active, 1.5 + l);
@@ -86,13 +108,8 @@ const Fx = (() => {
         const k = rockets[r];
         k.t -= dt;
         k.p.addScaledVector(k.v, dt);
-        spawn(
-          k.p,
-          V3((Math.random() - 0.5) * 0.6, -1, (Math.random() - 0.5) * 0.6),
-          tmp.set(2, 1.4, 0.8),
-          0.5,
-          0,
-        );
+        trail.set((Math.random() - 0.5) * 0.6, -1, (Math.random() - 0.5) * 0.6);
+        spawn(k.p, trail, tmp.set(2, 1.4, 0.8), 0.5, 0);
         if (k.t <= 0) {
           const c = PAL[(Math.random() * PAL.length) | 0];
           burst(k.p, c, 320, 11, 2.2, -5, Math.random() < 0.5 ? 'heart' : null);

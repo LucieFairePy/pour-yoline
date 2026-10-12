@@ -2,7 +2,11 @@
   const T = CONFIG;
   const A = T.act2;
   const SYMS = ['♥', '♠', '♦', '♣'];
-  const local = { stage: 0, round: -1, boom: 0, manual: false, card: false };
+  const local = { stage: 0, round: -1, boom: 0, manual: false, card: false, scr: '' };
+  // reused every frame
+  const qd = V3();
+  const qv = V3();
+  const q = V3();
 
   const answer = (sym, n) => {
     if (sym === '♥') return n % 2 === 0 ? 0 : 1;
@@ -18,6 +22,12 @@
   const walker = (stage) => (stage === 1 ? 'valet' : stage === 3 ? 'dame' : null);
   const mazeKey = (stage) => (stage === 1 ? 'm1' : 'm2');
 
+  // the guide stands on the deck above the maze: start looking down at it
+  const lookDown = (c, st) => {
+    if ((st === 1 || st === 2) && c.role === 'dame') Cam.pitch = 0.85;
+    if (st === 3 && c.role === 'valet') Cam.pitch = 0.85;
+  };
+
   const darkness = (c) => {
     const st = Story.S.x.stage;
     const dark = walker(st) === c.role;
@@ -31,7 +41,10 @@
     const prev = local.stage;
     local.stage = st;
     const r = c.role;
-    if (prev && (st === 3 || st === 4)) c.spawn(Maze.spawn(st, r), Maze.yaw(st, r));
+    if (prev && (st === 3 || st === 4)) {
+      c.spawn(Maze.spawn(st, r), Maze.yaw(st, r));
+      lookDown(c, st);
+    }
     darkness(c);
     if (st === 1) {
       HUD.objective(A.maze[r]);
@@ -81,6 +94,7 @@
       local.stage = 0;
       local.round = -1;
       c.spawn(Maze.spawn(c.S.x.stage, c.role), Maze.yaw(c.S.x.stage, c.role));
+      lookDown(c, c.S.x.stage);
       Player.killY = Maze.O.y - 25;
       Player.checkpoint = () => {
         const st = Story.S.x.stage;
@@ -119,8 +133,8 @@
     host(c, dt) {
       if (!Maze.built) return;
       const x = c.S.x;
-      const qd = Maze.rel(c.pos('dame'));
-      const qv = Maze.rel(c.pos('valet'));
+      Maze.rel(c.pos('dame'), qd);
+      Maze.rel(c.pos('valet'), qv);
       if (x.stage === 1 && Maze.exited(qv, 'm1')) c.set((s) => (s.x.stage = 2));
       if (x.stage === 2) {
         x.bomb.t += dt;
@@ -170,7 +184,7 @@
       const x = c.S.x;
       const r = c.role;
       const p = Player.body.p;
-      const q = Maze.rel(p);
+      Maze.rel(p, q);
       const w = walker(x.stage);
       if (w) Maze.lampAt(w === r ? p : Remote.pos, true);
       else Maze.lampAt(null, false);
@@ -178,6 +192,11 @@
       Maze.bombScreen.update(dt, t);
       Maze.showCard(x.stage === 4, t);
       let prompt = null;
+      // a guide who somehow left the deck goes back up to it
+      if (w && w !== r && x.stage !== 2 && q.y < 3 && Player.mode === 'walk') {
+        const sp = Maze.spawn(x.stage, r);
+        if (sp.y - Maze.O.y > 5) c.spawn(sp, 0);
+      }
       if (w === r && Maze.onTrap(q, mazeKey(x.stage))) {
         Sound.play('trap');
         c.send('trap');
@@ -187,11 +206,15 @@
       if (x.stage === 2) {
         const left = Math.max(0, Math.ceil(45 - x.bomb.t));
         if (!Net.isHost) x.bomb.t += dt;
-        Maze.bombScreen.show(
-          x.bomb.sym + ' ' + x.bomb.num,
-          'Module ' + (x.bomb.round + 1) + '/3 · ' + left + ' s',
-          '#ff5f8a',
-        );
+        const key = x.bomb.sym + x.bomb.num + x.bomb.round + '/' + left;
+        if (key !== local.scr) {
+          local.scr = key;
+          Maze.bombScreen.show(
+            x.bomb.sym + ' ' + x.bomb.num,
+            'Module ' + (x.bomb.round + 1) + '/3 · ' + left + ' s',
+            '#ff5f8a',
+          );
+        }
         if (r === 'valet') {
           const i = Maze.nearWire(q);
           if (i >= 0) {

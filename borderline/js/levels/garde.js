@@ -163,9 +163,7 @@
             }
           }
         } else local.wipe = 0;
-      } else if (Enemies.alive()) {
-        Enemies.netTick(dt);
-      }
+      } else Enemies.netTick(dt);
     },
     action(c, who, d) {
       if (d.a === 'hit') Enemies.damage(d.id, d.dmg, d.stun || 0, !!d.weak);

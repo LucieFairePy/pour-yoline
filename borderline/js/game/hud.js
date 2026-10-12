@@ -80,6 +80,7 @@ const HUD = (() => {
     },
     role(r) {
       put(el.suit, CONFIG.roles[r].suit);
+      el.suit.classList.toggle('black', r === 'valet');
     },
     objective(t) {
       if (t === lastObj) return;
@@ -154,6 +155,16 @@ const HUD = (() => {
       put($('cardCorner'), corner);
       put($('cardCorner2'), corner);
       put($('cardBig'), big);
+      // the real card face (same texture as in the world): black spades/clubs, red hearts/diamonds
+      const face = $('card').querySelector('.card-face');
+      const rank = String(corner).split(/\s/)[0];
+      try {
+        face.style.backgroundImage = `url(${Tex.card(rank, big).image.toDataURL()})`;
+        face.classList.add('real');
+      } catch (e) {
+        face.classList.remove('real');
+      }
+      face.classList.toggle('black', !Tex.isRed(big));
       put($('cardTitle'), title);
       put($('cardSub'), sub);
       const c = $('card');
