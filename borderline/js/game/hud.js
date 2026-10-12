@@ -163,6 +163,51 @@ const HUD = (() => {
     hideCard() {
       $('card').hidden = true;
     },
+    combat(on) {
+      $('combat').hidden = !on;
+      if (!on) $('bossbar').hidden = true;
+      $('vMeName').textContent = Story.role === 'dame' ? 'La Dame' : 'Le Valet';
+      $('vMateName').textContent = Story.role === 'dame' ? 'Le Valet' : 'La Dame';
+      $('vAbil').hidden = Story.role !== 'valet';
+    },
+    vitals(me, mate, down, mateDown, revive, abil, cloaked) {
+      $('vMe').style.transform = `scaleX(${clamp(me, 0, 1)})`;
+      $('vMate').style.transform = `scaleX(${clamp(mate, 0, 1)})`;
+      $('vMate').parentElement.classList.toggle('down', mateDown);
+      $('vDown').hidden = !down;
+      $('vRevive').style.opacity = revive > 0 ? 1 : 0;
+      $('vReviveFill').style.transform = `scaleX(${clamp(revive, 0, 1)})`;
+      if (abil >= 0) {
+        $('vAbilFill').style.transform = `scaleY(${clamp(abil, 0, 1)})`;
+        $('vAbil').classList.toggle('ready', abil >= 1);
+        $('vAbil').classList.toggle('on', cloaked);
+      }
+    },
+    boss(name, frac, phase) {
+      const b = $('bossbar');
+      if (name == null) {
+        b.hidden = true;
+        return;
+      }
+      b.hidden = false;
+      $('bossName').textContent = name;
+      $('bossFill').style.transform = `scaleX(${clamp(frac, 0, 1)})`;
+      $('bossPhase').textContent = phase || '';
+    },
+    hurt() {
+      const h = $('hurt');
+      h.style.transition = 'none';
+      h.style.opacity = 0.7;
+      void h.offsetWidth;
+      h.style.transition = 'opacity 0.6s';
+      h.style.opacity = 0;
+    },
+    hitmark(weak) {
+      const h = $('hitmark');
+      h.className = 'hitmark on' + (weak ? ' weak' : '');
+      clearTimeout(h.t);
+      h.t = setTimeout(() => (h.className = 'hitmark'), 120);
+    },
     clues(n, total) {
       const k = n + '/' + total;
       if (k === lastClues) return;

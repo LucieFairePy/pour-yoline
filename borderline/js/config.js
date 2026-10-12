@@ -3,6 +3,19 @@ const CONFIG = {
   me: 'Moi',
   master: 'Le Maître du jeu',
   joker: 'Le Joker',
+  intro: {
+    s1a: 'Tu as dit oui.',
+    s1b: 'Et l’univers entier l’a entendu.',
+    s2: '… même ceux qui n’auraient jamais dû l’entendre.',
+    s4: 'Ailleurs. Très loin de chez nous.',
+    s5: 'Reste avec moi.',
+    s7a: 'Les Veilleurs collectionnent ce qui brille le plus dans l’univers.',
+    s7b: 'Cette nuit, ils ont pris votre Oui.',
+    planet: 'Terre 39',
+    planetSub: 'De l’eau, de l’air, des arbres. Presque chez nous.',
+    s9: 'Pour récupérer votre Oui, il faudra jouer à leur jeu.',
+    tagline: 'On ne gagne jamais seul.',
+  },
   roles: {
     dame: { name: 'La Dame', suit: '♥', pronoun: 'elle', other: 'lui' },
     valet: { name: 'Le Valet', suit: '♠', pronoun: 'lui', other: 'elle' },
@@ -24,8 +37,47 @@ const CONFIG = {
     door1: 'Une porte s’est allumée : ♥ 10. Allez-y ensemble.',
     memory1: 'Quelque chose est apparu sur la place.',
     door2: 'Une nouvelle porte s’est allumée : ♣ 4. Allez-y ensemble.',
+    door3: 'Sous l’écran géant, une porte noire : ♠ R. Préparez-vous à vous battre.',
+    memory3: 'Un troisième souvenir s’est allumé près de la place.',
     memory2: 'Un autre souvenir est revenu, près de la place.',
     memoryLine: 'Chaque carte gagnée fait revenir un souvenir.',
+  },
+  garde: {
+    title: 'Le Roi de Pique',
+    card: '♠ R',
+    boss: 'Le Roi de Pique',
+    intro: 'Épreuve de combat. Les Veilleurs veulent voir si vous savez vous battre ensemble.',
+    entrance: 'Entrez dans la salle. Ensemble.',
+    hint: {
+      dame: 'Ton arc de lumière : clic gauche (ou RT). Vise, tire. C’est toi qui fais les dégâts.',
+      valet:
+        'Ton gantelet : clic gauche (ou RT), il étourdit. Clic droit (ou F) : le Voile, tu deviens invisible.',
+    },
+    wave1: 'Vague 1 : débarrassez-vous des Pions.',
+    wave2: 'Vague 2 : les Tours ont un bouclier. Lui l’étourdit, elle tire.',
+    towers: 'Un bouclier ne tombe que si le Valet frappe. Ensuite, la Dame peut tirer.',
+    gate: 'La porte s’ouvre. Le Roi vous attend.',
+    phase1: 'Personne ne touche le Roi. Personne.',
+    phase2: 'Assez joué. À genoux.',
+    phase3: 'Je garde votre Oui dans ce cristal.',
+    phase1Obj: {
+      dame: 'Phase 1 : il est sous bouclier. Garde les Pions loin pendant que le Valet passe la grille.',
+      valet:
+        'Phase 1 : deviens invisible (clic droit), traverse la grille laser derrière le trône, coupe le bouclier.',
+    },
+    phase2Obj: {
+      dame: 'Phase 2 : esquive les cercles rouges. Quand il est étourdi, vise le cœur lumineux.',
+      valet:
+        'Phase 2 : esquive les cercles rouges. Juste après sa frappe, frappe-le pour l’étourdir.',
+    },
+    phase3Obj:
+      'Phase 3 : tenez vos plaques ♥ et ♠ en même temps pour briser le cristal, puis frappez.',
+    shieldDown: 'Mon bouclier… qui a osé ?',
+    crystal: 'Non… pas le cristal !',
+    down: 'Tu es à terre. Ton partenaire peut te relever.',
+    wipe: 'Vous êtes tombés tous les deux. On recommence.',
+    laser: 'La grille brûle tout ce qu’elle voit.',
+    victory: 'Le Roi est tombé. La carte est à vous.',
   },
   cards: {
     h10: {
@@ -37,6 +89,17 @@ const CONFIG = {
         'Vous auriez pu sortir seuls.',
         'Vous êtes restés.',
         'Retenez ça. Vous en aurez besoin.',
+      ],
+    },
+    sK: {
+      corner: 'R\n♠',
+      big: '♠',
+      title: 'Le Roi de Pique',
+      sub: 'Épreuve de combat · réussie',
+      lines: [
+        'Elle frappait, il protégeait.',
+        'Ou l’inverse. Personne n’a su dire.',
+        'Trois cartes. Le Oui recommence à briller.',
       ],
     },
     c4: {
@@ -201,20 +264,26 @@ const CONFIG = {
       text: 'Le banc où on s’est assis sans rien dire, et où ce silence-là voulait tout dire.',
     },
     {
-      id: 'p3',
+      id: 'kino',
       tag: 'Souvenir · 03',
+      name: 'Notre cinéma',
+      text: 'Le film dont on ne se souvient pas. Parce qu’on n’a pas regardé l’écran une seule fois.',
+    },
+    {
+      id: 'p3',
+      tag: 'Souvenir · 04',
       name: 'La première photo',
       text: 'La première photo de nous deux. Floue, mal cadrée. Ma préférée.',
     },
     {
       id: 'p4',
-      tag: 'Souvenir · 04',
+      tag: 'Souvenir · 05',
       name: 'Le fou rire',
       text: 'Ce fou rire impossible à arrêter, pour une raison que plus personne ne comprend.',
     },
     {
       id: 'p5',
-      tag: 'Souvenir · 05',
+      tag: 'Souvenir · 06',
       name: 'La promesse',
       text: 'Le soir où on s’est promis des choses à voix basse, comme si le monde écoutait.',
     },

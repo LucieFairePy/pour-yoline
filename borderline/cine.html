@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BORDERLINE · Intro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/game.css">
+<style>
+  #go { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: #000; color: #fbefe6; font-family: var(--f-mono); letter-spacing: .3em; text-transform: uppercase; font-size: .8rem; cursor: pointer; }
+  body.rec #go { display: none; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="go">Cliquer pour lancer l’intro</div>
+<div id="lobby" hidden></div><div id="nogl" hidden><p id="noglText"></p></div>
+<script>window.__rec = location.search.includes('rec');</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="js/config.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/settings.js"></script>
+<script src="js/core/input.js"></script>
+<script src="js/core/audio.js"></script>
+<script src="js/world/physics.js"></script>
+<script src="js/world/renderer.js"></script>
+<script src="js/world/sky.js"></script>
+<script src="js/world/city.js"></script>
+<script src="js/world/screen.js"></script>
+<script src="js/world/avatar.js"></script>
+<script src="js/cine/kit.js"></script>
+<script src="js/cine/score.js"></script>
+<script src="js/cine/intro.js"></script>
+<script>
+  const rec = new URLSearchParams(location.search).has('rec');
+  window.CINE = {
+    dur: Intro.DUR,
+    frame(t) {
+      Intro.render(t);
+      return true;
+    },
+    async wav() {
+      const sr = 48000;
+      const off = new OfflineAudioContext(2, Math.ceil(sr * (Intro.DUR + 1)), sr);
+      IntroScore(off, off.destination, 0);
+      const buf = await off.startRendering();
+      const n = buf.length;
+      const L = buf.getChannelData(0);
+      const Rr = buf.getChannelData(1);
+      const out = new DataView(new ArrayBuffer(44 + n * 4));
+      const w = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF');
+      out.setUint32(4, 36 + n * 4, true);
+      w(8, 'WAVE');
+      w(12, 'fmt ');
+      out.setUint32(16, 16, true);
+      out.setUint16(20, 1, true);
+      out.setUint16(22, 2, true);
+      out.setUint32(24, sr, true);
+      out.setUint32(28, sr * 4, true);
+      out.setUint16(32, 4, true);
+      out.setUint16(34, 16, true);
+      w(36, 'data');
+      out.setUint32(40, n * 4, true);
+      for (let i = 0; i < n; i++) {
+        out.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i])) * 32767, true);
+        out.setInt16(46 + i * 4, Math.max(-1, Math.min(1, Rr[i])) * 32767, true);
+      }
+      const bytes = new Uint8Array(out.buffer);
+      let s = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      window.__wav = btoa(s);
+      return window.__wav.length;
+    },
+    chunk(i, size) {
+      return window.__wav.slice(i * size, (i + 1) * size);
+    },
+  };
+  if (rec) {
+    document.body.classList.add('rec');
+    Intro.show();
+    Intro.render(0);
+  } else {
+    document.getElementById('go').onclick = async () => {
+      document.getElementById('go').remove();
+      Sound.init();
+      await Intro.play();
+      location.href = 'index.html';
+    };
+  }
+</script>
+</body>
+</html>

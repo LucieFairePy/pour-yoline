@@ -13,7 +13,8 @@ const Input = (() => {
     jump: { k: ['Space'], b: [0] },
     sprint: { k: ['ShiftLeft', 'ShiftRight'], b: [10, 4] },
     interact: { k: ['KeyE'], b: [2] },
-    ability: { k: ['KeyF'], m: [2], b: [5, 7] },
+    ability: { k: ['KeyF'], m: [2], b: [5] },
+    attack: { k: [], m: [0], b: [7] },
     call: { k: ['KeyC'], b: [3] },
     pause: { k: ['Escape', 'KeyP'], b: [9] },
   };

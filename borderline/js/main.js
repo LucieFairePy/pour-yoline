@@ -51,7 +51,7 @@ const Game = (() => {
     Sky.update(t, R.camera);
     Sound.listener(R.camera);
     HUD.crosshair(
-      role === 'dame' && !!Player.targets && Player.targets().length > 0,
+      (role === 'dame' && !!Player.targets && Player.targets().length > 0) || Combat.on,
       Player.lockTarget >= 0,
     );
 
@@ -64,6 +64,7 @@ const Game = (() => {
     fpsT += dt;
     if (fpsT > 1) {
       fps = Math.round(frames / fpsT);
+      R.adapt(fps);
       frames = 0;
       fpsT = 0;
       status();
@@ -71,10 +72,15 @@ const Game = (() => {
     R.render();
   };
 
-  const start = (r, progress) => {
+  const start = async (r, progress) => {
     if (running) return;
     running = true;
     role = r;
+    const q = new URLSearchParams(location.search);
+    if (!progress && !q.has('nointro') && !q.has('auto') && typeof Intro !== 'undefined') {
+      Input.unlock();
+      await Intro.play();
+    }
     Player.init(role);
     Remote.init(role === 'dame' ? 'valet' : 'dame');
     Net.on('p', (s) => Remote.push(s));
@@ -136,5 +142,16 @@ const Game = (() => {
     return;
   }
   R.render();
+  const ready = Promise.race([
+    document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve(),
+    sleep(2500),
+  ]);
+  ready.then(() => {
+    try {
+      R.renderer.compile(R.scene, R.camera);
+    } catch (e) {}
+    $('loading').classList.add('done');
+    setTimeout(() => $('loading').remove(), 900);
+  });
   Lobby.start(Game.start);
 })();

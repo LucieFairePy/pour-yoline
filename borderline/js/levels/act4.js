@@ -26,7 +26,7 @@
       Cam.snap(sp, Math.atan2(City.TOWER.x - sp.x, City.TOWER.z - sp.z));
       Cam.pitch = -0.35;
       City.mood({ gray: 1 });
-      ['cafe', 'banc', 'p3', 'p4', 'p5'].forEach((id) => City.pillar(id, false));
+      ['cafe', 'banc', 'kino', 'p3', 'p4', 'p5'].forEach((id) => City.pillar(id, false));
       City.rocketsOn(false);
       await sleep(400);
       fadeTo(false);

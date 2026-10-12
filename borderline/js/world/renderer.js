@@ -6,6 +6,7 @@ const R = (() => {
       canvas,
       antialias: false,
       powerPreference: 'high-performance',
+      preserveDrawingBuffer: !!window.__rec,
     });
   } catch (e) {
     $('lobby').hidden = true;
@@ -36,16 +37,18 @@ const R = (() => {
   composer.addPass(bloom);
 
   const Q = {
+    ultra: { pr: 2, bloom: true, scale: 0.6 },
     high: { pr: 1.5, bloom: true, scale: 0.5 },
     med: { pr: 1, bloom: true, scale: 0.4 },
     low: { pr: 0.75, bloom: false, scale: 0.4 },
   };
   let q = Q[SETTINGS.quality] || Q.high;
+  let dyn = 1;
 
   const resize = () => {
     const w = innerWidth;
     const h = innerHeight;
-    const pr = Math.min(devicePixelRatio || 1, q.pr);
+    const pr = Math.min(devicePixelRatio || 1, q.pr) * dyn;
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
     composer.setPixelRatio(pr);
@@ -66,6 +69,12 @@ const R = (() => {
     moon,
     hemi,
     FOG,
+    adapt(fps) {
+      const before = dyn;
+      if (fps < 45) dyn = Math.max(0.6, dyn * 0.88);
+      else if (fps > 58) dyn = Math.min(1, dyn * 1.06);
+      if (Math.abs(before - dyn) > 0.01) resize();
+    },
     setQuality(name) {
       q = Q[name] || Q.high;
       resize();

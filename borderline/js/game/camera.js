@@ -19,7 +19,13 @@ const Cam = (() => {
       Math.sin(C.pitch),
       -Math.cos(C.yaw) * Math.cos(C.pitch),
     );
-    const side = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)).multiplyScalar(-0.55);
+    C.sideK = damp(
+      C.sideK || 0.55,
+      typeof Combat !== 'undefined' && Combat.on ? 1.05 : 0.55,
+      4,
+      dt || 1,
+    );
+    const side = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)).multiplyScalar(-C.sideK);
     const origin = pivot.clone().add(side);
     const hit = Phys.ray(origin, dir, C.dist + 0.4);
     const target = Math.max(0.8, hit - 0.35);

@@ -10,7 +10,7 @@ const Story = (() => {
   let beamT = 0;
   const timers = { phase: 0, sync: 0 };
   const local = { phase: null };
-  const CHECKPOINTS = ['prologue', 'city', 'act3', 'act5', 'final'];
+  const CHECKPOINTS = ['prologue', 'city', 'garde', 'act3', 'act5', 'final'];
 
   const set = (fn) => {
     fn(S);

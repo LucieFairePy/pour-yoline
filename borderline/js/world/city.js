@@ -447,6 +447,15 @@ const City = (() => {
     ),
   };
 
+  doors.sK = makeDoor(
+    V3(0, 0, -(LOT - HALF) + 0.1),
+    Math.PI / 2,
+    '♠ R',
+    'LE ROI DE PIQUE',
+    '#ffcf8a',
+    V3(0, 0, -(LOT - HALF) + 1.5),
+  );
+
   const pillarGeo = new THREE.CylinderGeometry(0.7, 0.7, 60, 12, 1, true).translate(0, 30, 0);
   const pillars = [];
   const makePillar = (pos, color = '#ffcf8a') => {
@@ -542,6 +551,37 @@ const City = (() => {
     addBench(-LOT / 2, 0, LOT / 2, Math.PI);
     Phys.box(-LOT / 2 - 3.4, 1.7, LOT / 2 + 1.2, 1.6, 3.4, 1.6);
   });
+
+  const kino = new THREE.Group();
+  const booth = new THREE.Mesh(
+    new THREE.BoxGeometry(3.4, 2.8, 2),
+    new THREE.MeshStandardMaterial({ color: '#2a1220', roughness: 0.6, emissive: '#14040c' }),
+  );
+  booth.position.set(0, 1.4, -1.2);
+  const marquee = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.6, 2.3),
+    new THREE.MeshBasicMaterial({
+      map: signTex('Cinéma', 'SOUVENIR 03', '#ff8fb0'),
+      transparent: true,
+      toneMapped: false,
+      depthWrite: false,
+    }),
+  );
+  marquee.position.set(0, 3.9, -0.15);
+  for (let i = 0; i < 12; i++) {
+    const b = new THREE.Mesh(
+      new THREE.SphereGeometry(0.07, 6, 4),
+      glowMat(i % 2 ? '#ffcf8a' : '#ff8fb0', 2.2),
+    );
+    b.position.set(-2.3 + (i / 11) * 4.6, 2.85, -0.12);
+    kino.add(b);
+  }
+  kino.add(booth, marquee);
+  kino.position.set(LOT / 2, 0, LOT / 2);
+  kino.rotation.y = Math.PI;
+  addPlace('kino', kino, V3(LOT / 2, 0, LOT / 2 - 1.6), () =>
+    Phys.box(LOT / 2, 1.4, LOT / 2 + 1.2, 3.4, 2.8, 2),
+  );
 
   const lantern = (c) => {
     const g = new THREE.Group();

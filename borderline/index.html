@@ -16,6 +16,13 @@
 </head>
 <body>
 
+<div id="loading" aria-live="polite">
+  <div class="ld-cards"><span>♥</span><span>♣</span><span>♦</span><span>♠</span></div>
+  <p class="ld-title">BORDER<em>LINE</em></p>
+  <p class="label ld-sub">Chargement de Terre 39</p>
+  <i class="ld-bar"></i>
+</div>
+
 <canvas id="gl" aria-hidden="true"></canvas>
 
 <div id="hud" hidden>
@@ -30,6 +37,16 @@
   <div class="status" id="status"></div>
   <div class="crosshair" id="crosshair"></div>
   <div class="vign" id="vign"></div>
+  <div class="hurt" id="hurt"></div>
+  <div class="combat" id="combat" hidden>
+    <div class="vital me"><span class="label" id="vMeName">Toi</span><div class="bar"><i id="vMe"></i></div></div>
+    <div class="vital mate"><span class="label" id="vMateName">Partenaire</span><div class="bar"><i id="vMate"></i></div></div>
+    <div class="ability" id="vAbil"><span>Voile</span><i id="vAbilFill"></i></div>
+    <div class="downed" id="vDown" hidden><p>À terre</p><span class="label">Ton partenaire doit te relever (E)</span></div>
+    <div class="revive" id="vRevive"><i id="vReviveFill"></i></div>
+  </div>
+  <div class="bossbar" id="bossbar" hidden><span class="label" id="bossName"></span><div class="bar"><i id="bossFill"></i></div><span class="label phase" id="bossPhase"></span></div>
+  <div class="hitmark" id="hitmark"></div>
 </div>
 
 <div id="card" hidden>
@@ -129,7 +146,7 @@
     <h2 class="title small">Pause</h2>
     <label class="opt"><span>Sensibilité</span><input type="range" id="optSens" min="0.3" max="2.5" step="0.05" value="1"></label>
     <label class="opt"><span>Inverser l'axe vertical</span><input type="checkbox" id="optInvert"></label>
-    <label class="opt"><span>Qualité</span><select id="optQuality"><option value="high">Haute</option><option value="med">Moyenne</option><option value="low">Basse</option></select></label>
+    <label class="opt"><span>Qualité</span><select id="optQuality"><option value="ultra">Ultra</option><option value="high">Haute</option><option value="med">Moyenne</option><option value="low">Basse</option></select></label>
     <label class="opt"><span>Volume</span><input type="range" id="optVol" min="0" max="1" step="0.05" value="0.8"></label>
     <button class="btn" id="btnMic2" type="button">Activer le micro</button>
     <button class="btn primary" id="btnResume" type="button">Reprendre</button>
@@ -169,20 +186,29 @@
 <script src="js/world/finale.js"></script>
 <script src="js/world/fx.js"></script>
 <script src="js/world/clues.js"></script>
+<script src="js/world/garde.js"></script>
 <script src="js/game/hud.js"></script>
+<script src="js/game/rope.js"></script>
 <script src="js/game/player.js"></script>
 <script src="js/game/remote.js"></script>
 <script src="js/game/camera.js"></script>
 <script src="js/game/benches.js"></script>
+<script src="js/game/enemies.js"></script>
+<script src="js/game/boss.js"></script>
+<script src="js/game/combat.js"></script>
 <script src="js/game/story.js"></script>
 <script src="js/game/lobby.js"></script>
 <script src="js/levels/city.js"></script>
 <script src="js/levels/act1.js"></script>
 <script src="js/levels/act2.js"></script>
+<script src="js/levels/garde.js"></script>
 <script src="js/levels/act3.js"></script>
 <script src="js/levels/act4.js"></script>
 <script src="js/levels/act5.js"></script>
 <script src="js/levels/final.js"></script>
+<script src="js/cine/kit.js"></script>
+<script src="js/cine/score.js"></script>
+<script src="js/cine/intro.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

@@ -309,6 +309,78 @@ const Sound = (() => {
     lift() {
       sweep(ctx.currentTime, 70, 110, 1.6, 0.06, 'sawtooth');
     },
+    shoot() {
+      const t = ctx.currentTime;
+      sweep(t, 1800, 500, 0.12, 0.05, 'sawtooth');
+      noise(t, 0.08, 4000, 1, 0.04, 'highpass');
+    },
+    punch() {
+      const t = ctx.currentTime;
+      noise(t, 0.2, 400, 1, 0.3, 'lowpass');
+      sweep(t, 160, 50, 0.2, 0.25);
+      bell(hz(60), t, 0.04, sfx);
+    },
+    hurt() {
+      const t = ctx.currentTime;
+      sweep(t, 300, 90, 0.25, 0.18, 'square');
+      noise(t, 0.2, 800, 1, 0.12, 'lowpass');
+    },
+    cloak() {
+      const t = ctx.currentTime;
+      sweep(t, 1200, 200, 0.6, 0.06, 'sine');
+      noise(t, 0.6, 6000, 0.5, 0.05, 'highpass');
+    },
+    enemyDie() {
+      const t = ctx.currentTime;
+      noise(t, 0.5, 2000, 0.8, 0.25);
+      sweep(t, 700, 60, 0.5, 0.15, 'sawtooth');
+    },
+    deflect() {
+      bell(hz(96), ctx.currentTime, 0.05, sfx);
+    },
+    orb(pos) {
+      const out = pos ? spatial(pos) : sfx;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      const t = ctx.currentTime;
+      o.frequency.setValueAtTime(900, t);
+      o.frequency.exponentialRampToValueAtTime(300, t + 0.4);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      o.connect(g).connect(out);
+      o.start(t);
+      o.stop(t + 0.45);
+    },
+    roar() {
+      const t = ctx.currentTime;
+      noise(t, 1.6, 200, 0.7, 0.5, 'lowpass');
+      sweep(t, 90, 45, 1.6, 0.35, 'sawtooth');
+    },
+    slam() {
+      const t = ctx.currentTime;
+      noise(t, 1, 120, 0.6, 0.6, 'lowpass');
+      sweep(t, 70, 30, 0.9, 0.5);
+    },
+    shieldDown() {
+      const t = ctx.currentTime;
+      [84, 79, 72, 67].forEach((m, i) => bell(hz(m), t + i * 0.08, 0.08, sfx));
+      noise(t, 0.6, 3000, 0.8, 0.12, 'highpass');
+    },
+    grappleHit() {
+      const t = ctx.currentTime;
+      noise(t, 0.12, 2200, 3, 0.25);
+      sweep(t, 900, 300, 0.12, 0.08, 'square');
+      bell(hz(86), t, 0.05, sfx);
+    },
+    grappleOut() {
+      sweep(ctx.currentTime, 300, 1400, 0.25, 0.05, 'sawtooth');
+      noise(ctx.currentTime, 0.25, 1800, 1.5, 0.06);
+    },
+    flip() {
+      noise(ctx.currentTime, 0.4, 900, 1.2, 0.08);
+      sweep(ctx.currentTime, 500, 1100, 0.3, 0.04, 'triangle');
+    },
     trap() {
       const t = ctx.currentTime;
       sweep(t, 400, 80, 0.5, 0.2, 'square');
@@ -376,6 +448,11 @@ const Sound = (() => {
     },
     get hasVoice() {
       return !!voice;
+    },
+    cine(dur) {
+      if (!ctx) init();
+      if (!ctx || typeof IntroScore === 'undefined') return null;
+      return IntroScore(ctx, master);
     },
   };
 })();

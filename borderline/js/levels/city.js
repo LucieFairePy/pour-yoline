@@ -1,9 +1,9 @@
 (() => {
   const T = CONFIG;
   const seen = new Set();
-  const DOOR_BY_CHAPTER = { 0: 'h10', 1: 'c4' };
-  const PLACE_BY_CHAPTER = { 1: 'cafe', 2: 'banc' };
-  const ACT_BY_DOOR = { h10: 'act1', c4: 'act2' };
+  const DOOR_BY_CHAPTER = { 0: 'h10', 1: 'c4', 2: 'sK' };
+  const PLACE_BY_CHAPTER = { 1: 'cafe', 2: 'banc', 3: 'kino' };
+  const ACT_BY_DOOR = { h10: 'act1', c4: 'act2', sK: 'garde' };
 
   Clues.add('c1', V3(-45, 1.1, 77));
 
@@ -67,8 +67,9 @@
   const objective = (c) => {
     const ch = c.S.chapter;
     const place = PLACE_BY_CHAPTER[ch];
-    if (place && !seen.has(place)) return ch === 1 ? T.city.memory1 : T.city.memory2;
-    if (DOOR_BY_CHAPTER[ch]) return ch === 0 ? T.city.door1 : T.city.door2;
+    if (place && !seen.has(place))
+      return [null, T.city.memory1, T.city.memory2, T.city.memory3][ch];
+    if (DOOR_BY_CHAPTER[ch]) return [T.city.door1, T.city.door2, T.city.door3][ch];
     return '';
   };
 
@@ -91,16 +92,12 @@
         City.showPlace(place, first);
         City.pillar(place, !seen.has(place));
       }
-      const cards = ['', '♥ 10', '♥ 10 · ♣ 4'][ch] || '';
+      const cards = ['', '♥ 10', '♥ 10 · ♣ 4', '♥ 10 · ♣ 4 · ♠ R'][ch] || '';
       HUD.visa('Visa · 3 jours' + (cards ? ' · ' + cards : ''));
       BigScreen.show(
-        DOOR_BY_CHAPTER[ch] === 'h10'
-          ? '♥ 10'
-          : DOOR_BY_CHAPTER[ch] === 'c4'
-            ? '♣ 4'
-            : cards || '?',
+        { h10: '♥ 10', c4: '♣ 4', sK: '♠ R' }[DOOR_BY_CHAPTER[ch]] || cards || '?',
         DOOR_BY_CHAPTER[ch] ? 'Une porte s’est allumée' : 'Carte obtenue',
-        DOOR_BY_CHAPTER[ch] === 'c4' ? '#7ce0ff' : '#ff5f8a',
+        { c4: '#7ce0ff', sK: '#ffcf8a' }[DOOR_BY_CHAPTER[ch]] || '#ff5f8a',
       );
       HUD.objective(objective(c));
       if (fromAct && !first) {
@@ -123,7 +120,7 @@
         if (c.near(c.pos('dame'), e, 4.5) && c.near(c.pos('valet'), e, 4.5))
           c.goto(ACT_BY_DOOR[id]);
       }
-      if (ch === 2 && c.S.seen.includes('banc')) {
+      if (ch === 3 && c.S.seen.includes('kino')) {
         c.local.banc = (c.local.banc || 0) + dt;
         const both = (c.S.x.seenBy || []).length >= 2;
         if ((both && c.local.banc > 4) || c.local.banc > 30) c.goto('act3');

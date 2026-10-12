@@ -7,6 +7,7 @@ const Fx = (() => {
   const max = new Float32Array(N);
   const grav = new Float32Array(N);
   let head = 0;
+  let active = 0;
   const rockets = [];
 
   const geo = new THREE.BufferGeometry();
@@ -36,6 +37,7 @@ const Fx = (() => {
     col.set([c.r, c.g, c.b], i * 3);
     life[i] = l;
     max[i] = l;
+    active = Math.max(active, 1.5 + l);
     grav[i] = g;
   };
 
@@ -98,6 +100,8 @@ const Fx = (() => {
           rockets.splice(r, 1);
         }
       }
+      if (active <= 0 && !rockets.length) return;
+      active -= dt;
       for (let i = 0; i < N; i++) {
         if (life[i] <= 0) continue;
         life[i] -= dt;

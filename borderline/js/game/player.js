@@ -21,6 +21,9 @@ const Player = (() => {
     airTime: 0,
     lockTarget: -1,
     handPose: false,
+    flip: 0,
+    flipT: 1,
+    flipDir: 1,
   };
   const tmp = V3();
   const dir = V3();
@@ -77,7 +80,8 @@ const Player = (() => {
     if (P.mode === 'sit') {
       v.set(0, 0, 0);
       P.speed = 0;
-      if (Input.pressed('jump') || Input.move().z !== 0 || Input.move().x !== 0) P.mode = 'walk';
+      if (!P.locked && (Input.pressed('jump') || Input.move().z !== 0 || Input.move().x !== 0))
+        P.mode = 'walk';
       return;
     }
     const frozen = P.mode === 'frozen';
@@ -142,11 +146,14 @@ const Player = (() => {
         P.buffer = 0;
         P.jumps = 1;
         Sound.play('jump');
-      } else if (P.role === 'valet' && P.jumps < 2) {
-        v.y = 8.6;
+      } else if (P.jumps < 2) {
+        v.y = P.role === 'valet' ? 8.8 : 7.8;
+        P.flipT = 0;
+        P.flipDir = Input.move().z < -0.3 ? -1 : 1;
         P.buffer = 0;
         P.jumps = 2;
         Sound.play('djump');
+        Sound.play('flip');
       }
     }
 
@@ -154,7 +161,6 @@ const Player = (() => {
     if (!frozen && P.lockTarget >= 0 && Input.pressed('ability')) {
       P.mode = 'grapple';
       P.target = P.lockTarget;
-      Sound.play('grapple');
     }
 
     const wasG = body.grounded;
@@ -183,7 +189,14 @@ const Player = (() => {
     }
   };
 
+  P.rope = null;
+  const handV = V3();
   P.render = (dt, t) => {
+    if (P.flipT < 1) {
+      P.flipT = body.grounded ? 1 : Math.min(1, P.flipT + dt / 0.55);
+      const e = P.flipT < 0.5 ? 4 * P.flipT ** 3 : 1 - Math.pow(-2 * P.flipT + 2, 3) / 2;
+      P.flip = P.flipDir * TAU * e;
+    } else P.flip = 0;
     const a = P.avatar;
     a.visible = !Cam.fp;
     a.root.position.copy(body.p);
@@ -191,9 +204,20 @@ const Player = (() => {
     const gy = Phys.groundAt(body.p.x, body.p.y + 0.1, body.p.z);
     a.update(
       dt,
-      { speed: P.speed, grounded: body.grounded, mode: P.mode, groundY: gy, hand: P.handPose },
+      {
+        speed: P.speed,
+        grounded: body.grounded,
+        mode: P.mode,
+        groundY: gy,
+        hand: P.handPose,
+        flip: P.flip,
+        punch: P.punch || 0,
+      },
       t,
     );
+    if (!P.rope) P.rope = Rope.create(P.role === 'dame' ? '#ff5f8a' : '#6cc8ff');
+    const tg = P.mode === 'grapple' && P.targets && P.targets()[P.target];
+    P.rope.update(dt, a.hand(handV), !!tg, tg || null);
   };
 
   P.snapshot = () => [
@@ -205,6 +229,18 @@ const Player = (() => {
     +P.speed.toFixed(2),
     body.grounded ? 1 : 0,
     P.target,
+    +P.flip.toFixed(2),
+    ...(P.mode === 'grapple' && P.targets && P.targets()[P.target]
+      ? [
+          1,
+          ...P.targets()
+            [P.target].toArray()
+            .map((v) => +v.toFixed(2)),
+        ]
+      : [0, 0, 0, 0]),
+    Combat.on ? Math.round(Combat.hp) : 100,
+    Combat.down ? 1 : 0,
+    Combat.cloak > 0 ? 1 : 0,
   ];
 
   return P;

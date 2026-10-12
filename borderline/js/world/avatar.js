@@ -16,6 +16,42 @@ const Avatar = (() => {
     valet: { suit: '#3553c9', glow: '#6cc8ff' },
   };
 
+  const fabric = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#d8d8d8';
+    g.fillRect(0, 0, 256, 256);
+    const img = g.getImageData(0, 0, 256, 256);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const n = (Math.random() - 0.5) * 26 + ((i / 4) % 2 ? 6 : -6);
+      img.data[i] += n;
+      img.data[i + 1] += n;
+      img.data[i + 2] += n;
+    }
+    g.putImageData(img, 0, 0);
+    g.strokeStyle = 'rgba(70,70,80,0.55)';
+    g.lineWidth = 2;
+    [64, 160, 224].forEach((y) => {
+      g.beginPath();
+      g.moveTo(0, y);
+      g.lineTo(256, y);
+      g.stroke();
+    });
+    [48, 128, 208].forEach((x) => {
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x, 256);
+      g.stroke();
+    });
+    g.fillStyle = 'rgba(60,60,70,0.5)';
+    for (let x = 0; x < 256; x += 6) [60, 156, 220].forEach((y) => g.fillRect(x, y, 3, 1));
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2, 2);
+    t.anisotropy = 4;
+    return t;
+  })();
   const white = new THREE.MeshStandardMaterial({
     color: '#ece6f0',
     roughness: 0.45,
@@ -27,6 +63,15 @@ const Avatar = (() => {
     emissive: '#2a1206',
     roughness: 0.12,
     metalness: 0.85,
+  });
+
+  const ghostMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color('#9fe6ff').multiplyScalar(0.6),
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
   });
 
   const seg = (len, r0, r1, mat) => {
@@ -46,15 +91,26 @@ const Avatar = (() => {
 
   const build = (role) => {
     const L = LOOK[role];
-    const suit = new THREE.MeshStandardMaterial({ color: L.suit, roughness: 0.8, metalness: 0 });
+    const suit = new THREE.MeshStandardMaterial({
+      color: L.suit,
+      roughness: 0.82,
+      metalness: 0,
+      map: fabric,
+      bumpMap: fabric,
+      bumpScale: 0.015,
+    });
     const glow = new THREE.MeshBasicMaterial({
       color: new THREE.Color(L.glow).multiplyScalar(2),
       toneMapped: false,
     });
 
     const root = new THREE.Group();
+    const spin = new THREE.Group();
+    spin.position.y = 0.95;
     const body = new THREE.Group();
-    root.add(body);
+    body.position.y = -0.95;
+    root.add(spin);
+    spin.add(body);
 
     const hips = new THREE.Group();
     hips.position.y = 0.92;
@@ -80,7 +136,7 @@ const Avatar = (() => {
     const torso = new THREE.Group();
     torso.position.y = 0.95;
     body.add(torso);
-    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), suit);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.3, 28, 20), suit);
     chest.scale.set(1.05, 1.15, 0.85);
     chest.position.y = 0.28;
     torso.add(chest);
@@ -111,7 +167,7 @@ const Avatar = (() => {
     );
     ring.position.y = 0.03;
     head.add(ring);
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.27, 20, 16), white);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.27, 32, 24), white);
     helmet.position.y = 0.22;
     head.add(helmet);
     const visor = new THREE.Mesh(
@@ -159,14 +215,42 @@ const Avatar = (() => {
     );
     shadow.renderOrder = 1;
 
-    const A = { ph: 0, bob: 0, lean: 0, air: 0, hang: 0, grap: 0, sit: 0, land: 0, hand: 0 };
+    const A = {
+      ph: 0,
+      lean: 0,
+      air: 0,
+      hang: 0,
+      grap: 0,
+      sit: 0,
+      land: 0,
+      hand: 0,
+      float: 0,
+      swim: 0,
+      lie: 0,
+    };
     let wasGround = true;
 
     return {
       role,
       root,
+      spin,
       shadow,
       glow,
+      ghost(k) {
+        const on = k > 0;
+        if (on === !!root.userData.ghost) return;
+        root.userData.ghost = on;
+        root.traverse((o) => {
+          if (!o.isMesh) return;
+          if (on) {
+            o.userData.mat = o.material;
+            o.material = ghostMat;
+          } else if (o.userData.mat) o.material = o.userData.mat;
+        });
+      },
+      hand(out = V3()) {
+        return arms[1].fore.userData.end.getWorldPosition(out);
+      },
       addTo(scene) {
         scene.add(root, shadow);
       },
@@ -192,7 +276,7 @@ const Avatar = (() => {
         const idle = Math.sin(t * 1.6) * 0.015;
         A.lean = damp(A.lean, run * 0.22 * (1 - A.air), 6, dt);
 
-        body.position.y = Math.abs(sn) * 0.06 * amp + idle - A.land * 0.08 - A.sit * 0.42;
+        body.position.y = -0.95 + Math.abs(sn) * 0.06 * amp + idle - A.land * 0.08 - A.sit * 0.42;
         torso.rotation.x = A.lean + A.land * 0.15 - A.hang * 0.05;
         torso.rotation.y = sn * 0.08 * amp;
         head.rotation.x = -A.lean * 0.6;
@@ -228,11 +312,62 @@ const Avatar = (() => {
             uz = lerp(uz, 0.7, A.hand);
           }
           ux = lerp(ux, -0.3, A.sit);
+          if (i === 1 && s.punch > 0) {
+            const k = Math.sin((s.punch / 0.25) * Math.PI);
+            ux = lerp(ux, -1.6, k);
+            uz = lerp(uz, 0.1, k);
+          }
           a.upper.rotation.x = ux;
           a.upper.rotation.z = uz;
           a.fore.rotation.x =
             -0.25 - amp * 0.5 * (cs * d * 0.5 + 0.5) - A.air * 0.3 + A.hang * 0.2 - A.sit * 0.9;
         });
+        A.float = damp(A.float, s.mode === 'float' ? 1 : 0, 4, dt);
+        A.swim = damp(A.swim, s.mode === 'swim' ? 1 : 0, 4, dt);
+        A.lie = damp(A.lie, s.mode === 'lie' ? 1 : 0, 4, dt);
+        if (A.float + A.swim + A.lie > 0.001) {
+          const sw = t * 2.4;
+          const mix3 = (base, f, w, l) => lerp(lerp(lerp(base, f, A.float), w, A.swim), l, A.lie);
+          legs.forEach((l, i) => {
+            const kick = Math.sin(sw * 2 + i * Math.PI);
+            l.thigh.rotation.x = mix3(
+              l.thigh.rotation.x,
+              Math.sin(t * 0.9 + i * 1.7) * 0.18 - 0.2,
+              kick * 0.45 - 0.1,
+              i ? 0.08 : -0.05,
+            );
+            l.shin.rotation.x = mix3(
+              l.shin.rotation.x,
+              0.35 + Math.sin(t * 1.1 + i) * 0.15,
+              0.3 + Math.max(0, kick) * 0.6,
+              0.12,
+            );
+          });
+          arms.forEach((a, i) => {
+            const sg = i ? 1 : -1;
+            a.upper.rotation.x = mix3(
+              a.upper.rotation.x,
+              -0.3 + Math.sin(t * 0.8 + i) * 0.15,
+              -1.9 + Math.cos(sw) * 0.7,
+              -0.15,
+            );
+            a.upper.rotation.z = mix3(
+              a.upper.rotation.z,
+              sg * (0.7 + Math.sin(t * 0.7 + i * 2) * 0.12),
+              sg * (0.35 + (Math.sin(sw) * 0.5 + 0.5) * 1.1),
+              sg * 0.55,
+            );
+            a.fore.rotation.x = mix3(
+              a.fore.rotation.x,
+              -0.5,
+              -0.4 - Math.max(0, Math.sin(sw)) * 0.8,
+              -0.15,
+            );
+          });
+          head.rotation.x = lerp(head.rotation.x, -0.25, A.swim);
+          body.position.y = lerp(body.position.y, -0.95, Math.min(1, A.float + A.swim + A.lie));
+        }
+        spin.rotation.x = s.flip || 0;
         const gy = s.groundY == null ? root.position.y : s.groundY;
         shadow.position.set(root.position.x, gy + 0.02, root.position.z);
         const hgt = clamp((root.position.y - gy) / 6, 0, 1);
