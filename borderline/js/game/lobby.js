@@ -73,6 +73,15 @@ const Lobby = (() => {
       ready();
     } else if (d.role === role && Net.isHost) Net.send('hello', { role });
   });
+  Net.on('state', (t) => {
+    if (Net.connected) return;
+    if (Net.isHost) $('waitText').textContent = t;
+    else $('readyText').textContent = t;
+  });
+  Net.on('disconnect', () => {
+    if (!$('lobby').hidden)
+      $('waitText').textContent = 'Connexion perdue, on attend l’autre joueur…';
+  });
   Net.on('connect', () => {
     hello();
     if (role) ready();
@@ -158,9 +167,11 @@ const Lobby = (() => {
             $('btnPlay').hidden = false;
           })
           .catch((e) => {
-            $('stepReady').hidden = true;
-            step('stepStart');
+            $('readyText').textContent = 'Connexion impossible';
             err(e.message);
+            $('btnPlay').hidden = false;
+            $('btnPlay').textContent = 'Réessayer';
+            $('btnPlay').onclick = () => location.reload();
           });
       }
     },

@@ -1,5 +1,13 @@
+// Two links run side by side: a direct WebRTC data channel (PeerJS) and an MQTT relay over
+// secure WebSockets. Messages go through the direct channel when it is open and through the
+// relay otherwise, so players behind strict NATs (no TURN server) can still play.
 const Net = (() => {
   const PREFIX = 'brdl-yo-';
+  const BROKERS = [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt',
+  ];
   const handlers = {};
   let peer = null;
   let conn = null;
@@ -11,9 +19,18 @@ const Net = (() => {
   let mode = 'p2p';
   let localStream = null;
   let retry = null;
+  let p2pOpen = false;
+  let relay = null;
+  let relayUp = false;
+  let relayMate = false;
+  let relaySeen = 0;
+  let brokerIx = 0;
+  let mateId = '';
 
   const emit = (t, d) => (handlers[t] || []).forEach((f) => f(d));
-  const status = (s) => {
+  const state = (s) => emit('state', s);
+  const refresh = () => {
+    const s = p2pOpen || relayMate;
     const was = connected;
     connected = s;
     if (was !== s) emit(s ? 'connect' : 'disconnect');
@@ -26,17 +43,96 @@ const Net = (() => {
     return s;
   };
 
+  // ---- MQTT relay ----
+  const topic = (from) => 'brdl-yo/v1/' + code + '/' + from;
+  const relayPub = (t, d) => {
+    if (!relay || !relayUp) return;
+    try {
+      relay.publish(topic(isHost ? 'h' : 'g'), JSON.stringify({ f: me, t, d }), { qos: 0 });
+    } catch (e) {}
+  };
+  const startRelay = () => {
+    if (relay || typeof mqtt === 'undefined' || !code) return;
+    const url = BROKERS[brokerIx % BROKERS.length];
+    let c;
+    try {
+      c = mqtt.connect(url, {
+        clientId: 'brdl_' + me + '_' + brokerIx,
+        clean: true,
+        connectTimeout: 6000,
+        reconnectPeriod: 2500,
+        keepalive: 20,
+      });
+    } catch (e) {
+      return;
+    }
+    relay = c;
+    let everUp = false;
+    const failover = setTimeout(() => {
+      if (everUp || relay !== c) return;
+      c.end(true);
+      relay = null;
+      brokerIx++;
+      startRelay();
+    }, 7000);
+    c.on('connect', () => {
+      everUp = true;
+      clearTimeout(failover);
+      relayUp = true;
+      c.subscribe(topic(isHost ? 'g' : 'h'), { qos: 0 });
+      relayPub('__hi');
+    });
+    c.on('close', () => {
+      relayUp = false;
+    });
+    c.on('message', (tp, buf) => {
+      let m;
+      try {
+        m = JSON.parse(buf.toString());
+      } catch (e) {
+        return;
+      }
+      if (!m || m.f === me) return;
+      relaySeen = performance.now();
+      if (m.t === '__hi' || m.t === '__ack' || m.t === '__ping') {
+        if (m.t === '__hi') relayPub('__ack');
+        const fresh = !relayMate || (mateId && mateId !== m.f);
+        mateId = m.f;
+        relayMate = true;
+        if (fresh && connected && m.t === '__hi') emit('connect');
+        refresh();
+        return;
+      }
+      relayMate = true;
+      refresh();
+      emit(m.t, m.d);
+    });
+  };
+  // keep the relay alive and notice when the other side is gone
+  setInterval(() => {
+    if (!relay || !relayUp) return;
+    relayPub('__ping');
+    if (relayMate && performance.now() - relaySeen > 9000) {
+      relayMate = false;
+      refresh();
+    }
+  }, 3000);
+
+  // ---- PeerJS direct link ----
   const bind = (c) => {
     conn = c;
     c.on('open', () => {
-      status(true);
+      p2pOpen = true;
+      refresh();
+      state('Connexion directe établie');
       if (localStream && isHost) call(localStream);
     });
     c.on('data', (m) => m && m.t && emit(m.t, m.d));
     c.on('close', () => {
       if (conn === c) {
         conn = null;
-        status(false);
+        p2pOpen = false;
+        refresh();
         if (!isHost) scheduleRetry();
       }
     });
@@ -46,11 +142,12 @@ const Net = (() => {
   const scheduleRetry = () => {
     clearTimeout(retry);
     retry = setTimeout(() => {
-      if (connected || !peer || peer.destroyed) return;
+      if (p2pOpen || !peer || peer.destroyed) return;
       if (peer.disconnected) peer.reconnect();
-      bind(peer.connect(PREFIX + code, { reliable: true, serialization: 'json' }));
+      if (!peer.disconnected)
+        bind(peer.connect(PREFIX + code, { reliable: true, serialization: 'json' }));
       scheduleRetry();
-    }, 3000);
+    }, 6000);
   };
 
   const listenCalls = () => {
@@ -61,7 +158,7 @@ const Net = (() => {
   };
 
   const call = (stream) => {
-    if (!peer || !conn) return;
+    if (!peer || !conn || !p2pOpen) return;
     const c = peer.call(conn.peer, stream);
     if (c) c.on('stream', (s) => emit('stream', s));
   };
@@ -72,10 +169,15 @@ const Net = (() => {
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:global.stun.twilio.com:3478' },
         ],
       },
     });
+
+  // ?relay forces the relay only (for testing strict networks)
+  const noP2P = new URLSearchParams(location.search).has('relay');
+  const libs = () => typeof Peer !== 'undefined' || typeof mqtt !== 'undefined';
 
   return {
     on(t, f) {
@@ -93,18 +195,37 @@ const Net = (() => {
     get mode() {
       return mode;
     },
+    get via() {
+      return p2pOpen ? 'direct' : relayMate ? 'relais' : '';
+    },
     host() {
       isHost = true;
       return new Promise((res, rej) => {
-        if (typeof Peer === 'undefined') return rej(new Error('Réseau indisponible.'));
+        if (!libs())
+          return rej(new Error('Réseau indisponible (scripts bloqués ?). Recharge la page.'));
+        let done = false;
+        const ok = () => {
+          if (done) return;
+          done = true;
+          save.set({ room: code });
+          res(code);
+        };
+        code = save.get().room || makeCode();
+        startRelay();
+        if (typeof mqtt !== 'undefined') {
+          // the relay alone is enough to share a link
+          const wait = setInterval(() => {
+            if (relayUp) {
+              clearInterval(wait);
+              ok();
+            }
+          }, 200);
+          setTimeout(() => clearInterval(wait), 30000);
+        }
+        if (typeof Peer === 'undefined' || noP2P) return;
         const attempt = (n) => {
-          const kept = n === 0 && save.get().room;
-          code = kept || makeCode();
           peer = newPeer(PREFIX + code);
-          peer.on('open', () => {
-            save.set({ room: code });
-            res(code);
-          });
+          peer.on('open', ok);
           peer.on('connection', (c) => {
             const old = conn;
             bind(c);
@@ -114,47 +235,79 @@ const Net = (() => {
               } catch (e) {}
             }
           });
-          peer.on('disconnected', () => !peer.destroyed && peer.reconnect());
+          peer.on(
+            'disconnected',
+            () => !peer.destroyed && setTimeout(() => peer.reconnect(), 1500),
+          );
           peer.on('error', (e) => {
-            if (e.type === 'unavailable-id' && n < 4) {
-              peer.destroy();
+            if (e.type !== 'unavailable-id') return;
+            peer.destroy();
+            if (typeof mqtt !== 'undefined' && n < 8) {
+              // probably our own previous session still registered: keep the shared link
+              // working through the relay and claim the id again shortly
+              setTimeout(() => attempt(n + 1), 5000);
+            } else if (n < 4 && !done) {
+              // the code is taken on PeerJS: pick a new one for both links
+              if (relay) relay.end(true);
+              relay = null;
+              relayUp = false;
+              code = makeCode();
+              startRelay();
               attempt(n + 1);
-            } else if (!code || e.type === 'network' || e.type === 'server-error') {
-              rej(new Error('Impossible de joindre le serveur de connexion.'));
             }
           });
           listenCalls();
         };
         attempt(0);
+        setTimeout(
+          () => !done && rej(new Error('Impossible de joindre les serveurs de connexion.')),
+          30000,
+        );
       });
     },
     join(c) {
       isHost = false;
       code = c;
       return new Promise((res, rej) => {
-        if (typeof Peer === 'undefined') return rej(new Error('Réseau indisponible.'));
-        peer = newPeer();
+        if (!libs())
+          return rej(new Error('Réseau indisponible (scripts bloqués ?). Recharge la page.'));
         let done = false;
-        peer.on('open', () => {
-          bind(peer.connect(PREFIX + code, { reliable: true, serialization: 'json' }));
-          const off = () => {
-            if (!done) {
-              done = true;
-              res();
-            }
-          };
-          handlers.connect = handlers.connect || [];
-          handlers.connect.unshift(off);
-        });
-        peer.on('error', (e) => {
+        let lastErr = '';
+        const off = () => {
           if (done) return;
-          if (e.type === 'peer-unavailable')
-            rej(new Error('Partie introuvable. Le lien est peut-être expiré.'));
-          else rej(new Error('Connexion impossible (' + e.type + ').'));
-        });
-        peer.on('disconnected', () => !peer.destroyed && peer.reconnect());
-        listenCalls();
-        setTimeout(() => !done && rej(new Error('La connexion prend trop de temps.')), 20000);
+          done = true;
+          res();
+        };
+        handlers.connect = handlers.connect || [];
+        handlers.connect.unshift(off);
+        state('Recherche de la partie…');
+        startRelay();
+        if (typeof Peer !== 'undefined' && !noP2P) {
+          peer = newPeer();
+          peer.on('open', () => {
+            state('Partie trouvée, connexion…');
+            bind(peer.connect(PREFIX + code, { reliable: true, serialization: 'json' }));
+            scheduleRetry();
+          });
+          peer.on('error', (e) => {
+            lastErr = e.type;
+          });
+          peer.on(
+            'disconnected',
+            () => !peer.destroyed && setTimeout(() => peer.reconnect(), 1500),
+          );
+          listenCalls();
+        }
+        setTimeout(() => {
+          if (done) return;
+          rej(
+            new Error(
+              lastErr === 'peer-unavailable'
+                ? 'Partie introuvable : l’autre joueur doit garder la page de la partie ouverte.'
+                : 'La connexion prend trop de temps. Vérifie que l’autre joueur a toujours la page ouverte, puis réessaie.',
+            ),
+          );
+        }, 30000);
       });
     },
     local(c, host) {
@@ -168,7 +321,8 @@ const Net = (() => {
         if (m.t === '__hi' || m.t === '__ack') {
           if (m.t === '__hi') bc.postMessage({ from: me, t: '__ack' });
           if (connected && m.t === '__hi') emit('connect');
-          status(true);
+          p2pOpen = true;
+          refresh();
           return;
         }
         emit(m.t, m.d);
@@ -178,11 +332,13 @@ const Net = (() => {
     },
     send(t, d) {
       if (bc) bc.postMessage({ from: me, t, d });
-      else if (conn && conn.open) {
+      else if (p2pOpen && conn && conn.open) {
         try {
           conn.send({ t, d });
-        } catch (e) {}
-      }
+        } catch (e) {
+          relayPub(t, d);
+        }
+      } else relayPub(t, d);
     },
     voice(stream) {
       localStream = stream;

@@ -22,6 +22,14 @@
   <p class="label ld-sub">Chargement de Terre 39</p>
   <i class="ld-bar"></i>
 </div>
+<script>
+setTimeout(function () {
+  var l = document.getElementById('loading');
+  if (l && !l.classList.contains('done'))
+    l.querySelector('.ld-sub').textContent =
+      'Le chargement bloque. Recharge la page (Ctrl+F5) ou essaie Chrome / Edge.';
+}, 15000);
+</script>
 
 <canvas id="gl" aria-hidden="true"></canvas>
 
@@ -160,14 +168,15 @@
   <div class="lobby-in"><h2 class="title small">BORDERLINE</h2><p class="tagline" id="noglText"></p><a class="back label" href="../index.html"><i data-ic="arrow-left"></i> Destinations</a></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/build/three.min.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js" onerror="document.write('<script src=&quot;https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js&quot;><\/script>')"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="document.write('<script src=&quot;https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js" onerror="document.write('<script src=&quot;https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js&quot;><\/script>')"></script>
 <script src="js/config.js"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/icons.js"></script>
