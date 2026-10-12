@@ -153,7 +153,8 @@ const Avatar = (() => {
       }
       ux = lerp(ux, -0.3, A.sit);
       // rifle held to the shoulder: firing arm forward, the other one under the handguard
-      ux = lerp(ux, i === 1 ? -1.45 : -1.25, A.aim);
+      A.pitch = damp(A.pitch || 0, s.pitch || 0, 14, dt);
+      ux = lerp(ux, (i === 1 ? -1.45 : -1.25) + A.pitch, A.aim);
       uz = lerp(uz, i === 1 ? 0.12 : -0.5, A.aim);
       if (i === 1 && s.punch > 0) {
         const k = Math.sin((s.punch / 0.25) * Math.PI);

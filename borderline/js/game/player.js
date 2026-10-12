@@ -112,8 +112,15 @@ const Player = (() => {
         tmp.normalize();
         v.lerp(tmp.multiplyScalar(21), 1 - Math.exp(-10 * dt));
         if (d < 2.4 || Input.pressed('jump')) {
-          const hz = V3(v.x, 0, v.z).normalize().multiplyScalar(16);
-          v.set(hz.x, 7.5, hz.z);
+          const land = d < 2.4 && P.grappleLand && P.grappleLand();
+          if (land) {
+            // ballistic hop that comes down on the given spot (vy 7.5, gravity 26)
+            const t = (7.5 + Math.sqrt(Math.max(0, 56.25 + 52 * (body.p.y - land.y)))) / 26;
+            v.set((land.x - body.p.x) / t, 7.5, (land.z - body.p.z) / t);
+          } else {
+            const hz = V3(v.x, 0, v.z).normalize().multiplyScalar(16);
+            v.set(hz.x, 7.5, hz.z);
+          }
           P.mode = 'walk';
           P.target = -1;
           P.jumps = 1;
@@ -222,6 +229,7 @@ const Player = (() => {
         flip: P.flip,
         punch: P.punch || 0,
         aim: Combat.on && P.role === 'dame' && Combat.aim > 0,
+        pitch: Combat.pitch || 0,
       },
       t,
     );
@@ -231,6 +239,7 @@ const Player = (() => {
       Combat.on ? (P.role === 'dame' ? 'rifle' : 'sword') : null,
       P.punch || 0,
       Combat.aim > 0,
+      Combat.pitch || 0,
     );
     const tg = P.mode === 'grapple' && P.targets && P.targets()[P.target];
     P.rope.update(dt, a.hand(handV), !!tg, tg || null);
@@ -259,6 +268,7 @@ const Player = (() => {
     Combat.cloak > 0 ? 1 : 0,
     +(Combat.punch || 0).toFixed(2),
     Combat.aim > 0 ? 1 : 0,
+    +(Combat.pitch || 0).toFixed(2),
   ];
 
   return P;

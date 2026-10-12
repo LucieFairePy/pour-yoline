@@ -11,6 +11,8 @@ const Combat = (() => {
     revive: 0,
     punch: 0,
     aim: 0,
+    // rifle pitch while aiming (radians, positive = down), sent to the other player
+    pitch: 0,
   };
   // bullet tracers: pooled glowing beams (a 1 px line was invisible from the other player)
   const TRACER_T = 0.14;
@@ -204,6 +206,15 @@ const Combat = (() => {
       C.cloak = Math.max(0, C.cloak - dt);
       C.punch = Math.max(0, C.punch - dt);
       C.aim = Math.max(0, C.aim - dt);
+      if (C.aim > 0) {
+        // barrel follows the crosshair: from the shoulder to the point the camera looks at
+        const cam = R.camera;
+        fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
+        tmp.copy(cam.position).addScaledVector(fwd, 40);
+        const sh = Player.body.p;
+        const dy = sh.y + 1.45 - tmp.y;
+        C.pitch = clamp(Math.atan2(dy, Math.hypot(tmp.x - sh.x, tmp.z - sh.z)), -1.1, 1.1);
+      } else C.pitch = 0;
       if (!C.down) {
         C.regen -= dt;
         if (C.regen <= 0) C.hp = Math.min(C.max, C.hp + dt * 9);

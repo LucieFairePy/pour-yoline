@@ -116,6 +116,7 @@
       Player.killY = Donjon.O.y - 25;
       Player.checkpoint = () => Donjon.spawn(Story.S.x.stage, c.role);
       Player.targets = () => (c.role === 'dame' && Story.S.x.stage === 3 ? [Donjon.ring()] : []);
+      Player.grappleLand = () => Donjon.plates.dame && Donjon.plates.dame.pos;
       City.mood({ dark: 0.8 });
       c.fog(0.018);
       Combat.enable(true);
@@ -132,6 +133,7 @@
       Enemies.clear();
       HUD.boss(null);
       Player.targets = null;
+      Player.grappleLand = null;
       Player.avatar.ghost(0);
     },
     apply(c) {

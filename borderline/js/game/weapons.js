@@ -113,6 +113,7 @@ const Weapons = (() => {
     let kind = null;
     let flashT = 0;
     let aimK = 0;
+    let pitchK = 0;
     return {
       fire() {
         flashT = 0.05;
@@ -123,7 +124,7 @@ const Weapons = (() => {
         avatar.root.updateMatrixWorld(true);
         return models.rifle.userData.flash.getWorldPosition(out);
       },
-      update(dt, k, swing, aim) {
+      update(dt, k, swing, aim, pitch = 0) {
         if (k !== kind) {
           kind = k;
           models.rifle.visible = k === 'rifle';
@@ -137,7 +138,8 @@ const Weapons = (() => {
         holder.position.copy(hv);
         if (k === 'rifle') {
           aimK = damp(aimK, aim ? 1 : 0, 16, dt);
-          holder.rotation.set(lerp(0.5, 0, aimK), lerp(0.5, 0.05, aimK), lerp(-0.3, 0, aimK));
+          pitchK = damp(pitchK, pitch, 14, dt);
+          holder.rotation.set(lerp(0.5, pitchK, aimK), lerp(0.5, 0.05, aimK), lerp(-0.3, 0, aimK));
           flashT -= dt;
           const f = models.rifle.userData.flash;
           f.visible = flashT > 0;
