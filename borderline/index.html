@@ -21,7 +21,7 @@
 <div id="hud" hidden>
   <div class="hud-top">
     <div class="brand"><span class="mono">BORDERLINE</span><span class="suit" id="hudSuit">♥</span></div>
-    <div class="visa label" id="hudVisa">Visa · 3 jours</div>
+    <div class="hud-right"><div class="visa label" id="hudVisa">Visa · 3 jours</div><div class="label clues" id="hudClues"></div></div>
   </div>
   <div class="objective" id="objective"><span class="label">Objectif</span><p id="objText"></p></div>
   <div class="partner" id="partner"><i class="arrow"></i><span id="partnerDist"></span></div>
@@ -44,6 +44,37 @@
     <h2 id="memTitle"></h2>
     <p id="memText"></p>
     <button class="btn" id="memClose" type="button">Continuer</button>
+  </div>
+</div>
+
+<div id="manual" hidden>
+  <div class="manual-in">
+    <span class="label">♣ 4</span>
+    <h2 id="manTitle"></h2>
+    <p id="manIntro"></p>
+    <ul id="manRules"></ul>
+    <p class="outro" id="manOutro"></p>
+    <p class="label">E pour fermer</p>
+  </div>
+</div>
+
+<div id="letter" hidden>
+  <div class="letter-in">
+    <span class="label">La lettre</span>
+    <div id="letterLines"></div>
+    <p class="sig" id="letterSig"></p>
+    <button class="btn primary" id="letterBtn" type="button" hidden>Continuer</button>
+  </div>
+</div>
+
+<div id="credits" hidden>
+  <div class="credits-in">
+    <div id="creditsRoll"></div>
+    <p class="note" id="creditsNote"></p>
+    <div class="credits-btns">
+      <button class="btn" id="btnReplay" type="button">Rejouer depuis le début</button>
+      <a class="btn primary" href="../index.html">Retour aux destinations</a>
+    </div>
   </div>
 </div>
 
@@ -133,12 +164,25 @@
 <script src="js/world/screen.js"></script>
 <script src="js/world/avatar.js"></script>
 <script src="js/world/arena.js"></script>
+<script src="js/world/maze.js"></script>
+<script src="js/world/worlds.js"></script>
+<script src="js/world/finale.js"></script>
+<script src="js/world/fx.js"></script>
+<script src="js/world/clues.js"></script>
 <script src="js/game/hud.js"></script>
 <script src="js/game/player.js"></script>
 <script src="js/game/remote.js"></script>
 <script src="js/game/camera.js"></script>
+<script src="js/game/benches.js"></script>
 <script src="js/game/story.js"></script>
 <script src="js/game/lobby.js"></script>
+<script src="js/levels/city.js"></script>
+<script src="js/levels/act1.js"></script>
+<script src="js/levels/act2.js"></script>
+<script src="js/levels/act3.js"></script>
+<script src="js/levels/act4.js"></script>
+<script src="js/levels/act5.js"></script>
+<script src="js/levels/final.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

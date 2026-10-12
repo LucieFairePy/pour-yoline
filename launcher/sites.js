@@ -11,6 +11,6 @@ const SITES = [
     img: 'launcher/img/borderline.webp',
     title: 'BORDERLINE',
     sub: 'Un jeu à deux. On ne gagne jamais seul.',
-    tag: 'Jeu coop · Prologue',
+    tag: 'Jeu coop · 5 actes',
   },
 ];

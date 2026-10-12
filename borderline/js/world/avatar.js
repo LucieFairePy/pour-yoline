@@ -159,7 +159,7 @@ const Avatar = (() => {
     );
     shadow.renderOrder = 1;
 
-    const A = { ph: 0, bob: 0, lean: 0, air: 0, hang: 0, grap: 0, sit: 0, land: 0 };
+    const A = { ph: 0, bob: 0, lean: 0, air: 0, hang: 0, grap: 0, sit: 0, land: 0, hand: 0 };
     let wasGround = true;
 
     return {
@@ -181,6 +181,7 @@ const Avatar = (() => {
         A.hang = damp(A.hang, s.mode === 'hang' ? 1 : 0, 8, dt);
         A.grap = damp(A.grap, s.mode === 'grapple' ? 1 : 0, 12, dt);
         A.sit = damp(A.sit, s.mode === 'sit' ? 1 : 0, 6, dt);
+        A.hand = damp(A.hand, s.hand ? 1 : 0, 6, dt);
         if (s.grounded && !wasGround) A.land = 1;
         wasGround = s.grounded;
         A.land = Math.max(0, A.land - dt * 4);
@@ -223,6 +224,8 @@ const Avatar = (() => {
           if (i === 1) {
             ux = lerp(ux, -1.65, A.grap);
             uz = lerp(uz, 0.05, A.grap);
+            ux = lerp(ux, -0.45, A.hand);
+            uz = lerp(uz, 0.7, A.hand);
           }
           ux = lerp(ux, -0.3, A.sit);
           a.upper.rotation.x = ux;

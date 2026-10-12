@@ -4,6 +4,7 @@ const City = (() => {
   const N = 4;
   const r = rng(2026);
   const fogU = THREE.UniformsLib.fog;
+  const MOOD = { uGold: { value: 0 }, uGray: { value: 0 }, uRed: { value: 0 } };
 
   const GL_TAIL = `
     #include <tonemapping_fragment>
@@ -24,7 +25,7 @@ const City = (() => {
     new THREE.PlaneGeometry(900, 900, 1, 1).rotateX(-Math.PI / 2),
     new THREE.ShaderMaterial({
       fog: true,
-      uniforms: { ...fogU, uTime: { value: 0 } },
+      uniforms: { ...fogU, uTime: { value: 0 }, ...MOOD },
       vertexShader: `
         varying vec3 vW;
         #include <fog_pars_vertex>
@@ -38,6 +39,9 @@ const City = (() => {
       `,
       fragmentShader: `
         uniform float uTime;
+        uniform float uGold;
+        uniform float uGray;
+        uniform float uRed;
         varying vec3 vW;
         #include <fog_pars_fragment>
         float hash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
@@ -74,6 +78,11 @@ const City = (() => {
           col += vec3(1.0, 0.62, 0.42) * exp(-d * d * 0.05) * 0.16;
           float wet = smoothstep(0.55, 0.75, noise(vW.xz * 0.15 + 3.0)) * (1.0 - lot);
           col += vec3(0.5, 0.2, 0.55) * wet * 0.08 * (0.7 + 0.3 * sin(vW.x * 0.3 + uTime * 0.4));
+
+          float lum = dot(col, vec3(0.3, 0.59, 0.11));
+          col = mix(col, col * vec3(1.45, 1.05, 0.72) + vec3(0.05, 0.025, 0.0), uGold);
+          col = mix(col, vec3(lum * 0.85), uGray);
+          col = mix(col, vec3(lum * 1.8, lum * 0.18, lum * 0.22), uRed * 0.85);
           gl_FragColor = vec4(col, 1.0);
           ${GL_TAIL}
         }
@@ -88,7 +97,14 @@ const City = (() => {
     Phys.box(x, h / 2, z, sx, h, sz);
   };
 
-  const SPECIAL = { '0,0': 'plaza', '1,0': 'door', '0,-1': 'screen', '-1,0': 'cafe' };
+  const SPECIAL = {
+    '0,0': 'plaza',
+    '1,0': 'door',
+    '0,1': 'door2',
+    '0,-1': 'screen',
+    '-1,0': 'cafe',
+    '2,-2': 'tower',
+  };
   for (let i = -N; i <= N; i++)
     for (let j = -N; j <= N; j++) {
       const cx = i * LOT;
@@ -98,6 +114,14 @@ const City = (() => {
       if (sp === 'plaza' || sp === 'cafe') continue;
       if (sp === 'door') {
         addB(cx, cz, 22, 22, 26);
+        continue;
+      }
+      if (sp === 'door2') {
+        addB(cx, cz, 22, 22, 30);
+        continue;
+      }
+      if (sp === 'tower') {
+        addB(cx, cz, 16, 16, 48);
         continue;
       }
       if (sp === 'screen') {
@@ -133,7 +157,7 @@ const City = (() => {
 
   const bMat = new THREE.ShaderMaterial({
     fog: true,
-    uniforms: { ...fogU, uLight: { value: 1 } },
+    uniforms: { ...fogU, uLight: { value: 1 }, ...MOOD },
     vertexShader: `
       varying vec3 vW;
       varying vec3 vN;
@@ -153,6 +177,9 @@ const City = (() => {
     `,
     fragmentShader: `
       uniform float uLight;
+      uniform float uGold;
+      uniform float uGray;
+      uniform float uRed;
       varying vec3 vW;
       varying vec3 vN;
       varying float vSeed;
@@ -178,6 +205,11 @@ const City = (() => {
         col += win * side * band * (lit * wc * (0.55 + 0.35 * h) + (1.0 - lit) * vec3(0.02, 0.015, 0.03));
         col += vec3(1.0, 0.3, 0.5) * smoothstep(0.25, 0.0, vTop - vW.y) * side * step(0.72, vSeed) * 1.6;
         col += vec3(0.12, 0.04, 0.1) * exp(-vW.y * 0.25) * side;
+
+        float lum = dot(col, vec3(0.3, 0.59, 0.11));
+        col = mix(col, col * vec3(1.45, 1.05, 0.72) + vec3(0.05, 0.025, 0.0), uGold);
+        col = mix(col, vec3(lum * 0.85), uGray);
+        col = mix(col, vec3(lum * 1.8, lum * 0.18, lum * 0.22), uRed * 0.85);
         gl_FragColor = vec4(col, 1.0);
         ${GL_TAIL}
       }
@@ -286,18 +318,28 @@ const City = (() => {
   Phys.box(0, 0.3, 0, 7.4, 0.6, 7.4);
 
   const benchGeo = new THREE.BoxGeometry(3, 0.5, 0.8);
-  [
-    [0, 8],
-    [0, -8],
-    [8, 0, true],
-    [-8, 0, true],
-  ].forEach(([x, z, rot]) => {
-    const b = new THREE.Mesh(benchGeo, stone);
-    b.position.set(x * 1.2, 0.25, z * 1.2);
-    if (rot) b.rotation.y = Math.PI / 2;
-    R.scene.add(b);
-    Phys.box(x * 1.2, 0.25, z * 1.2, rot ? 0.8 : 3, 0.5, rot ? 3 : 0.8);
-  });
+  const backGeo = new THREE.BoxGeometry(3, 0.7, 0.12);
+  const benches = [];
+  const addBench = (x, y, z, yaw, group = R.scene) => {
+    const g = new THREE.Group();
+    const seat = new THREE.Mesh(benchGeo, stone);
+    seat.position.y = 0.25;
+    const back = new THREE.Mesh(backGeo, stone);
+    back.position.set(0, 0.75, -0.36);
+    g.add(seat, back);
+    g.position.set(x, y, z);
+    g.rotation.y = yaw;
+    group.add(g);
+    const along = Math.abs(Math.sin(yaw)) > 0.5;
+    Phys.box(x, y + 0.25, z, along ? 0.8 : 3, 0.5, along ? 3 : 0.8, { tag: 'bench' });
+    const b = { pos: V3(x, y, z), yaw, g };
+    benches.push(b);
+    return b;
+  };
+  addBench(0, 0, 9.6, Math.PI);
+  addBench(0, 0, -9.6, 0);
+  addBench(9.6, 0, 0, -Math.PI / 2);
+  addBench(-9.6, 0, 0, Math.PI / 2);
 
   const cardTex = (() => {
     const c = document.createElement('canvas');
@@ -348,40 +390,93 @@ const City = (() => {
     return t;
   };
 
-  const door = new THREE.Group();
-  const frameMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color('#ff3d7f').multiplyScalar(0.2),
-    toneMapped: false,
-  });
-  [
-    [0, 4.1, 0, 0.3, 0.3, 4.2],
-    [0, 2, -2, 0.3, 4.2, 0.3],
-    [0, 2, 2, 0.3, 4.2, 0.3],
-  ].forEach(([x, y, z, sx, sy, sz]) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), frameMat);
-    m.position.set(x, y, z);
-    door.add(m);
-  });
-  const doorFill = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.7, 4).rotateY(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.9 }),
-  );
-  doorFill.position.set(-0.05, 2, 0);
-  door.add(doorFill);
-  const doorSign = new THREE.Mesh(
-    new THREE.PlaneGeometry(5, 2.5).rotateY(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({
-      map: signTex('♥ 10', 'LA BALANCE', '#ff5f8a'),
-      transparent: true,
-      opacity: 0,
-      toneMapped: false,
-      depthWrite: false,
-    }),
-  );
-  doorSign.position.set(-0.2, 6, 0);
-  door.add(doorSign);
-  door.position.set(LOT - HALF - 0.1, 0, 0);
-  R.scene.add(door);
+  const glowMat = (c, k = 1.6) =>
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
+
+  const makeDoor = (pos, rotY, txt, sub, color, entry) => {
+    const g = new THREE.Group();
+    const frame = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), toneMapped: false });
+    [
+      [0, 4.1, 0, 0.3, 0.3, 4.2],
+      [0, 2, -2, 0.3, 4.2, 0.3],
+      [0, 2, 2, 0.3, 4.2, 0.3],
+    ].forEach(([x, y, z, sx, sy, sz]) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), frame);
+      m.position.set(x, y, z);
+      g.add(m);
+    });
+    const fill = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.7, 4).rotateY(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.9 }),
+    );
+    fill.position.set(-0.05, 2, 0);
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(5, 2.5).rotateY(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        map: signTex(txt, sub, color),
+        transparent: true,
+        opacity: 0,
+        toneMapped: false,
+        depthWrite: false,
+      }),
+    );
+    sign.position.set(-0.2, 6, 0);
+    g.add(fill, sign);
+    g.position.copy(pos);
+    g.rotation.y = rotY;
+    R.scene.add(g);
+    return { frame, fill, sign, color: new THREE.Color(color), on: 0, target: 0, entry };
+  };
+
+  const doors = {
+    h10: makeDoor(
+      V3(LOT - HALF - 0.1, 0, 0),
+      0,
+      '♥ 10',
+      'LA BALANCE',
+      '#ff5f8a',
+      V3(LOT - HALF - 1.5, 0, 0),
+    ),
+    c4: makeDoor(
+      V3(0, 0, LOT - HALF - 0.1),
+      -Math.PI / 2,
+      '♣ 4',
+      'LE LABYRINTHE',
+      '#7ce0ff',
+      V3(0, 0, LOT - HALF - 1.5),
+    ),
+  };
+
+  const pillarGeo = new THREE.CylinderGeometry(0.7, 0.7, 60, 12, 1, true).translate(0, 30, 0);
+  const pillars = [];
+  const makePillar = (pos, color = '#ffcf8a') => {
+    const m = new THREE.Mesh(
+      pillarGeo,
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color).multiplyScalar(1.4),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    m.position.copy(pos);
+    m.visible = false;
+    m.userData.on = false;
+    R.scene.add(m);
+    pillars.push(m);
+    return m;
+  };
+
+  const places = {};
+  const addPlace = (id, group, entry, onShow) => {
+    group.visible = false;
+    group.scale.set(1, 0.001, 1);
+    R.scene.add(group);
+    places[id] = { group, entry, onShow, t: -1, pillar: makePillar(entry), shown: false };
+  };
 
   const cafe = new THREE.Group();
   const cafeBody = new THREE.Mesh(
@@ -397,10 +492,7 @@ const City = (() => {
   awning.rotation.z = -0.25;
   const cafeWin = new THREE.Mesh(
     new THREE.PlaneGeometry(8, 2.4).rotateY(Math.PI / 2),
-    new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#ffb070').multiplyScalar(0.85),
-      toneMapped: false,
-    }),
+    glowMat('#ffb070', 0.85),
   );
   cafeWin.position.set(7.02, 1.8, 0);
   const cafeSign = new THREE.Mesh(
@@ -415,26 +507,123 @@ const City = (() => {
   cafeSign.position.set(7.1, 5.6, 0);
   cafe.add(cafeBody, awning, cafeWin, cafeSign);
   cafe.position.set(-LOT + 3, 0, 0);
-  cafe.visible = false;
-  cafe.scale.setScalar(0.001);
-  R.scene.add(cafe);
-  let cafeT = -1;
+  addPlace('cafe', cafe, V3(-LOT + 11, 0, 0), () => Phys.box(-LOT + 3, 3.5, 0, 14, 7, 12));
 
-  const pillarGeo = new THREE.CylinderGeometry(0.7, 0.7, 60, 12, 1, true).translate(0, 30, 0);
-  const pillar = new THREE.Mesh(
-    pillarGeo,
-    new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#ffcf8a').multiplyScalar(1.4),
-      transparent: true,
-      opacity: 0,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      toneMapped: false,
-      side: THREE.DoubleSide,
-    }),
+  const banc = new THREE.Group();
+  const bulb = glowMat('#ffcf8a', 2);
+  [-2.2, 2.2].forEach((x) => {
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.08, 3.2, 6).translate(0, 1.6, 0),
+      stone,
+    );
+    pole.position.set(x, 0, -0.8);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), bulb);
+    b.position.set(x, 3.25, -0.8);
+    banc.add(pole, b);
+  });
+  for (let i = 0; i < 14; i++) {
+    const k = i / 13;
+    const b = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 6, 4),
+      glowMat(i % 2 ? '#ff8fb0' : '#ffcf8a', 2.2),
+    );
+    b.position.set(-2.2 + k * 4.4, 3.1 - Math.sin(k * Math.PI) * 0.6, -0.8);
+    banc.add(b);
+  }
+  const tree = new THREE.Mesh(
+    new THREE.ConeGeometry(1.1, 3.4, 8).translate(0, 2.6, 0),
+    new THREE.MeshStandardMaterial({ color: '#2b1340', emissive: '#1a0a2a' }),
   );
-  pillar.position.set(-LOT + 12, 0, 0);
-  R.scene.add(pillar);
+  tree.position.set(3.4, 0, -1.2);
+  banc.add(tree);
+  banc.position.set(-LOT / 2, 0, LOT / 2);
+  banc.rotation.y = Math.PI;
+  addPlace('banc', banc, V3(-LOT / 2, 0, LOT / 2 - 1.6), () => {
+    addBench(-LOT / 2, 0, LOT / 2, Math.PI);
+    Phys.box(-LOT / 2 - 3.4, 1.7, LOT / 2 + 1.2, 1.6, 3.4, 1.6);
+  });
+
+  const lantern = (c) => {
+    const g = new THREE.Group();
+    const ped = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.45, 0.6, 1, 8).translate(0, 0.5, 0),
+      stone,
+    );
+    const l = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), glowMat(c, 2.2));
+    l.position.y = 1.55;
+    l.name = 'gem';
+    g.add(ped, l);
+    return g;
+  };
+  [
+    ['p3', V3(LOT + 15, 0, LOT + 15), '#ffcf8a'],
+    ['p4', V3(-LOT * 2 - 15, 0, -15), '#ff8fb0'],
+    ['p5', V3(15, 0, -LOT * 2 - 15), '#b07cff'],
+  ].forEach(([id, pos, c]) => {
+    const g = lantern(c);
+    g.position.copy(pos);
+    addPlace(id, g, pos.clone());
+  });
+
+  const TOWER = V3(2 * LOT, 48, -2 * LOT);
+  const liftMat = new THREE.MeshStandardMaterial({
+    color: '#2a1a2e',
+    emissive: '#ff4f86',
+    emissiveIntensity: 0.25,
+  });
+  const liftMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 4), liftMat);
+  const LIFT = V3(TOWER.x, 0, TOWER.z + 8 + 2.2);
+  const liftBox = Phys.add([0, 0, 0], [0, 0, 0], { dyn: true });
+  R.scene.add(liftMesh);
+  [-2.2, 2.2].forEach((dx) => {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 48, 0.12).translate(0, 24, 0),
+      glowMat('#ff5f8a', 1.2),
+    );
+    rail.position.set(LIFT.x + dx, 0, LIFT.z - 1.9);
+    R.scene.add(rail);
+  });
+  const setLift = (y) => {
+    liftMesh.position.set(LIFT.x, y - 0.2, LIFT.z);
+    liftBox.min = [LIFT.x - 2, y - 0.4, LIFT.z - 2];
+    liftBox.max = [LIFT.x + 2, y, LIFT.z + 2];
+  };
+  setLift(0.05);
+  const roofBench = addBench(TOWER.x, TOWER.y, TOWER.z - 4, Math.PI);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    const b = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 8, 6),
+      glowMat(i % 2 ? '#ff8fb0' : '#ffcf8a', 2),
+    );
+    b.position.set(TOWER.x + Math.cos(a) * 7, TOWER.y + 0.3, TOWER.z + Math.sin(a) * 7);
+    R.scene.add(b);
+  }
+
+  const rockets = [V3(-5, 0, 6), V3(5, 0, -6)].map((p) => {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.15, 0.9, 8).translate(0, 0.45, 0),
+      glowMat('#ff5f8a', 1.4),
+    );
+    const tip = new THREE.Mesh(
+      new THREE.ConeGeometry(0.17, 0.35, 8).translate(0, 1.07, 0),
+      glowMat('#ffcf8a', 1.6),
+    );
+    g.add(body, tip);
+    g.position.copy(p);
+    g.visible = false;
+    R.scene.add(g);
+    return { g, pos: p };
+  });
+
+  const mood = { gold: 0, gray: 0, red: 0, dark: 0 };
+  const moodNow = { gold: 0, gray: 0, red: 0, dark: 0 };
+  const FOGC = new THREE.Color(0.102, 0.043, 0.149);
+  const FG = new THREE.Color(0.25, 0.12, 0.08);
+  const FR = new THREE.Color(0.12, 0.02, 0.03);
+  const FY = new THREE.Color(0.07, 0.07, 0.075);
+  const FD = new THREE.Color(0.006, 0.003, 0.01);
 
   return {
     spawns: {
@@ -443,42 +632,89 @@ const City = (() => {
     },
     plaza: V3(0, 0, 0),
     screenPos: V3(0, 22, -LOT + HALF + 0.15),
-    doorPos: V3(LOT - HALF - 1.5, 0, 0),
-    cafePos: V3(-LOT + 11, 0, 0),
     hubSpawn: {
       dame: V3(-3, 0, 12),
       valet: V3(3, 0, 12),
     },
-    doorOn: 0,
-    showCafe(instant) {
-      if (cafe.visible) return;
-      cafe.visible = true;
-      cafeT = instant ? 1 : 0;
-      Phys.box(-LOT + 3, 3.5, 0, 14, 7, 12);
+    doors,
+    places,
+    benches,
+    roofBench,
+    rockets,
+    TOWER,
+    LIFT,
+    setLift,
+    onLift: (p, y) =>
+      Math.abs(p.x - LIFT.x) < 2.1 && Math.abs(p.z - LIFT.z) < 2.1 && Math.abs(p.y - y) < 0.8,
+    door(id, on) {
+      doors[id].target = on;
     },
-    get cafeShown() {
-      return cafe.visible;
+    showPlace(id, instant) {
+      const pl = places[id];
+      if (!pl || pl.shown) return;
+      pl.shown = true;
+      pl.group.visible = true;
+      pl.t = instant ? 1 : 0;
+      if (instant) pl.group.scale.setScalar(1);
+      if (pl.onShow) pl.onShow();
     },
-    pillar(on) {
-      pillar.userData.on = on;
+    pillar(id, on) {
+      if (places[id]) places[id].pillar.userData.on = on;
+    },
+    rocketsOn(on) {
+      rockets.forEach((r) => (r.g.visible = on));
+    },
+    mood(m) {
+      Object.assign(mood, { gold: 0, gray: 0, red: 0, dark: 0 }, m);
     },
     update(t, dt) {
       ground.material.uniforms.uTime.value = t;
       bigCard.rotation.y = t * 0.6;
       bigCard.position.y = 5.5 + Math.sin(t * 0.9) * 0.3;
-      const k = this.doorOn;
-      frameMat.color.setRGB(1, 0.24, 0.5).multiplyScalar(0.15 + k * (2 + Math.sin(t * 3) * 0.6));
-      doorSign.material.opacity = k;
-      doorFill.material.opacity = 0.9 - k * 0.3;
-      if (cafeT >= 0 && cafeT < 1) {
-        cafeT = Math.min(1, cafeT + dt * 0.5);
-        const e = 1 - Math.pow(1 - cafeT, 3);
-        cafe.scale.set(1, e, 1);
-      } else if (cafeT >= 1) cafe.scale.setScalar(1);
-      const near = clamp((R.camera.position.distanceTo(pillar.position) - 6) / 20, 0, 1);
-      const po = pillar.userData.on ? (0.22 + Math.sin(t * 2) * 0.06) * near : 0;
-      pillar.material.opacity = damp(pillar.material.opacity, po, 3, dt);
-      pillar.visible = pillar.material.opacity > 0.01;
+      Object.values(doors).forEach((d) => {
+        d.on = damp(d.on, d.target, 3, dt);
+        d.frame.color.copy(d.color).multiplyScalar(0.15 + d.on * (2 + Math.sin(t * 3) * 0.6));
+        d.sign.material.opacity = d.on;
+        d.fill.material.opacity = 0.9 - d.on * 0.3;
+      });
+      Object.values(places).forEach((pl) => {
+        if (pl.t >= 0 && pl.t < 1) {
+          pl.t = Math.min(1, pl.t + dt * 0.5);
+          pl.group.scale.set(1, 1 - Math.pow(1 - pl.t, 3), 1);
+        }
+        const gem = pl.group.getObjectByName('gem');
+        if (gem) {
+          gem.rotation.y = t;
+          gem.position.y = 1.55 + Math.sin(t * 2) * 0.1;
+        }
+      });
+      pillars.forEach((m) => {
+        const near = clamp((R.camera.position.distanceTo(m.position) - 6) / 20, 0, 1);
+        const po = m.userData.on ? (0.22 + Math.sin(t * 2) * 0.06) * near : 0;
+        m.material.opacity = damp(m.material.opacity, po, 3, dt);
+        m.visible = m.material.opacity > 0.01;
+      });
+      for (const k in mood) moodNow[k] = damp(moodNow[k], mood[k], 1.2, dt);
+      MOOD.uGold.value = moodNow.gold;
+      MOOD.uGray.value = moodNow.gray;
+      MOOD.uRed.value = moodNow.red;
+      Sky.U.uGold.value = moodNow.gold * 0.8;
+      Sky.U.uRed.value = moodNow.red;
+      const dim = 1 - moodNow.gray * 0.75;
+      nMesh.material.color.setRGB(
+        dim + moodNow.red * 0.5,
+        dim * (1 - moodNow.red * 0.7),
+        dim * (1 - moodNow.red * 0.6),
+      );
+      bulbM.material.color.setRGB(1, 0.69, 0.44).multiplyScalar(2.4 * dim);
+      bMat.uniforms.uLight.value = 1 - moodNow.gray * 0.85;
+      R.scene.fog.color
+        .copy(FOGC)
+        .lerp(FG, moodNow.gold * 0.6)
+        .lerp(FR, moodNow.red * 0.7)
+        .lerp(FY, moodNow.gray)
+        .lerp(FD, moodNow.dark);
+      R.scene.background.copy(R.scene.fog.color);
     },
   };
 })();

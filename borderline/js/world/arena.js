@@ -296,7 +296,17 @@ const Arena = (() => {
       const tag = sprite(who === 'dame' ? '♥' : '♠', 1.4, col);
       tag.position.copy(P(x, 5.4, CAB_Z0));
       group.add(tag);
-      cab[who] = { x, door, doorB, ceil, ceilB, btn, doorY: 0, ceilY: CEIL_TOP };
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.05, 0.05), edge('#ff2a3a', 3));
+      strip.position.set(0, -0.17, -(CAB_Z1 - CAB_Z0) / 2 + 0.05);
+      ceil.add(strip);
+      const strip2 = strip.clone();
+      strip2.position.z = (CAB_Z1 - CAB_Z0) / 2 - 0.05;
+      ceil.add(strip2);
+      const scr = makeScreen(1.3, 0.55, 512);
+      scr.mesh.position.copy(P(x, 1.78, CAB_Z1 - 0.02));
+      scr.mesh.rotation.y = Math.PI;
+      group.add(scr.mesh);
+      cab[who] = { x, door, doorB, ceil, ceilB, btn, scr, doorY: 0, ceilY: CEIL_TOP };
     }
 
     screen = makeScreen(16, 8, 1024);
@@ -360,7 +370,11 @@ const Arena = (() => {
     onB: (q) => q.z > 41.8 && q.z < 52.3 && q.y > -1 && Math.abs(q.x) < 9.3,
     onC: (q) => q.z > 81.8 && q.y > -1 && Math.abs(q.x) < 11.3,
     inCabin: (q, who) =>
-      Math.abs(q.x - CAB[who]) < 1.45 && q.z > CAB_Z0 + 0.3 && q.z < CAB_Z1 - 0.1 && q.y > -0.5,
+      Math.abs(q.x - CAB[who]) < 1.45 &&
+      q.z > CAB_Z0 + 0.8 &&
+      q.z < CAB_Z1 - 0.1 &&
+      q.y > -0.5 &&
+      q.y < 1,
     nearWinch: (q) => Math.hypot(q.x + 5, q.z - 49.5) < 2.4,
     nearHarness: (q) => Math.hypot(q.x - 4, q.z - 51.5) < 2.4 && q.y > -0.5,
     nearButton: (q, who) => Math.abs(q.x - CAB[who]) < 1.45 && q.z > CAB_Z1 - 1.6,
@@ -400,10 +414,14 @@ const Arena = (() => {
         k.ceilB.min = [bx - 1.5, O.y + k.ceilY, bz0];
         k.ceilB.max = [bx + 1.5, O.y + k.ceilY + 0.3, bz1];
         k.btn.scale.z = c.phase === 'run' ? 1 + Math.sin(t * 8) * 0.15 : 1;
+        k.scr.update(dt, t);
       }
       card.visible = c.phase === 'win';
       card.rotation.y = t * 1.4;
       card.position.y = O.y + 1.6 + Math.sin(t * 2) * 0.15;
+    },
+    cabShow(main, sub, color) {
+      Object.values(cab).forEach((k) => k.scr.show(main, sub, color));
     },
     ceilingFor(who) {
       return cab[who] ? cab[who].ceilY : CEIL_TOP;

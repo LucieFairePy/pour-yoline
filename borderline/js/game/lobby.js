@@ -17,12 +17,22 @@ const Lobby = (() => {
   const ready = () => {
     step('stepReady');
     $('readyText').textContent = `Connecté·e·s · tu joues ${CONFIG.roles[role].name}`;
-    if (Net.isHost && progress)
+    if (Net.isHost && progress) {
+      const ph = typeof progress === 'object' ? progress.phase : progress;
+      const ch = typeof progress === 'object' ? progress.chapter : progress === 'free' ? 1 : 0;
+      const where =
+        ph === 'final'
+          ? 'avant la Dame de Cœur'
+          : ph === 'act5'
+            ? 'aux Deux mondes'
+            : ph === 'act3'
+              ? 'à l’Heure dorée'
+              : ['après les retrouvailles', 'après ♥ 10', 'après ♣ 4'][ch] || 'en ville';
       $('resumeText').innerHTML =
-        (progress === 'free'
-          ? 'Partie sauvegardée : prologue terminé.'
-          : 'Partie sauvegardée : après les retrouvailles.') +
-        ' <a href="#" id="restart" style="color:inherit">Recommencer du début</a>';
+        'Partie sauvegardée : ' +
+        where +
+        '. <a href="#" id="restart" style="color:inherit">Recommencer du début</a>';
+    }
     const rs = $('restart');
     if (rs)
       rs.onclick = (e) => {

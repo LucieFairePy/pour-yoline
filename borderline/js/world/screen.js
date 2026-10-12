@@ -59,10 +59,11 @@ const makeScreen = (w, h, res = 1024) => {
     show(main, sub, color) {
       const k = main + '|' + sub + '|' + color;
       if (k === last) return;
+      const fresh = !last || last.split('|')[0] !== main;
       last = k;
       draw(main, sub, color);
       target = 1.6;
-      glitch = 0.4;
+      if (fresh) glitch = 0.4;
     },
     dim() {
       target = 0.25;

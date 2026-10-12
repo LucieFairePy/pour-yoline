@@ -21,6 +21,7 @@ const HUD = (() => {
   let typing = null;
   let lastObj = '';
   let lastPrompt = '';
+  let lastClues = '';
   const proj = V3();
 
   const runQueue = async () => {
@@ -133,6 +134,65 @@ const HUD = (() => {
     },
     hideCard() {
       $('card').hidden = true;
+    },
+    clues(n, total) {
+      const k = n + '/' + total;
+      if (k === lastClues) return;
+      lastClues = k;
+      $('hudClues').textContent = n ? 'Cassettes · ' + k : '';
+    },
+    manual(spec) {
+      const m = $('manual');
+      if (!spec) {
+        m.hidden = true;
+        return;
+      }
+      $('manTitle').textContent = spec.title;
+      $('manIntro').textContent = spec.intro;
+      $('manRules').innerHTML = spec.rules
+        .map(([s, r]) => `<li><span class="sym">${s}</span><span>${r}</span></li>`)
+        .join('');
+      $('manOutro').textContent = spec.outro;
+      m.hidden = false;
+    },
+    letter(lines, sig) {
+      return new Promise(async (res) => {
+        const box = $('letterLines');
+        box.innerHTML = '';
+        $('letterSig').textContent = '';
+        $('letterBtn').hidden = true;
+        $('letter').hidden = false;
+        Input.unlock();
+        for (const [suit, text] of lines) {
+          const li = document.createElement('p');
+          li.innerHTML = `<span class="suit">${suit}</span><span class="txt"></span>`;
+          box.appendChild(li);
+          const t = li.querySelector('.txt');
+          for (let i = 1; i <= text.length; i++) {
+            t.textContent = text.slice(0, i);
+            await sleep(32);
+          }
+          await sleep(700);
+        }
+        $('letterSig').textContent = sig;
+        $('letterBtn').hidden = false;
+        $('letterBtn').onclick = () => {
+          $('letter').hidden = true;
+          Input.lock();
+          res();
+        };
+      });
+    },
+    credits(lines, note) {
+      const box = $('creditsRoll');
+      box.innerHTML = lines.map(([k, v]) => `<p class="${k}">${v}</p>`).join('');
+      $('creditsNote').textContent = note || '';
+      $('credits').hidden = false;
+      Input.unlock();
+      $('btnReplay').onclick = () => {
+        save.set({ progress: null });
+        location.href = location.pathname;
+      };
     },
     memory(tag, title, text) {
       return new Promise((res) => {

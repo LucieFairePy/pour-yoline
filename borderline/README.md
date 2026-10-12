@@ -13,7 +13,19 @@
 Un jeu coopératif en 3D, à la troisième personne, jouable dans le navigateur. Deux astronautes se réveillent dans une
 ville vide. Des écrans géants s'allument, et pour rentrer il faut gagner des cartes.
 
-Contenu actuel : **le prologue et la carte ♥ 10**.
+Le jeu complet : un prologue, cinq actes et un final, pour une soirée d'environ une heure.
+
+| Partie   | Nom                | Ce qui se passe                                           |
+| -------- | ------------------ | --------------------------------------------------------- |
+| Prologue | Réveil             | Se retrouver dans la ville vide                           |
+| ♥ 10    | La Balance         | Ponts invisibles, treuil, grappin, cabines                |
+| ♣ 4     | Le Labyrinthe noir | Guider l'autre dans le noir, désamorcer une bombe à cœurs |
+| III      | L'Heure dorée      | Une balade sans épreuve, des souvenirs, un toit           |
+| IV       | Le Joker           | …                                                         |
+| V        | Deux mondes        | Séparés, chacun ouvre le chemin de l'autre                |
+| ♛        | Dame de Cœur       | …                                                         |
+
+Six cassettes sont cachées dans le jeu. Les trouver toutes débloque une fin secrète.
 
 ## Jouer
 
@@ -56,8 +68,9 @@ js/
   config.js         tous les textes
   core/             utilitaires, réglages, entrées clavier/manette, audio génératif
   net/net.js        connexion pair-à-pair (PeerJS) et mode local (BroadcastChannel)
-  world/            rendu, ciel, ville, écrans, astronautes, arène, physique
-  game/             HUD, joueur, joueur distant, caméra, histoire, lobby
+  world/            rendu, ciel, ville, écrans, astronautes, arènes, particules, cassettes, physique
+  game/             HUD, joueur, joueur distant, caméra, bancs, moteur d'histoire, lobby
+  levels/           un fichier par partie (ville, act1 … act5, final)
   main.js           boucle de jeu
 ```
 

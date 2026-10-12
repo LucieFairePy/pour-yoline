@@ -31,7 +31,7 @@ const Game = (() => {
     const t = clock.t;
     Input.poll();
 
-    if (!paused && Input.pressed('pause') && $('memory').hidden) {
+    if (!paused && Input.pressed('pause') && !overlay()) {
       Input.unlock();
       showPause(true);
     }
@@ -80,13 +80,13 @@ const Game = (() => {
     requestAnimationFrame(loop);
   };
 
+  const overlay = () => !$('memory').hidden || !$('letter').hidden || !$('credits').hidden;
   $('gl').addEventListener('click', () => {
-    if (running && !paused && $('memory').hidden) Input.lock();
+    if (running && !paused && !overlay()) Input.lock();
   });
   document.addEventListener('pointerlockchange', () => {
     if (!running) return;
-    if (!document.pointerLockElement && $('memory').hidden && !Input.pad && !window.__test)
-      showPause(true);
+    if (!document.pointerLockElement && !overlay() && !Input.pad && !window.__test) showPause(true);
   });
   $('btnResume').onclick = () => {
     showPause(false);

@@ -79,11 +79,17 @@ const Phys = (() => {
         } else if (v.y > 0) {
           p.y = b.min[1] - h;
           v.y = 0;
-        } else {
+        } else if (b.max[1] - p.y <= (b.dyn ? 1.4 : STEP)) {
           p.y = b.max[1];
           v.y = 0;
           grounded = true;
           body.ground = b;
+        } else {
+          const px = Math.min(p.x + r - b.min[0], b.max[0] - (p.x - r));
+          const pz = Math.min(p.z + r - b.min[2], b.max[2] - (p.z - r));
+          if (px < pz)
+            p.x = p.x < (b.min[0] + b.max[0]) / 2 ? b.min[0] - r - 1e-3 : b.max[0] + r + 1e-3;
+          else p.z = p.z < (b.min[2] + b.max[2]) / 2 ? b.min[2] - r - 1e-3 : b.max[2] + r + 1e-3;
         }
       }
       for (const ax of ['x', 'z']) {

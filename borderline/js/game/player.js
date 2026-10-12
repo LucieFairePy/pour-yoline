@@ -20,6 +20,7 @@ const Player = (() => {
     stepDist: 0,
     airTime: 0,
     lockTarget: -1,
+    handPose: false,
   };
   const tmp = V3();
   const dir = V3();
@@ -188,7 +189,11 @@ const Player = (() => {
     a.root.position.copy(body.p);
     a.root.rotation.y = P.yaw;
     const gy = Phys.groundAt(body.p.x, body.p.y + 0.1, body.p.z);
-    a.update(dt, { speed: P.speed, grounded: body.grounded, mode: P.mode, groundY: gy }, t);
+    a.update(
+      dt,
+      { speed: P.speed, grounded: body.grounded, mode: P.mode, groundY: gy, hand: P.handPose },
+      t,
+    );
   };
 
   P.snapshot = () => [

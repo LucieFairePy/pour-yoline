@@ -17,6 +17,18 @@ const Sound = (() => {
       [46, 53, 56, 61],
       [45, 52, 56, 60],
     ],
+    gold: [
+      [53, 60, 65, 69, 72],
+      [55, 62, 67, 71, 74],
+      [57, 64, 69, 72, 76],
+      [50, 57, 62, 65, 69],
+    ],
+    dark: [
+      [45, 52, 55, 58],
+      [44, 51, 54, 57],
+      [42, 49, 52, 55],
+      [41, 48, 51, 56],
+    ],
   };
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -100,9 +112,9 @@ const Sound = (() => {
     const t = ctx.currentTime + 0.05;
     const set = CHORDS[mood];
     const ch = set[step % set.length];
-    const len = mood === 'tense' ? 4 : 7;
-    ch.forEach((m, i) => pad(hz(m), t + i * 0.09, len + 1.5, 0.05));
-    const arp = mood === 'tense' ? 8 : 5;
+    const len = mood === 'tense' ? 4 : mood === 'gold' ? 6 : mood === 'dark' ? 5 : 7;
+    ch.forEach((m, i) => pad(hz(m), t + i * 0.09, len + 1.5, mood === 'gold' ? 0.045 : 0.05));
+    const arp = mood === 'tense' ? 8 : mood === 'gold' ? 9 : mood === 'dark' ? 2 : 5;
     for (let i = 0; i < arp; i++) {
       const m = ch[(i * 3 + step) % ch.length] + 12 + (i % 3 === 2 ? 12 : 0);
       bell(hz(m), t + (len / arp) * i + Math.random() * 0.06, 0.035 + Math.random() * 0.02, music);
@@ -262,6 +274,44 @@ const Sound = (() => {
     reveal() {
       const t = ctx.currentTime;
       [72, 79, 84, 88].forEach((m, i) => bell(hz(m), t + i * 0.18, 0.1, sfx));
+    },
+    launch() {
+      sweep(ctx.currentTime, 300, 1400, 1.3, 0.04, 'sawtooth');
+      noise(ctx.currentTime, 1.3, 2500, 1, 0.05);
+    },
+    boom(pos) {
+      const out = pos ? spatial(pos) : sfx;
+      const t = ctx.currentTime;
+      noise(t, 1.4, 160, 0.6, 0.5, 'lowpass', out);
+      noise(t, 2.2, 3200, 0.4, 0.08, 'highpass', out);
+    },
+    glitch() {
+      const t = ctx.currentTime;
+      for (let i = 0; i < 6; i++) {
+        noise(t + i * 0.07, 0.06, 500 + Math.random() * 4000, 3, 0.12);
+        sweep(t + i * 0.07, 60 + Math.random() * 400, 40, 0.08, 0.06, 'square');
+      }
+    },
+    shatter() {
+      const t = ctx.currentTime;
+      noise(t, 1.6, 5000, 0.5, 0.25, 'highpass');
+      for (let i = 0; i < 10; i++)
+        bell(hz(84 + Math.random() * 24), t + Math.random() * 0.5, 0.05, sfx);
+    },
+    cut() {
+      noise(ctx.currentTime, 0.12, 2400, 4, 0.2);
+    },
+    switch() {
+      const t = ctx.currentTime;
+      sweep(t, 180, 90, 0.15, 0.15, 'square');
+      bell(hz(79), t + 0.1, 0.08, sfx);
+    },
+    lift() {
+      sweep(ctx.currentTime, 70, 110, 1.6, 0.06, 'sawtooth');
+    },
+    trap() {
+      const t = ctx.currentTime;
+      sweep(t, 400, 80, 0.5, 0.2, 'square');
     },
   };
 

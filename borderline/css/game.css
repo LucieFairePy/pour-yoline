@@ -621,3 +621,190 @@ kbd {
     display: none;
   }
 }
+
+.hud-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.clues {
+  color: var(--gold);
+}
+
+#manual {
+  position: fixed;
+  right: 1.6rem;
+  top: 50%;
+  z-index: 8;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.manual-in {
+  width: min(400px, 90vw);
+  padding: 1.6rem;
+  border-radius: 1.4rem;
+  background: linear-gradient(170deg, rgba(250, 240, 225, 0.96), rgba(232, 214, 196, 0.96));
+  color: #2a1220;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  transform: rotate(-1.5deg);
+}
+
+.manual-in h2 {
+  font-weight: 400;
+  font-style: italic;
+  font-size: 1.6rem;
+}
+
+.manual-in .label {
+  color: #8a5a6a;
+}
+
+#manRules {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#manRules li {
+  display: flex;
+  gap: 0.8rem;
+  align-items: baseline;
+  font-size: 1.02rem;
+}
+
+#manRules .sym {
+  font-size: 1.5rem;
+  color: #c0203f;
+  width: 1.4rem;
+}
+
+.manual-in .outro {
+  font-style: italic;
+}
+
+#letter {
+  position: fixed;
+  inset: 0;
+  z-index: 16;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(13, 6, 18, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+.letter-in {
+  width: min(640px, 100%);
+  padding: 2.4rem;
+  border-radius: 1.6rem;
+  background: linear-gradient(170deg, #fbf3e8, #efe0cf);
+  color: #2a1220;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+  animation: rise 1s var(--expo) both;
+}
+
+.letter-in .label {
+  color: #8a5a6a;
+}
+
+#letterLines p {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  font-style: italic;
+  line-height: 1.45;
+  animation: rise 0.8s var(--expo) both;
+}
+
+#letterLines .suit {
+  min-width: 2.6rem;
+  font-family: var(--f-mono);
+  font-style: normal;
+  font-size: 0.85rem;
+  color: #c0203f;
+}
+
+.letter-in .sig {
+  align-self: flex-end;
+  font-size: 1.3rem;
+  font-style: italic;
+}
+
+.letter-in .btn.primary {
+  align-self: flex-start;
+  background: #2a1220;
+  color: #fbf3e8;
+  border-color: #2a1220;
+}
+
+#credits {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: radial-gradient(circle, rgba(43, 12, 32, 0.85), rgba(5, 2, 8, 0.97));
+}
+
+.credits-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  text-align: center;
+}
+
+#creditsRoll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  animation: rise 2s var(--expo) both;
+}
+
+#creditsRoll .title {
+  font-size: clamp(3rem, 10vw, 5.5rem);
+  letter-spacing: 0.04em;
+  margin-bottom: 1.2rem;
+}
+
+#creditsRoll .role {
+  margin-top: 1rem;
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#creditsRoll .name {
+  font-size: 1.5rem;
+  font-style: italic;
+}
+
+#credits .note {
+  color: var(--gold);
+  font-style: italic;
+}
+
+.credits-btns {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.credits-btns a.btn {
+  text-decoration: none;
+}

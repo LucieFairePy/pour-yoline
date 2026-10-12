@@ -10,6 +10,7 @@ const Remote = (() => {
 
   return {
     role: null,
+    handPose: false,
     pos,
     get state() {
       return state;
@@ -72,7 +73,7 @@ const Remote = (() => {
       avatar.root.position.copy(pos);
       avatar.root.rotation.y = yaw;
       const gy = Phys.groundAt(pos.x, pos.y + 0.1, pos.z);
-      avatar.update(dt, { ...state, groundY: gy }, t);
+      avatar.update(dt, { ...state, groundY: gy, hand: this.handPose }, t);
       const tp = state.mode === 'grapple' && targets && targets()[state.target];
       line.visible = !!tp;
       if (tp) {
