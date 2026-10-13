@@ -512,7 +512,11 @@ const Tex = (() => {
           '#include <map_fragment>',
           'diffuseColor.rgb *= triSample(tAlb).rgb;\nvec4 triD = triSample(tDat);',
         )
-        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = roughness * triD.g;')
+        // floor the roughness: glossy veins under a lamp made a burning-white highlight
+        .replace(
+          '#include <roughnessmap_fragment>',
+          'float roughnessFactor = max(roughness * triD.g, min(roughness, 0.38));',
+        )
         .replace(
           '#include <normal_fragment_maps>',
           `#include <normal_fragment_maps>
