@@ -268,8 +268,9 @@ const Maze = (() => {
 
   const makeSprite = (txt, size, color) => {
     const c = document.createElement('canvas');
-    c.width = c.height = 128;
+    c.width = c.height = 512;
     const g = c.getContext('2d');
+    g.scale(4, 4);
     g.fillStyle = color;
     g.shadowColor = color;
     g.shadowBlur = 16;

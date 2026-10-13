@@ -155,10 +155,13 @@ const Cards = (() => {
   const backCanvas = () => {
     const W = 512;
     const H = 716;
+    // drawn in a 512-wide layout, rendered at 1080 px wide (1080p minimum)
+    const S = 1080 / W;
     const c = document.createElement('canvas');
-    c.width = W;
-    c.height = H;
+    c.width = Math.round(W * S);
+    c.height = Math.round(H * S);
     const g = c.getContext('2d');
+    g.scale(S, S);
     const rr = (x, y, w, h, r) => {
       g.beginPath();
       g.moveTo(x + r, y);

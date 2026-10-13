@@ -187,8 +187,13 @@ const City = (() => {
       }
     }
 
+  // Facades, all in one shader on the instanced boxes: windows set back in the wall with real
+  // parallax (reveals, sills, frames), rooms behind lit windows (interior mapping: floor,
+  // ceiling, walls, a lamp, furniture), floor bands and pilasters, a cornice, shopfronts on the
+  // ground floor, glass curtain walls, and relief from the 2048² height maps.
   const bMat = new THREE.ShaderMaterial({
     fog: true,
+    extensions: { derivatives: true },
     uniforms: {
       ...fogU,
       uLight: { value: 1 },
@@ -196,20 +201,29 @@ const City = (() => {
       tConc: { value: TX.concrete.albedo },
       tBrick: { value: TX.brick.albedo },
       tPlas: { value: TX.plaster.albedo },
+      tConcD: { value: TX.concrete.data },
+      tBrickD: { value: TX.brick.data },
+      tPlasD: { value: TX.plaster.data },
     },
     vertexShader: `
+      attribute float aSeed;
+      attribute float aKind;
       varying vec3 vW;
       varying vec3 vN;
       varying float vSeed;
+      varying float vKind;
       varying float vTop;
+      varying vec3 vView;
       #include <fog_pars_vertex>
       void main() {
         vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.0);
         vW = w.xyz;
         vN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
         vTop = length(instanceMatrix[1].xyz);
-        vSeed = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
+        vSeed = aSeed;
+        vKind = aKind;
         vec4 mvPosition = viewMatrix * w;
+        vView = -mvPosition.xyz;
         gl_Position = projectionMatrix * mvPosition;
         #include <fog_vertex>
       }
@@ -222,50 +236,200 @@ const City = (() => {
       uniform sampler2D tConc;
       uniform sampler2D tBrick;
       uniform sampler2D tPlas;
+      uniform sampler2D tConcD;
+      uniform sampler2D tBrickD;
+      uniform sampler2D tPlasD;
       varying vec3 vW;
       varying vec3 vN;
       varying float vSeed;
+      varying float vKind;
       varying float vTop;
+      varying vec3 vView;
       #include <fog_pars_fragment>
       float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float box(vec2 p, vec2 a, vec2 b) { return step(a.x, p.x) * step(p.x, b.x) * step(a.y, p.y) * step(p.y, b.y); }
+
+      // a room behind the glass: p = point on the glass (room space, metres), rd = view ray
+      // into the room (z < 0). Returns the lit colour of what the ray hits.
+      vec3 room(vec3 p, vec3 rd, vec2 hs, float depth, vec3 lc, float seed) {
+        vec3 ird = 1.0 / rd;
+        float tx = ((rd.x > 0.0 ? hs.x : -hs.x) - p.x) * ird.x;
+        float ty = ((rd.y > 0.0 ? hs.y : -hs.y) - p.y) * ird.y;
+        float tz = (-depth - p.z) * ird.z;
+        float t = min(min(tx, ty), tz);
+        vec3 h = p + rd * t;
+        float dz = clamp(-h.z / depth, 0.0, 1.0);
+        vec3 c;
+        if (t == ty && rd.y < 0.0) {
+          // floor: parquet stripes, darker far away
+          float plank = step(0.5, fract(h.x * 2.2 + floor(h.z * 0.8) * 0.37));
+          c = lc * (0.28 + plank * 0.06) * (1.0 - dz * 0.4);
+        } else if (t == ty) {
+          // ceiling with a lamp
+          float lamp = exp(-dot(h.xz - vec2(0.3 * (seed - 0.5), -depth * 0.5), h.xz - vec2(0.3 * (seed - 0.5), -depth * 0.5)) * 3.0);
+          c = lc * (0.55 + lamp * 1.6);
+        } else if (t == tz) {
+          // back wall: a frame, a cupboard or a sofa silhouette
+          c = lc * 0.62;
+          float fu = h.x / hs.x;
+          float fv = h.y / hs.y;
+          if (seed < 0.33) c *= 1.0 - 0.45 * box(vec2(fu, fv), vec2(-0.35, -0.15), vec2(0.15, 0.45));
+          else if (seed < 0.66) c *= 1.0 - 0.6 * box(vec2(fu, fv), vec2(-0.8, -1.0), vec2(0.1, 0.3));
+          else c *= 1.0 - 0.55 * box(vec2(fu, fv), vec2(-0.6, -1.0), vec2(0.7, -0.55));
+        } else {
+          c = lc * 0.45 * (1.0 - dz * 0.35);
+        }
+        return c;
+      }
+
       void main() {
-        vec3 base = mix(vec3(0.05, 0.03, 0.07), vec3(0.12, 0.07, 0.13), vSeed);
+        bool xFace = abs(vN.x) > 0.5;
         float side = 1.0 - abs(vN.y);
-        vec2 f = abs(vN.x) > 0.5 ? vec2(vW.z, vW.y) : vec2(vW.x, vW.y);
-        if (side < 0.5) f = vW.xz;
-        // facade material picked per building
-        float kind = fract(vSeed * 7.31);
-        vec3 tex = kind < 0.4 ? texture2D(tConc, f / 8.0).rgb
-          : kind < 0.72 ? texture2D(tBrick, f / 4.5).rgb
-          : texture2D(tPlas, f / 6.0).rgb;
-        if (side < 0.5) tex = texture2D(tConc, f / 8.0).rgb;
-        tex = mix(vec3(dot(tex, vec3(0.33))), tex, 0.6);
-        base *= 0.4 + tex * 1.15;
-        vec2 g = f / vec2(2.8, 3.4);
-        vec2 id = floor(g);
-        vec2 fr = fract(g);
-        float win = step(0.28, fr.x) * step(fr.x, 0.72) * step(0.3, fr.y) * step(fr.y, 0.72);
-        float frame = step(0.24, fr.x) * step(fr.x, 0.76) * step(0.25, fr.y) * step(fr.y, 0.76) - win;
-        float sill = step(0.22, fr.x) * step(fr.x, 0.78) * step(0.2, fr.y) * step(fr.y, 0.25);
+        vec2 f = xFace ? vec2(vW.z * sign(vN.x), vW.y) : vec2(-vW.x * sign(vN.z), vW.y);
+        vec3 V = normalize(cameraPosition - vW);
+        vec3 T = xFace ? vec3(0.0, 0.0, sign(vN.x)) : vec3(-sign(vN.z), 0.0, 0.0);
+        vec3 Vt = vec3(dot(V, T), V.y, max(dot(V, vN), 0.08));
+        float kind = vKind;
+        bool glassWall = kind > 2.5;
+
+        // wall material + relief
+        vec2 fw = side < 0.5 ? vW.xz : f;
+        vec3 tex;
+        float hgt;
+        if (side < 0.5 || kind < 0.5) { tex = texture2D(tConc, fw / 8.0).rgb; hgt = texture2D(tConcD, fw / 8.0).r; }
+        else if (kind < 1.5) { tex = texture2D(tBrick, fw / 4.5).rgb; hgt = texture2D(tBrickD, fw / 4.5).r; }
+        else { tex = texture2D(tPlas, fw / 6.0).rgb; hgt = texture2D(tPlasD, fw / 6.0).r; }
+        tex = mix(vec3(dot(tex, vec3(0.33))), tex, 0.65);
+        // night palette: deep plum walls, the light comes from the windows and the neons
+        vec3 tint = kind < 0.5 ? mix(vec3(0.07, 0.05, 0.095), vec3(0.12, 0.085, 0.14), vSeed)
+          : kind < 1.5 ? mix(vec3(0.11, 0.04, 0.06), vec3(0.17, 0.065, 0.075), vSeed)
+          : mix(vec3(0.1, 0.065, 0.13), vec3(0.15, 0.1, 0.15), vSeed);
+        vec3 base = tint * (0.35 + tex * 1.2);
+
+        // bump: height through screen-space derivatives (fades with distance)
+        vec3 n = normalize(vN);
+        {
+          float d = length(vView);
+          float hb = hgt * 0.06 * clamp(1.6 - d / 45.0, 0.0, 1.0);
+          vec3 dpx = dFdx(vW);
+          vec3 dpy = dFdy(vW);
+          vec3 r1 = cross(dpy, n);
+          vec3 r2 = cross(n, dpx);
+          float det = dot(dpx, r1);
+          if (abs(det) > 1e-8) n = normalize(abs(det) * n - sign(det) * (dFdx(hb) * r1 + dFdy(hb) * r2));
+        }
+        vec3 L = normalize(vec3(-0.4, 0.8, -0.3));
+        float diff = max(dot(n, L), 0.0);
+        vec3 col = base * (0.32 + 0.55 * diff);
+
+        float occ = hash(vec2(vSeed * 31.0, 7.0));
+        float ground = step(vW.y, 3.4);
+        float band = step(3.4, vW.y) * step(vW.y, vTop - 1.4);
         vec3 rn = floor(vN + 0.5);
-        float h = hash(id + floor(vSeed * 97.0) + rn.x * 7.0 + rn.z * 13.0);
-        float lit = step(0.7, h) * uLight;
-        vec3 wc = mix(vec3(1.0, 0.7, 0.42), vec3(0.62, 0.72, 1.0), step(0.86, h));
-        wc = mix(wc, vec3(1.0, 0.38, 0.62), step(0.95, h));
-        // rooms are not evenly lit: a lamp somewhere, a curtain half drawn
-        float room = 0.6 + 0.4 * smoothstep(0.0, 0.7, 1.0 - abs(fr.x - (0.35 + 0.3 * hash(id + 3.1))) * 2.2);
-        float curtain = step(0.5, hash(id + 9.7)) * smoothstep(0.62, 0.58, fr.x) * 0.45;
-        wc *= room * (1.0 - curtain) * (1.0 - 0.45 * uGold);
-        float band = step(2.0, vW.y) * step(vW.y, vTop - 1.4);
-        float diff = max(dot(vN, normalize(vec3(-0.4, 0.8, -0.3))), 0.0);
-        vec3 col = base * (0.35 + 0.5 * diff);
-        // dark glass with a faint sky reflection when the room is unlit
-        vec3 glass = vec3(0.025, 0.02, 0.045) + vec3(0.05, 0.03, 0.07) * fr.y;
-        col = mix(col, col * 0.55, frame * side * band);
-        col += vec3(0.05, 0.04, 0.05) * sill * side * band;
-        col = mix(col, lit * wc * (0.55 + 0.35 * h) + (1.0 - lit) * glass, win * side * band);
-        col += vec3(1.0, 0.3, 0.5) * smoothstep(0.25, 0.0, vTop - vW.y) * side * step(0.72, vSeed) * 1.6;
-        col += vec3(0.12, 0.04, 0.1) * exp(-vW.y * 0.25) * side;
+
+        if (side > 0.5 && glassWall && vW.y > 3.4 && vW.y < vTop - 0.6) {
+          // curtain wall: mullion grid, spandrels, sky reflection, some floors lit
+          vec2 g = f / vec2(1.5, 3.4);
+          vec2 id = floor(g);
+          vec2 fr = fract(g);
+          float mull = 1.0 - box(fr, vec2(0.035, 0.03), vec2(0.965, 0.97));
+          float span = step(fr.y, 0.22);
+          float fres = pow(1.0 - Vt.z, 3.0);
+          vec3 sky = mix(vec3(0.03, 0.02, 0.06), vec3(0.16, 0.07, 0.22), clamp(vW.y / 80.0 + V.y * 0.5, 0.0, 1.0));
+          vec3 gl = sky * (0.5 + 0.9 * fres) + vec3(0.02, 0.03, 0.06);
+          float floorLit = step(0.62 - 0.2 * occ, hash(vec2(id.y, vSeed * 13.0))) * uLight;
+          vec3 lc = mix(vec3(0.75, 0.52, 0.32), vec3(0.45, 0.55, 0.8), step(0.7, hash(vec2(id.y * 3.1, vSeed))));
+          if (floorLit > 0.5) {
+            vec3 p = vec3((fr.x - 0.5) * 1.5, (fr.y - 0.5) * 3.4, 0.0);
+            gl = mix(room(p, -Vt, vec2(0.75, 1.7), 6.0, lc * 0.5, hash(id)), gl, 0.35 + 0.4 * fres);
+          }
+          col = mix(gl, vec3(0.05, 0.05, 0.07), span * 0.85);
+          col = mix(col, vec3(0.12, 0.11, 0.13) * (0.6 + 0.4 * diff), mull);
+        } else if (side > 0.5 && ground > 0.5) {
+          // shopfront: plinth, big shop window set back 0.3 m, door every third bay, sign band
+          vec2 g = vec2(f.x / 2.8, vW.y / 3.4);
+          vec2 id = vec2(floor(g.x), 0.0);
+          vec2 fr = vec2(fract(g.x), g.y);
+          float hs = hash(id + floor(vSeed * 91.0) + rn.x * 3.0 + rn.z * 5.0);
+          bool door = mod(id.x, 3.0) == 1.0;
+          vec2 a = door ? vec2(0.3, 0.07) : vec2(0.07, 0.17);
+          vec2 b = door ? vec2(0.7, 0.78) : vec2(0.93, 0.78);
+          float open = box(fr, a, b);
+          float frame = box(fr, a - vec2(0.025, 0.02), b + vec2(0.025, 0.02)) - open;
+          vec2 off = -Vt.xy / Vt.z * 0.3 / vec2(2.8, 3.4);
+          vec2 fg = fr + off;
+          float inner = box(fg, a, b);
+          vec3 lc = mix(vec3(0.6, 0.42, 0.26), vec3(0.56, 0.3, 0.42), step(0.7, hs));
+          float lit = step(0.35, hs) * uLight;
+          vec3 gl = vec3(0.03, 0.025, 0.05) + vec3(0.18, 0.1, 0.24) * pow(1.0 - Vt.z, 3.0);
+          if (inner > 0.5 && lit > 0.5) {
+            vec3 p = vec3((fg.x - 0.5) * 2.8, (fg.y - 0.42) * 3.4, 0.0);
+            gl = mix(room(p, -Vt, vec2(1.4, 1.5), 4.0, lc, hs), gl, 0.3);
+          }
+          vec3 reveal = base * 0.45;
+          vec3 win = inner > 0.5 ? gl : reveal;
+          col = mix(col, win, open);
+          col = mix(col, vec3(0.08, 0.07, 0.09) * (0.6 + 0.6 * diff), frame);
+          float plinth = step(vW.y, 0.28);
+          col = mix(col, vec3(0.07, 0.06, 0.08) * (0.7 + 0.5 * diff), plinth * (1.0 - open));
+          float sgnBand = step(2.78, vW.y) * step(vW.y, 3.22) * step(0.05, fr.x) * step(fr.x, 0.95) * step(0.3, hs);
+          vec3 sc = hs < 0.55 ? vec3(1.0, 0.3, 0.55) : hs < 0.8 ? vec3(0.3, 0.85, 1.0) : vec3(1.0, 0.75, 0.35);
+          col = mix(col, sc * (0.18 + 0.4 * uLight) * (0.6 + 0.4 * step(0.5, fract(fr.x * 9.0))), sgnBand);
+        } else if (side > 0.5 && band > 0.5) {
+          // windows set back 0.22 m in the wall
+          vec2 cell = vec2(2.8, 3.4);
+          vec2 g = f / cell;
+          vec2 id = floor(g);
+          vec2 fr = fract(g);
+          vec2 a = vec2(0.28, 0.3);
+          vec2 b = vec2(0.72, 0.72);
+          float open = box(fr, a, b);
+          float frame = box(fr, a - vec2(0.035, 0.03), b + vec2(0.035, 0.03)) - open;
+          float sill = box(fr, vec2(a.x - 0.05, a.y - 0.055), vec2(b.x + 0.05, a.y - 0.03));
+          float h = hash(id + floor(vSeed * 97.0) + rn.x * 7.0 + rn.z * 13.0);
+          float lit = step(0.55 + 0.3 * occ, h) * uLight;
+          vec3 lc = mix(vec3(0.8, 0.52, 0.3), vec3(0.45, 0.52, 0.8), step(0.86, h));
+          lc = mix(lc, vec3(0.85, 0.3, 0.5), step(0.95, h));
+          lc *= 1.0 - 0.45 * uGold;
+          vec2 off = -Vt.xy / Vt.z * 0.22 / cell;
+          vec2 fg = fr + off;
+          float inner = box(fg, a, b);
+          vec3 gl;
+          vec3 p = vec3((fg.x - 0.5) * cell.x, (fg.y - 0.51) * cell.y, 0.0);
+          float fres = pow(1.0 - Vt.z, 3.0);
+          if (lit > 0.5) {
+            gl = room(p, -Vt, vec2(1.4, 1.5), 3.2, lc, hash(id + 5.3));
+            float curtain = step(0.55, hash(id + 9.7)) * smoothstep(0.62, 0.56, fg.x) * 0.5;
+            gl *= 1.0 - curtain;
+            gl += vec3(0.08, 0.05, 0.12) * fres;
+          } else {
+            // dark room: no interior ray, just the glass and a hint of depth
+            gl = vec3(0.03, 0.02, 0.055) + vec3(0.02, 0.015, 0.03) * fg.y + vec3(0.2, 0.1, 0.28) * fres;
+          }
+          // reveals: the wall's thickness seen at an angle, lit on one side
+          float lr = fg.x < a.x ? 0.75 : fg.x > b.x ? 0.4 : fg.y > b.y ? 0.3 : 0.65;
+          vec3 reveal = base * lr;
+          vec3 win = inner > 0.5 ? gl : reveal;
+          // mullion in the middle of the glass
+          win = mix(win, vec3(0.1, 0.09, 0.11), inner * step(abs(fg.x - 0.5), 0.008));
+          col = mix(col, win, open);
+          vec3 fc = vSeed > 0.5 ? vec3(0.26, 0.22, 0.26) : vec3(0.04, 0.035, 0.05);
+          col = mix(col, fc * (0.45 + 0.55 * diff), frame);
+          col = mix(col, base * 1.5 + vec3(0.015), sill);
+          // a floor band (string course) and pilasters between bays
+          float course = smoothstep(0.035, 0.03, fr.y) * step(0.0, fr.y);
+          col = mix(col, col * (fr.y > 0.017 ? 1.25 : 0.7), course);
+          float pil = (1.0 - step(0.05, fr.x)) + step(0.95, fr.x);
+          col *= 1.0 + 0.08 * pil * step(kind, 0.5);
+        }
+        if (side > 0.5) {
+          // cornice under the roof line, with its shadow
+          float dt = vTop - vW.y;
+          col = mix(col, base * 1.5 + vec3(0.012), step(0.35, dt) * step(dt, 0.75));
+          col *= 1.0 - 0.45 * step(0.75, dt) * step(dt, 0.95);
+          col += vec3(1.0, 0.3, 0.5) * smoothstep(0.25, 0.0, dt) * step(0.72, vSeed) * 1.6;
+          col += vec3(0.12, 0.04, 0.1) * exp(-vW.y * 0.25);
+        }
 
         float lum = dot(col, vec3(0.3, 0.59, 0.11));
         col = mix(col, col * vec3(1.45, 1.05, 0.72) + vec3(0.05, 0.025, 0.0), uGold);
@@ -280,10 +444,22 @@ const City = (() => {
   const unit = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
   const bMesh = new THREE.InstancedMesh(unit, bMat, buildings.length);
   const m4 = new THREE.Matrix4();
+  // own random stream: the city layout after this point must not move
+  const r2 = rng(4242);
+  // per building: a seed and a facade kind (0 concrete, 1 brick, 2 plaster, 3 glass curtain wall)
+  const seedA = new Float32Array(buildings.length);
+  const kindA = new Float32Array(buildings.length);
   buildings.forEach((b, i) => {
     m4.makeScale(b.sx, b.h, b.sz).setPosition(b.x, 0, b.z);
     bMesh.setMatrixAt(i, m4);
+    b.seed = r2();
+    const k = r2();
+    b.kind = b.h > 34 && k > 0.55 ? 3 : k < 0.36 ? 0 : k < 0.7 ? 1 : 2;
+    seedA[i] = b.seed;
+    kindA[i] = b.kind;
   });
+  unit.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seedA, 1));
+  unit.setAttribute('aKind', new THREE.InstancedBufferAttribute(kindA, 1));
   bMesh.frustumCulled = false;
   R.scene.add(bMesh);
 
@@ -482,9 +658,10 @@ const City = (() => {
     const W = 512;
     const H = 720;
     const c = document.createElement('canvas');
-    c.width = W;
-    c.height = H;
+    c.width = W * 2;
+    c.height = H * 2;
     const g = c.getContext('2d');
+    g.scale(2, 2);
     g.fillStyle = '#f4ece0';
     g.fillRect(0, 0, W, H);
     g.fillStyle = '#4a0c22';
@@ -526,14 +703,17 @@ const City = (() => {
     new THREE.PlaneGeometry(3.2, 4.5),
     new THREE.MeshBasicMaterial({ map: cardTex, side: THREE.DoubleSide, toneMapped: false }),
   );
+  // under the bloom threshold, or the face burns white
+  bigCard.material.color.setScalar(0.8);
   bigCard.position.set(0, 5.5, 0);
   R.scene.add(bigCard);
 
   const signTex = (txt, sub, col) => {
     const c = document.createElement('canvas');
-    c.width = 1024;
-    c.height = 512;
+    c.width = 2048;
+    c.height = 1024;
     const g = c.getContext('2d');
+    g.scale(2, 2);
     g.clearRect(0, 0, 1024, 512);
     g.shadowColor = col;
     g.shadowBlur = 48;
@@ -1175,32 +1355,220 @@ const City = (() => {
   });
 
   const TOWER = V3(2 * LOT, 48, -2 * LOT);
-  const liftMat = Tex.mat('metal', {
-    color: '#5a4a62',
-    metal: 0.7,
-    rough: 0.7,
-    scale: 1.5,
-    emissive: '#ff4f86',
-    emissiveIntensity: 0.25,
-  });
-  const liftMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 4), liftMat);
+  // ---------- the tower lift: glass cabin in a steel shaft, doors, cables, counterweight ----------
   const LIFT = V3(TOWER.x, 0, TOWER.z + 8 + 2.2);
-  const liftBox = Phys.add([0, 0, 0], [0, 0, 0], { dyn: true });
-  R.scene.add(liftMesh);
-  [-2.2, 2.2].forEach((dx) => {
-    const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 48, 0.12).translate(0, 24, 0),
-      glowMat('#ff5f8a', 1.2),
-    );
-    rail.position.set(LIFT.x + dx, 0, LIFT.z - 1.9);
-    R.scene.add(rail);
+  const liftMat = Tex.mat('metal', { color: '#3c3444', metal: 0.75, rough: 0.55, scale: 1.5 });
+  const steelMat = Tex.mat('metal', { color: '#6a6276', metal: 0.6, rough: 0.45, scale: 2 });
+  const brassMat = new THREE.MeshStandardMaterial({
+    color: '#c9a24a',
+    metalness: 0.95,
+    roughness: 0.28,
+    emissive: '#3a2a08',
+    emissiveIntensity: 0.4,
   });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: '#cfe8ff',
+    metalness: 0.1,
+    roughness: 0.04,
+    transparent: true,
+    opacity: 0.16,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    emissive: '#3a5a7a',
+    emissiveIntensity: 0.12,
+  });
+  const LH = 2.7; // cabin inner height
+  const SH = TOWER.y + 4.2; // shaft top
+  // shaft: four steel columns, cross bracing on the open sides, machine room on top
+  {
+    const geos = [];
+    [-2.35, 2.35].forEach((dx) =>
+      [-2.25, 2.35].forEach((dz) =>
+        geos.push(new THREE.BoxGeometry(0.22, SH, 0.22).translate(LIFT.x + dx, SH / 2, LIFT.z + dz)),
+      ),
+    );
+    for (let y = 4; y < SH - 1; y += 4) {
+      [-2.35, 2.35].forEach((dx) => {
+        // X bracing on the left and right faces
+        const len = Math.hypot(4.6, 4);
+        const ang = Math.atan2(4, 4.6);
+        [1, -1].forEach((sg) =>
+          geos.push(
+            new THREE.BoxGeometry(0.06, len, 0.06)
+              .rotateX(sg * (Math.PI / 2 - ang))
+              .translate(LIFT.x + dx, y + 2, LIFT.z + 0.05),
+          ),
+        );
+        geos.push(new THREE.BoxGeometry(0.1, 0.14, 4.6).translate(LIFT.x + dx, y, LIFT.z + 0.05));
+      });
+      geos.push(new THREE.BoxGeometry(4.7, 0.14, 0.1).translate(LIFT.x, y, LIFT.z + 2.35));
+    }
+    // guide rails (T profile) on both sides of the cabin
+    [-2.12, 2.12].forEach((dx) => {
+      geos.push(new THREE.BoxGeometry(0.05, SH, 0.16).translate(LIFT.x + dx, SH / 2, LIFT.z));
+      geos.push(new THREE.BoxGeometry(0.14, SH, 0.04).translate(LIFT.x + dx * 1.04, SH / 2, LIFT.z));
+    });
+    // counterweight rails, outside the right side of the shaft
+    [-0.7, 0.7].forEach((dz) =>
+      geos.push(new THREE.BoxGeometry(0.06, SH, 0.06).translate(LIFT.x + 2.75, SH / 2, LIFT.z + dz)),
+    );
+    // machine room crown
+    geos.push(new THREE.BoxGeometry(5, 0.3, 5).translate(LIFT.x, SH, LIFT.z + 0.05));
+    geos.push(new THREE.BoxGeometry(2.2, 1.1, 1.6).translate(LIFT.x, SH + 0.7, LIFT.z - 0.8));
+    R.scene.add(new THREE.Mesh(mergeGeos(geos), steelMat));
+    const sheave = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.55, 0.25, 32).rotateZ(Math.PI / 2),
+      brassMat,
+    );
+    sheave.position.set(LIFT.x, SH + 0.75, LIFT.z + 0.4);
+    sheave.name = 'sheave';
+    R.scene.add(sheave);
+    LIFT.sheave = sheave;
+    // pink guide lights along the front columns
+    const lights = [];
+    for (let y = 2; y < SH; y += 2) lights.push(new THREE.BoxGeometry(0.05, 0.6, 0.05).translate(LIFT.x - 2.48, y, LIFT.z + 2.36), new THREE.BoxGeometry(0.05, 0.6, 0.05).translate(LIFT.x + 2.48, y, LIFT.z + 2.36));
+    R.scene.add(new THREE.Mesh(mergeGeos(lights), glowMat('#ff5f8a', 1.3)));
+  }
+  // cabin (moves): floor, glass side walls in brass frames, roof with a light, handrails,
+  // button panel, front doors (street, open at the bottom) and back doors (roof, open at the top)
+  const cabin = new THREE.Group();
+  R.scene.add(cabin);
+  const liftMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 4), liftMat);
+  liftMesh.position.y = -0.2;
+  cabin.add(liftMesh);
+  {
+    const frame = [];
+    const glass = [];
+    [-1.97, 1.97].forEach((x) => {
+      glass.push(new THREE.BoxGeometry(0.03, LH - 0.1, 3.86).translate(x, LH / 2, 0));
+      frame.push(new THREE.BoxGeometry(0.08, 0.08, 4).translate(x, LH, 0));
+      frame.push(new THREE.BoxGeometry(0.08, 0.1, 4).translate(x, 0.05, 0));
+      frame.push(new THREE.BoxGeometry(0.06, 0.06, 4).translate(x, 1.0, 0));
+      [-1.97, 0, 1.97].forEach((z) => frame.push(new THREE.BoxGeometry(0.08, LH, 0.08).translate(x, LH / 2, z)));
+      // handrail inside
+      frame.push(new THREE.BoxGeometry(0.05, 0.05, 3.4).translate(x * 0.94, 0.95, 0));
+      [-1.4, 1.4].forEach((z) => frame.push(new THREE.BoxGeometry(0.12, 0.03, 0.03).translate(x * 0.965, 0.95, z)));
+    });
+    [-1.97, 1.97].forEach((z) => {
+      frame.push(new THREE.BoxGeometry(4, 0.12, 0.08).translate(0, LH, z));
+      frame.push(new THREE.BoxGeometry(4, 0.06, 0.08).translate(0, 0.03, z));
+    });
+    // roof with a recessed light panel
+    frame.push(new THREE.BoxGeometry(4.08, 0.16, 4.08).translate(0, LH + 0.1, 0));
+    cabin.add(new THREE.Mesh(mergeGeos(frame), brassMat));
+    cabin.add(new THREE.Mesh(mergeGeos(glass), glassMat));
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6).rotateX(Math.PI / 2), glowMat('#ffe6c8', 1.1));
+    panel.position.y = LH + 0.015;
+    cabin.add(panel);
+    // button panel on the right wall: brass plate, two lit buttons (up / down), a floor display
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.6, 0.28), brassMat);
+    plate.position.set(1.93, 1.3, 1.4);
+    cabin.add(plate);
+    [1.42, 1.22].forEach((y, i) => {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 16).rotateZ(Math.PI / 2), glowMat(i ? '#7ce0ff' : '#ffcf8a', 1.6));
+      b.position.set(1.91, y, 1.4);
+      cabin.add(b);
+    });
+    const disp = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.08).rotateY(-Math.PI / 2), glowMat('#ff5f8a', 1.5));
+    disp.position.set(1.912, 1.55, 1.4);
+    cabin.add(disp);
+  }
+  // doors: two glass leaves with brass edges, sliding to the sides
+  const leafGeo = mergeGeos([
+    new THREE.BoxGeometry(0.95, LH - 0.08, 0.04).translate(0, (LH - 0.08) / 2, 0),
+  ]);
+  const leafFrame = mergeGeos([
+    new THREE.BoxGeometry(0.06, LH - 0.08, 0.06).translate(-0.475, (LH - 0.08) / 2, 0),
+    new THREE.BoxGeometry(0.06, LH - 0.08, 0.06).translate(0.475, (LH - 0.08) / 2, 0),
+    new THREE.BoxGeometry(0.95, 0.06, 0.06).translate(0, LH - 0.11, 0),
+    new THREE.BoxGeometry(0.95, 0.12, 0.06).translate(0, 0.06, 0),
+  ]);
+  const mkDoor = (z) => {
+    const leaves = [-1, 1].map((sg) => {
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(leafGeo, glassMat), new THREE.Mesh(leafFrame, brassMat));
+      g.position.set(sg * 0.49, 0, z);
+      cabin.add(g);
+      return { g, sg };
+    });
+    return { leaves, open: 1, box: Phys.add([0, 0, 0], [0, 0, 0], { dyn: true }) };
+  };
+  const doorsL = { front: mkDoor(2.0), back: mkDoor(-2.0) };
+  // landing door on the roof: keeps you from stepping into the empty shaft
+  const landing = (() => {
+    const g = new THREE.Group();
+    [-1, 1].forEach((sg) => {
+      const l = new THREE.Group();
+      l.add(new THREE.Mesh(leafGeo, steelMat));
+      l.position.set(sg * 0.49, 0, 0);
+      l.userData.sg = sg;
+      g.add(l);
+    });
+    g.position.set(LIFT.x, TOWER.y, LIFT.z - 2.3);
+    R.scene.add(g);
+    return { g, open: 0, box: Phys.add([0, 0, 0], [0, 0, 0], { dyn: true }) };
+  })();
+  // cables to the crown and the counterweight that moves the other way
+  const cableMat = new THREE.MeshStandardMaterial({ color: '#1a1a1e', metalness: 0.9, roughness: 0.4 });
+  const cables = [-0.3, -0.1, 0.1, 0.3].map((dx) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1, 6).translate(0, 0.5, 0), cableMat);
+    m.position.set(LIFT.x + dx, 0, LIFT.z + 0.4);
+    R.scene.add(m);
+    return m;
+  });
+  const cw = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 1.2), steelMat);
+  R.scene.add(cw);
+  const cwCable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 6).translate(0, 0.5, 0), cableMat);
+  R.scene.add(cwCable);
+  const wallBoxes = [-2, 2].map(() => Phys.add([0, 0, 0], [0, 0, 0], { dyn: true }));
+  const roofBox = Phys.add([0, 0, 0], [0, 0, 0], { dyn: true });
+  const liftBox = Phys.add([0, 0, 0], [0, 0, 0], { dyn: true });
+  let liftY = 0.05;
+  const setBox = (b, x0, y0, z0, x1, y1, z1) => {
+    b.on = true;
+    b.min = [x0, y0, z0];
+    b.max = [x1, y1, z1];
+  };
   const setLift = (y) => {
-    liftMesh.position.set(LIFT.x, y - 0.2, LIFT.z);
-    liftBox.min = [LIFT.x - 2, y - 0.4, LIFT.z - 2];
-    liftBox.max = [LIFT.x + 2, y, LIFT.z + 2];
+    liftY = y;
+    cabin.position.set(LIFT.x, y, LIFT.z);
+    setBox(liftBox, LIFT.x - 2, y - 0.4, LIFT.z - 2, LIFT.x + 2, y, LIFT.z + 2);
+    wallBoxes.forEach((b, i) => {
+      const x = LIFT.x + (i ? 2 : -2);
+      setBox(b, x - 0.06, y, LIFT.z - 2, x + 0.06, y + LH, LIFT.z + 2);
+    });
+    setBox(roofBox, LIFT.x - 2, y + LH, LIFT.z - 2, LIFT.x + 2, y + LH + 0.2, LIFT.z + 2);
+    const top = SH + 0.75;
+    cables.forEach((c) => {
+      c.position.y = y + LH + 0.18;
+      c.scale.y = Math.max(0.01, top - c.position.y);
+    });
+    const cy = TOWER.y + 2.4 - y;
+    cw.position.set(LIFT.x + 2.75, cy, LIFT.z);
+    cwCable.position.set(LIFT.x + 2.75, cy + 1.1, LIFT.z);
+    cwCable.scale.y = Math.max(0.01, top - cy - 1.1);
+    if (LIFT.sheave) LIFT.sheave.rotation.x = y * 1.6;
   };
   setLift(0.05);
+  // doors follow the cabin: the street doors are open at the bottom, the roof doors at the top
+  const liftTick = (dt) => {
+    const atBottom = liftY < 0.4;
+    const atTop = liftY > TOWER.y - 0.3;
+    [
+      [doorsL.front, atBottom, 2.0],
+      [doorsL.back, atTop, -2.0],
+    ].forEach(([d, want, z]) => {
+      d.open = damp(d.open, want ? 1 : 0, 5, dt);
+      d.leaves.forEach(({ g, sg }) => (g.position.x = sg * (0.49 + d.open * 0.92)));
+      if (d.open < 0.35) setBox(d.box, LIFT.x - 2, liftY, LIFT.z + z - 0.06, LIFT.x + 2, liftY + LH, LIFT.z + z + 0.06);
+      else d.box.on = false;
+    });
+    landing.open = damp(landing.open, atTop ? 1 : 0, 5, dt);
+    landing.g.children.forEach((l) => (l.position.x = l.userData.sg * (0.49 + landing.open * 0.92)));
+    if (landing.open < 0.35)
+      setBox(landing.box, LIFT.x - 2.2, TOWER.y, LIFT.z - 2.36, LIFT.x + 2.2, TOWER.y + LH, LIFT.z - 2.24);
+    else landing.box.on = false;
+  };
   const roofBench = addBench(TOWER.x, TOWER.y, TOWER.z - 4, Math.PI);
   {
     const railM = Tex.mat('metal', { color: '#3a3040', metal: 0.8, rough: 0.5, scale: 1 });
@@ -1366,9 +1734,10 @@ const City = (() => {
   const kiosks = [];
   const kioskTex = (() => {
     const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 128;
+    c.width = 1536;
+    c.height = 384;
     const g = c.getContext('2d');
+    g.scale(3, 3);
     g.fillStyle = '#1e3a2a';
     g.fillRect(0, 0, 512, 128);
     g.strokeStyle = '#c9a24a';
@@ -1472,7 +1841,135 @@ const City = (() => {
   const FY = new THREE.Color(0.07, 0.07, 0.075);
   const FD = new THREE.Color(0.006, 0.003, 0.01);
 
+  const detail = {};
+  // ---------- building relief: cornices, roof parapets, balconies (instanced, with colliders) ----------
+  {
+    const stairB = new Set(roofs.map((rf) => rf.b));
+    const r3 = rng(9090);
+    const corn = [];
+    const para = [];
+    const balc = [];
+    const CELL_U = 2.8;
+    const CELL_V = 3.4;
+    buildings.forEach((b) => {
+      if (Math.abs(b.x - TOWER.x) < 1 && Math.abs(b.z - TOWER.z) < 1) return;
+      // roofs reached by a stair keep a plain edge (the stair hugs the facade up there)
+      if (!stairB.has(b)) {
+        // cornice: a slab under the roof line, sticking out 0.25 m
+        corn.push([b.x, b.h - 0.55, b.z, b.sx + 0.5, 0.3, b.sz + 0.5]);
+        // parapet around the roof
+        const t = 0.3;
+        const hp = 0.9;
+        para.push(
+          [b.x, b.h + hp / 2, b.z - b.sz / 2 + t / 2, b.sx, hp, t],
+          [b.x, b.h + hp / 2, b.z + b.sz / 2 - t / 2, b.sx, hp, t],
+          [b.x - b.sx / 2 + t / 2, b.h + hp / 2, b.z, t, hp, b.sz - 2 * t],
+          [b.x + b.sx / 2 - t / 2, b.h + hp / 2, b.z, t, hp, b.sz - 2 * t],
+        );
+      }
+      // balconies on concrete and plaster buildings, under some windows, never on the
+      // ground floor; placed on the same grid as the windows of the facade shader
+      if (b.kind === 3 || b.kind === 1 || b.h < 12 || r3() > 0.45) return;
+      const dense = 0.05 + r3() * 0.08;
+      [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].forEach(([nx, nz]) => {
+        const len = nx ? b.sz : b.sx;
+        const c0 = nx ? b.z : b.x;
+        // shader coordinate along the face: x faces use z*sign, z faces use -x*sign
+        const k = nx ? nx : -nz;
+        const u0 = (c0 - len / 2) * k;
+        const u1 = (c0 + len / 2) * k;
+        const lo = Math.min(u0, u1);
+        const hi = Math.max(u0, u1);
+        const floors = Math.floor((b.h - 1.4) / CELL_V);
+        for (let iu = Math.ceil(lo / CELL_U); (iu + 1) * CELL_U <= hi; iu++)
+          for (let iv = 2; iv < floors - 1; iv++) {
+            if (r3() > dense) continue;
+            const u = (iu + 0.5) * CELL_U;
+            const along = u * k;
+            const y = (iv + 0.3) * CELL_V;
+            const out = 0.45;
+            const x = nx ? b.x + nx * (b.sx / 2 + out) : along;
+            const z = nx ? along : b.z + nz * (b.sz / 2 + out);
+            balc.push([x, y, z, nx ? 0 : 1]);
+          }
+      });
+    });
+    const inst = (geo, mat, list, place) => {
+      const m = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((it, i) => {
+        place(m4, it);
+        m.setMatrixAt(i, m4);
+      });
+      m.frustumCulled = false;
+      R.scene.add(m);
+      return m;
+    };
+    const stone = Tex.mat('concrete', { color: '#3a2c40', scale: 3, bump: 1.2 });
+    const cap = Tex.mat('stone', { color: '#4a3a50', scale: 2 });
+    const box1 = new THREE.BoxGeometry(1, 1, 1);
+    const sz3 = V3();
+    const q0 = new THREE.Quaternion();
+    const pos3 = V3();
+    const boxPlace = (mm, [x, y, z, sx, sy, sz]) =>
+      mm.compose(pos3.set(x, y, z), q0, sz3.set(sx, sy, sz));
+    inst(box1, stone, corn, boxPlace);
+    inst(box1, cap, para, boxPlace);
+    corn.forEach(([x, y, z, sx, sy, sz]) => Phys.box(x, y, z, sx, sy, sz));
+    para.forEach(([x, y, z, sx, sy, sz]) => Phys.box(x, y, z, sx, sy, sz));
+    // balcony: slab + front and side rails with balusters, in local space (x along the face)
+    const slabGeo = new THREE.BoxGeometry(1.9, 0.14, 0.9);
+    const railParts = [
+      new THREE.BoxGeometry(1.9, 0.05, 0.05).translate(0, 1.0, 0.42),
+      new THREE.BoxGeometry(0.05, 0.05, 0.9).translate(-0.93, 1.0, 0),
+      new THREE.BoxGeometry(0.05, 0.05, 0.9).translate(0.93, 1.0, 0),
+      new THREE.BoxGeometry(1.9, 0.04, 0.04).translate(0, 0.12, 0.42),
+    ];
+    for (let i = 0; i <= 12; i++)
+      railParts.push(new THREE.BoxGeometry(0.025, 0.9, 0.025).translate(-0.9 + i * 0.15, 0.55, 0.42));
+    [-0.93, 0.93].forEach((x) =>
+      [0.1, 0.4].forEach((z) => railParts.push(new THREE.BoxGeometry(0.025, 0.9, 0.025).translate(x, 0.55, z - 0.3))),
+    );
+    const railGeo = mergeGeos(railParts);
+    const railMat = new THREE.MeshStandardMaterial({ color: '#1e1822', metalness: 0.8, roughness: 0.45 });
+    const qb = new THREE.Quaternion();
+    const yAxis = V3(0, 1, 0);
+    // orientation: compare with the building the balcony belongs to
+    const balcItems = balc.map(([x, y, z, isZ]) => {
+      const b = buildings.find(
+        (bb) => Math.abs(x - bb.x) <= bb.sx / 2 + 1 && Math.abs(z - bb.z) <= bb.sz / 2 + 1,
+      );
+      const outward = isZ ? Math.sign(z - b.z) : Math.sign(x - b.x);
+      return { x, y, z, isZ, outward };
+    });
+    const place2 = (mm, it) => {
+      const ang = it.isZ ? (it.outward > 0 ? 0 : Math.PI) : it.outward > 0 ? Math.PI / 2 : -Math.PI / 2;
+      qb.setFromAxisAngle(yAxis, ang);
+      mm.compose(pos3.set(it.x, it.y - 0.07, it.z), qb, sz3.set(1, 1, 1));
+    };
+    if (balcItems.length) {
+      inst(slabGeo, stone, balcItems, place2);
+      inst(railGeo, railMat, balcItems, place2);
+      balcItems.forEach((it) => {
+        const w = it.isZ ? 1.9 : 0.9;
+        const d = it.isZ ? 0.9 : 1.9;
+        Phys.box(it.x, it.y - 0.07, it.z, w, 0.14, d);
+        // the front rail
+        const fx = it.isZ ? it.x : it.x + it.outward * 0.42;
+        const fz = it.isZ ? it.z + it.outward * 0.42 : it.z;
+        Phys.box(fx, it.y + 0.5, fz, it.isZ ? 1.9 : 0.06, 1.0, it.isZ ? 0.06 : 1.9);
+      });
+    }
+    detail.balconies = balcItems;
+    detail.count = { cornices: corn.length, parapets: para.length, balconies: balcItems.length };
+  }
+
   return {
+    detail,
     spawns: {
       dame: V3(-165, 0, 165),
       valet: V3(165, 0, -165),
@@ -1522,6 +2019,7 @@ const City = (() => {
     },
     update(t, dt) {
       ground.material.uniforms.uTime.value = t;
+      liftTick(dt);
       bigCard.rotation.y = t * 0.6;
       bigCard.position.y = 5.5 + Math.sin(t * 0.9) * 0.3;
       Object.values(doors).forEach((d) => {

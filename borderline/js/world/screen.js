@@ -1,10 +1,12 @@
 const makeScreen = (w, h, res = 1024) => {
+  // never under 1280 px wide; big screens get 2048
+  res = Math.max(1280, Math.min(2048, res * 2));
   const c = document.createElement('canvas');
   c.width = res;
   c.height = Math.round((res * h) / w);
   const g = c.getContext('2d');
   const tex = new THREE.CanvasTexture(c);
-  tex.anisotropy = 4;
+  tex.anisotropy = 16;
   const mat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
   mat.color.setScalar(0.25);
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);

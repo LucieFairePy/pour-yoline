@@ -52,8 +52,9 @@ const Balade = (() => {
   // soft round glow used for lamps
   const haloTex = (() => {
     const c = document.createElement('canvas');
-    c.width = c.height = 128;
+    c.width = c.height = 256;
     const g = c.getContext('2d');
+    g.scale(2, 2);
     const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
     gr.addColorStop(0, 'rgba(255,200,140,0.9)');
     gr.addColorStop(0.25, 'rgba(255,160,90,0.35)');

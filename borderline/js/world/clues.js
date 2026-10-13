@@ -2,9 +2,10 @@ const Clues = (() => {
   const list = {};
   const tex = (() => {
     const c = document.createElement('canvas');
-    c.width = 128;
-    c.height = 80;
+    c.width = 1024;
+    c.height = 640;
     const g = c.getContext('2d');
+    g.scale(8, 8);
     g.fillStyle = '#1b0716';
     g.fillRect(0, 0, 128, 80);
     g.strokeStyle = '#e8bd84';

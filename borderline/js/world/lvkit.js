@@ -3,15 +3,19 @@ const LvKit = (() => {
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
 
+  // drawn in a w x h space, stored with the long side at 1080 px or more
   const tex = (w, h, draw, rx = 1, ry = 1) => {
+    const k = Math.max(1, Math.min(8, Math.ceil(1080 / Math.max(w, h))));
     const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    draw(c.getContext('2d'), w, h);
+    c.width = w * k;
+    c.height = h * k;
+    const g = c.getContext('2d');
+    g.scale(k, k);
+    draw(g, w, h);
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(rx, ry);
-    t.anisotropy = 4;
+    t.anisotropy = 16;
     return t;
   };
 
