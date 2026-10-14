@@ -1,14 +1,16 @@
-// ♠ 6 · Le Sol de lave (épreuve s6). Kits swapped in this trial (js/game/trials.js): Yoline carries
+// ♠ 9 · Le Sol de lave (épreuve s6). Kits swapped in this trial (js/game/trials.js): Yoline carries
 // the valet kit, here the Frost (F freezes lava into crust discs, plugs geysers, cools the Titan's
 // armour) and the sword; William the dame kit: grapple and rifle.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s6');
   const T = CONFIG;
   const W = TrS6;
   const TX = {
-    card: '♠ 6',
+    card: CARD,
     title: 'Le Sol de lave',
     boss: 'Le Titan de lave',
-    intro: 'Épreuve ♠ 6. Le volcan. Ici, le sol brûle : ne restez jamais immobiles.',
+    intro: 'Épreuve ' + CARD + '. Le volcan. Ici, le sol brûle : ne restez jamais immobiles.',
     a1: {
       valet:
         'Tu portes le Givre (F) : vise la lave, elle se fige en un disque de pierre. Trois charges, elles reviennent. Fais un chemin pour {mate}.',
@@ -53,7 +55,7 @@
     wipe: 'Vous êtes tombés tous les deux. On reprend.',
     wipeRaft: 'Vous êtes tombés tous les deux. Le radeau repart du dernier point.',
     won: 'Le Titan s’effondre. La caldeira refroidit enfin.',
-    cardObj: 'La carte ♠ 6 monte sur sa colonne de basalte. Allez-y ensemble.',
+    cardObj: 'La carte ' + CARD + ' monte sur sa colonne de basalte. Allez-y ensemble.',
     lava: 'La lave. Retour au dernier point sûr.',
     lavaMate: '{mate} est tombé{pe} dans la lave.',
     frostOut: 'Plus de charge de Givre. Elle revient.',
@@ -61,8 +63,6 @@
     sink: 'Le sol va s’enfoncer : quittez les dalles qui rougeoient.',
   };
   CONFIG.cards.s6 = {
-    corner: '6\n♠',
-    big: '♠',
     title: 'Le Sol de lave',
     sub: 'Épreuve ♠ · réussie',
     lines: [

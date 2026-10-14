@@ -1,9 +1,11 @@
-// ♦ 6 · Les Ombres. A shadow theatre: in front of the screens, the shadows are solid ground.
+// ♦ 8 · Les Ombres. A shadow theatre: in front of the screens, the shadows are solid ground.
 // Two rooms to learn (one pilots the light and the cut-outs, the other walks the shadows), two
 // silhouette doors (only one of you sees the shape to make), a room of two coloured lights where
 // only black is solid, then the Montreur d'ombres: a giant puppet you corner with the lights while
 // the other climbs the shadows to cut its four strings.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d6');
   const W = D6W;
   const T = CONFIG;
   const TITLE = 'Les Ombres';
@@ -43,7 +45,7 @@
       cut: ['Un fil tranché. La jambe pend.', 'Le deuxième fil cède.', 'Un bras retombe. Plus qu’un fil.', ''],
     },
     won: 'La marionnette s’effondre. L’écran s’embrase d’or.',
-    card: 'La carte ♦ 6 descend sur la scène. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' descend sur la scène. Allez-y ensemble.',
     fall: 'La fosse. Retour à la coulisse.',
     fallPilot: 'La fosse. Retour à la régie.',
     fallMate: '{mate} est tombé{pe} dans la fosse.',
@@ -58,8 +60,6 @@
     exit: 'La coulisse. La porte s’ouvre.',
   };
   CONFIG.cards.d6 = {
-    corner: '6\n♦',
-    big: '♦',
     title: TITLE,
     sub: 'Épreuve ♦ · réussie',
     lines: ['Une ombre ne tient debout que si quelqu’un tient la lumière.', 'L’un voyait la forme, l’autre voyait le mur.', 'À deux, on a dessiné une clé, puis un cœur.'],
@@ -935,7 +935,7 @@
     local.hold = 0;
     if (Player.mode === 'frozen') Player.mode = 'walk';
     const scr = W.screen;
-    if (st === 1 && scr) scr.show(TITLE, '♦ 6 · le théâtre d’ombres', '#ffcf7a');
+    if (st === 1 && scr) scr.show(TITLE, CARD + ' · le théâtre d’ombres', '#ffcf7a');
     if (prev && st > prev) {
       if (st <= 6) HUD.say(st === 6 ? 'Le Montreur d’ombres.' : TX.exit, T.master, 2200);
       if (st === 3 || st === 4 || st === 5) HUD.say(TX.open, T.master, 2000);
@@ -1057,7 +1057,7 @@
       R.moon.intensity = 0.55;
       City.mood({ gold: x.stage >= 7 ? 0.8 : 0.3, dark: 0.25 });
       c.fog(0.006);
-      HUD.visa('♦ 6 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       Box.start();
       if (!first) {
         await sleep(300);

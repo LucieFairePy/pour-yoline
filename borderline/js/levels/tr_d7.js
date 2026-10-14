@@ -1,5 +1,7 @@
-// ♦ 7 · Le Temps: rules, host-authoritative state and sync (world in js/world/tr_d7.js).
+// ♦ 9 · Le Temps: rules, host-authoritative state and sync (world in js/world/tr_d7.js).
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d7');
   const T = CONFIG;
   const TITLE = 'Le Temps';
   // the hour the dial shows when everything stops: the hour of their meeting (to adjust)
@@ -78,11 +80,9 @@
     spin: 'L’engrenage tourne encore trop vite : que {mate} tienne le frein un peu plus.',
     stop: 'Le temps s’arrête.',
     meet: 'Le cadran s’est arrêté sur une heure : celle où tout a commencé pour vous deux.',
-    card: 'La carte ♦ 7 descend au centre. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' descend au centre. Allez-y ensemble.',
   };
   CONFIG.cards.d7 = {
-    corner: '7\n♦',
-    big: '♦',
     title: TITLE,
     sub: 'Épreuve ♦ · réussie',
     lines: [
@@ -316,7 +316,7 @@
     const W7 = TrD7;
     if (st === 1) {
       HUD.objective(TXT.r1[r]);
-      W7.screen.show('♦ 7', TITLE, '#ffcf8a');
+      W7.screen.show(CARD, TITLE, '#ffcf8a');
     }
     if (st === 2) {
       HUD.objective(TXT.r2);
@@ -555,7 +555,7 @@
       R.moon.color.set('#ffc58a');
       R.moon.position.set(-40, 90, 60);
       Sound.mood('calm');
-      HUD.visa('♦ 7 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);
@@ -590,11 +590,11 @@
       const x = c.S.x;
       if (x.stage !== local.stage) stageEnter(c, x.stage);
       const s1 = x.s1;
-      if (x.stage === 1) HUD.visa(s1.round < 3 ? `♦ 7 · Heure ${s1.round + 1} / 3` : '♦ 7 · Six heures');
-      else if (x.stage === 2) HUD.visa(x.s2.latch ? '♦ 7 · La galerie' : '♦ 7 · L’Écho');
-      else if (x.stage === 3) HUD.visa(x.s3.lock ? '♦ 7 · L’Accélération' : '♦ 7 · Le Gel');
-      else if (x.stage === 4) HUD.visa(`♦ 7 · Engrenages ${x.s4.jam.filter(Boolean).length} / 3`);
-      else HUD.visa('♦ 7 · ' + TITLE);
+      if (x.stage === 1) HUD.visa(s1.round < 3 ? `${CARD} · Heure ${s1.round + 1} / 3` : CARD + ' · Six heures');
+      else if (x.stage === 2) HUD.visa(x.s2.latch ? CARD + ' · La galerie' : CARD + ' · L’Écho');
+      else if (x.stage === 3) HUD.visa(x.s3.lock ? CARD + ' · L’Accélération' : CARD + ' · Le Gel');
+      else if (x.stage === 4) HUD.visa(`${CARD} · Engrenages ${x.s4.jam.filter(Boolean).length} / 3`);
+      else HUD.visa(CARD + ' · ' + TITLE);
       // round changes: the walker's niche is the new checkpoint; texts per role
       if (local.roundWas != null && s1.round !== local.roundWas && x.stage === 1) {
         if (s1.round === 3) {
@@ -1286,7 +1286,7 @@
       HUD.say(TXT.card, T.master, 3000);
       Sound.play('reveal');
       Sound.play('heart');
-      HUD.visa('♦ 7 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
     }
     if (e > 6) local.cardT += dt;
     if (e > 9 && local.endPhase === 4) {

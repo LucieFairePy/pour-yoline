@@ -1,4 +1,4 @@
-// ♠ 5 · Les Lames. A forge-fortress where everything cuts, in three parts:
+// ♠ 8 · Les Lames. A forge-fortress where everything cuts, in three parts:
 //  1. Le couloir des lames: a long hall of traps (pendulums, floor scythes, guillotines, wall
 //     blades, a bladed drum). One runs below; the other walks the glass gallery above and jams
 //     one trap at a time with its lever (4 s). Halfway they swap sides.
@@ -1269,7 +1269,7 @@ const TrS5 = (() => {
     }
     LvKit.light(group, P(bc.x, 10, bc.z + 6), '#ffa070', 1.3, 46);
     // the card, revealed when the Maître falls
-    card = LvKit.card('5', '♠', false);
+    card = LvKit.trialCard('s5', false);
     card.position.copy(P(bc.x, 2.2, bc.z));
     group.add(card);
     cardHeart = Heart.galaxy(6000, 4, 51);

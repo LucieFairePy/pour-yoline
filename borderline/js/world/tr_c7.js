@@ -1,4 +1,4 @@
-// ♣ 7 · Le Pilote. A two-seat skiff in a pink sandstone canyon of Terre 39 that winds back and
+// ♣ 9 · Le Pilote. A two-seat skiff in a pink sandstone canyon of Terre 39 that winds back and
 // forth (nine passes, ~10 km) above a sea of clouds, under floating ruins:
 //  0. the landing shelf: cast off the two moorings, choose the seats (pilot / navigation)
 //  1. the canyon: light arches only the navigator sees, then rockfalls with a single gap each
@@ -1777,7 +1777,7 @@ const TrC7 = (() => {
       plat.boxes.push(b);
     }
     // the card, hidden until the landing
-    const card = LvKit.card('7', '♣', false);
+    const card = LvKit.trialCard('c7', false);
     card.scale.setScalar(1.6);
     g.add(card);
     plat.card = card;

@@ -1,4 +1,4 @@
-// ♥ 3 · Les Yeux bandés: a night garden, a pond of stepping stones and a ballroom. One of you is
+// ♥ 4 · Les Yeux bandés: a night garden, a pond of stepping stones and a ballroom. One of you is
 // blindfolded, the other sees and guides by voice; the blindfold changes hands at every section.
 const H3 = (() => {
   const O = V3(700, 0, 4200);
@@ -667,7 +667,7 @@ const H3 = (() => {
     heart.U.uForm.value = 0;
     heart.core.material.opacity = 0;
     group.add(heart.group);
-    card = LvKit.card('3', '♥', true);
+    card = LvKit.trialCard('h3', true);
     card.position.copy(P(0, 8, GZ));
     group.add(card);
   };

@@ -358,7 +358,7 @@ const Maze = (() => {
     card = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
       new THREE.MeshBasicMaterial({
-        map: Tex.card('4', '♣'),
+        map: Cards.texOf(Cards.cardOf('c4')),
         alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,

@@ -1,4 +1,6 @@
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d5');
   const T = CONFIG;
   const TITLE = 'La Gravité';
   const FLIP_T = 4.4; // the whole turn: float up, the room rolls over, fall on the new floor
@@ -55,11 +57,9 @@
     needClutch: '{mate} doit tenir l’embrayage de cet anneau.',
     locked: 'Une planète se verrouille.',
     solved: 'Les trois planètes sont alignées. Le cœur de l’orrery s’ouvre.',
-    card: 'La carte ♦ 5 descend au centre. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' descend au centre. Allez-y ensemble.',
   };
   CONFIG.cards.d5 = {
-    corner: '5\n♦',
-    big: '♦',
     title: TITLE,
     sub: 'Épreuve ♦ · réussie',
     lines: [
@@ -248,7 +248,7 @@
     const r = c.role;
     if (st === 1) {
       HUD.objective(TXT.r1[r]);
-      D5.screen.show('♦ 5', TITLE, '#ff9a3a');
+      D5.screen.show(CARD, TITLE, '#ff9a3a');
     }
     if (st === 2) {
       HUD.objective(TXT.r2[r]);
@@ -270,7 +270,7 @@
     if (st === 5) {
       HUD.objective(TXT.card);
       HUD.say(TXT.solved, T.master, 2800);
-      HUD.visa('♦ 5 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       Sound.mood('calm');
       Sound.play('reveal');
       Sound.play('heart');
@@ -369,7 +369,7 @@
       City.mood({ dark: 0.5 });
       c.fog(0.006);
       Sound.mood('calm');
-      HUD.visa('♦ 5 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);
@@ -402,10 +402,10 @@
       if (local.grabWas != null && x.r2.grab !== local.grabWas) Sound.play(x.r2.grab ? 'grapple' : 'switch');
       local.grabWas = x.r2.grab;
       // a status line under the title: seals, then locked planets
-      if (x.stage === 1) HUD.visa(`♦ 5 · Sceaux ${x.r1.seal.filter(Boolean).length} / 2`);
-      else if (x.stage === 2) HUD.visa(`♦ 5 · Cloches ${x.r2.gates.filter(Boolean).length} / 2`);
-      else if (x.stage === 4) HUD.visa(`♦ 5 · Planètes ${x.r4.locked.filter(Boolean).length} / 3`);
-      else HUD.visa('♦ 5 · ' + TITLE);
+      if (x.stage === 1) HUD.visa(`${CARD} · Sceaux ${x.r1.seal.filter(Boolean).length} / 2`);
+      else if (x.stage === 2) HUD.visa(`${CARD} · Cloches ${x.r2.gates.filter(Boolean).length} / 2`);
+      else if (x.stage === 4) HUD.visa(`${CARD} · Planètes ${x.r4.locked.filter(Boolean).length} / 3`);
+      else HUD.visa(CARD + ' · ' + TITLE);
       const seal = x.r1.seal.join('');
       if (local.sealWas != null && seal !== local.sealWas && x.r1.seal.some(Boolean)) Sound.play('chime');
       local.sealWas = seal;

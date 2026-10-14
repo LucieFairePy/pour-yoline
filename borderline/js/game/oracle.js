@@ -1,4 +1,4 @@
-// L'Oracle (♣ R · Le Caveau). Replaces the 'oracle' type from foes.js with a bigger model:
+// L'Oracle (♣ 7 · Le Caveau). Replaces the 'oracle' type from foes.js with a bigger model:
 // a crystal heart holding a piece of the Oui (the voyage heart galaxy inside), an eye above it,
 // a golden aureole, three gyroscopic rings, a silk veil, orbiting shards and an aura of motes.
 // e.st: 0 ritual (shielded) · 1 broken (vulnerable) · 2 last ritual. e.phase: 1..3.

@@ -1,6 +1,8 @@
-// ♥ 5 · La Chute. Trust falls: jump onto clouds only the partner can see, drop through a ring
+// ♥ 6 · La Chute. Trust falls: jump onto clouds only the partner can see, drop through a ring
 // onto a raft you cannot see under the mist, then dive 300 m together, hand in hand.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h5');
   const T = CONFIG;
   const TITLE = 'La Chute';
   const TXT = {
@@ -59,11 +61,9 @@
       ring: 'Anneau ensemble : {n} / 8.',
     },
     win: 'Vous êtes tombés ensemble, et l’île-cœur s’est ouverte.',
-    card: 'La carte ♥ 5 descend sur l’île-cœur. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' descend sur l’île-cœur. Allez-y ensemble.',
   };
   CONFIG.cards.h5 = {
-    corner: '5\n♥',
-    big: '♥',
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
@@ -307,8 +307,8 @@
         R.scene.background.copy(local.haze);
       };
       Sound.mood(x.stage >= 5 ? 'gold' : x.stage >= 4 ? 'tense' : 'calm');
-      HUD.visa('♥ 5 · ' + TITLE);
-      if (H5.screen) H5.screen.show(TITLE, '♥ 5 · fais-moi confiance', '#ffb0c8');
+      HUD.visa(CARD + ' · ' + TITLE);
+      if (H5.screen) H5.screen.show(TITLE, CARD + ' · fais-moi confiance', '#ffb0c8');
       // back from a checkpoint in the middle of the net: the raft comes back up
       if (Net.isHost && x.stage === 3 && x.raft === 'down') c.set((s) => (s.x.raft = 'up'));
       if (!first) {

@@ -1,5 +1,5 @@
-// ♠ 2 · Les Toits qui tombent (épreuve d'adresse, kits normaux).
-// ---------- the Joker's drones (♠ 2): searchlights; the rifle shoots them, the sword knocks
+// ♠ 4 · Les Toits qui tombent (épreuve d'adresse, kits normaux).
+// ---------- the Joker's drones (♠ 4): searchlights; the rifle shoots them, the sword knocks
 // them down when they dive low, and the Voile hides you from their beams ----------
 (() => {
   const TILT = 0.95;
@@ -106,11 +106,13 @@
 })();
 
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s2');
   const T = CONFIG;
   const W = TrS2;
   const TXT = {
     title: 'Les Toits qui tombent',
-    card: '♠ 2',
+    card: CARD,
     intro: 'Épreuve d’adresse. Les toits de Terre 39 ne tiennent plus. Ils tombent derrière vous.',
     rhythm: {
       dame: 'Saute de toit en toit. Les tuiles rouges craquent : ne t’arrête jamais dessus. Plus loin, vise l’anneau (F) et descends l’échelle à {mate}.',
@@ -147,8 +149,6 @@
     heavy: 'Trop lourde pour toi : c’est {mate} qui peut la pousser',
   };
   T.cards.s2 = {
-    corner: '2\n♠',
-    big: '♠',
     title: TXT.title,
     sub: 'Épreuve ♠ · réussie',
     lines: [

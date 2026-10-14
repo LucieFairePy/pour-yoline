@@ -1,4 +1,4 @@
-// ♦ 6 · Les Ombres. A giant shadow theatre, black and gold, open to a dusk sky. Projectors throw
+// ♦ 8 · Les Ombres. A giant shadow theatre, black and gold, open to a dusk sky. Projectors throw
 // the shadows of paper cut-outs (and of the two players) onto tall canvas screens; in the narrow
 // strip right in front of a screen, "le monde des ombres", every shadow is solid ground.
 //  1. Salle des escaliers / Salle du bosquet: one pilots a projector and its cut-outs from the
@@ -1842,7 +1842,7 @@ const D6W = (() => {
     buildRings();
     buildSky();
     // the card, at the centre of the apron after the fight
-    card = LvKit.card('6', '♦', true);
+    card = LvKit.trialCard('d6', true);
     card.position.copy(P(0, 2.2, ROOMS.boss.zw - 1.6));
     group.add(card);
     cardHeart = Heart.galaxy(6000, 4, 66);

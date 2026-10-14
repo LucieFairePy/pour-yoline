@@ -1,4 +1,4 @@
-// ♣ 2 · Le Téléphone: an old telephone exchange (brass, walnut, glowing valves) in three rooms.
+// ♣ 4 · Le Téléphone: an old telephone exchange (brass, walnut, glowing valves) in three rooms.
 // Room A « Le Cadran »: a glass booth where one player reads a turning drum, and a giant rotary
 // dial the other one turns. Room B « Le Standard »: a switchboard where one player carries jack
 // plugs while the other reads the connections from the operator's gallery. Room C « L'Appel »:
@@ -980,14 +980,14 @@ const TrC2 = (() => {
     LvKit.light(group, P(7, 6, 88), '#ffcf9a', 1.6, 18);
     LvKit.light(group, P(0, 9, 100), '#ff9ac0', 1.4, 16);
     // the card, behind the end of the partition
-    card = LvKit.card('2', '♣', false);
+    card = LvKit.trialCard('c2', false);
     card.position.copy(P(0, 2.2, 101.4));
     group.add(card);
     sign('L’APPEL', 'Salle 3 · Chacun son tour, puis ensemble', 6, 1.4, 0, 7.4, 70.5, 0);
   };
 
   const foyer = () => {
-    panels.title = sign('Le Téléphone', 'Central téléphonique des Veilleurs · ♣ 2', 9, 2.2, 0, 6.5, -3.9, 0);
+    panels.title = sign('Le Téléphone', 'Central téléphonique des Veilleurs · ' + Cards.tagOf('c2'), 9, 2.2, 0, 6.5, -3.9, 0);
     chandelier(0, 3, 7.8);
     // benches and potted palms for the foyer
     [-1, 1].forEach((s) => {

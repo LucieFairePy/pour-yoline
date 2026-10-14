@@ -1,4 +1,4 @@
-// ♥ 4 · La Lanterne: a dark enchanted forest floating over an abyss of mist, with ONE lantern.
+// ♥ 5 · La Lanterne: a dark enchanted forest floating over an abyss of mist, with ONE lantern.
 // Stones of light only exist inside its glow, shadow wraiths freeze in it and hunt in the dark,
 // and at the end the Great Shadow drinks the light while you kindle its four braziers.
 const H4 = (() => {
@@ -1021,7 +1021,7 @@ const H4 = (() => {
     });
 
     // ---------- card, dawn heart, screen ----------
-    card = LvKit.card('4', '♥', true);
+    card = LvKit.trialCard('h4', true);
     card.position.copy(P(ARENA.x, 12, ARENA.z));
     group.add(card);
     dawnHeart = Heart.galaxy(9000, 1.1, 33);

@@ -1,4 +1,4 @@
-// ♣ 3 · La Bascule. Floating stone islands above a sea of clouds, then a storm. Everything you
+// ♣ 5 · La Bascule. Floating stone islands above a sea of clouds, then a storm. Everything you
 // stand on tilts with your weight. Course along +z (relative to O):
 //   atrium (z -12..11.6) · seesaw A over the void (12..26) · island B with the perch (26.4..40.2)
 //   · the catapult seesaw B (40.6..54.6) · cliff C (55..72, top 10) · the tilting maze table
@@ -609,7 +609,7 @@ const TrC3 = (() => {
     screen.mesh.position.copy(P(0, 11.5, 30));
     screen.mesh.rotation.y = Math.PI;
     group.add(screen.mesh);
-    const cd = LvKit.card('3', '♣');
+    const cd = LvKit.trialCard('c3');
     cd.visible = true;
     cd.position.copy(P(0, 3.3, -11.2));
     group.add(cd);
@@ -795,7 +795,7 @@ const TrC3 = (() => {
     heart.U.uForm.value = 0.25;
     heart.core.material.opacity = 0.05;
     group.add(heart.group);
-    card = LvKit.card('3', '♣');
+    card = LvKit.trialCard('c3');
     card.position.copy(P(0, DAIS.y + 1.6, DAIS.z));
     group.add(card);
 

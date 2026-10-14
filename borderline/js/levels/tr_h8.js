@@ -1,9 +1,11 @@
-// ♥ 8 · L’Averse (épreuve h8). Kits swapped in this trial (js/game/trials.js): Yoline carries the
+// ♥ 9 · L’Averse (épreuve h8). Kits swapped in this trial (js/game/trials.js): Yoline carries the
 // valet kit, William the dame kit. One umbrella for two in a city under a downpour: the rain chills
 // whoever is out from under it. Then the flood (one wades blind, the other sees the currents from a
 // balcony, then the other way round), the dark roofs only a flash shows (one sees the storm coming
 // and warns the other), and the Storm Spirit: open its four lightning-rod umbrellas.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h8');
   const T = CONFIG;
   const W = H8;
   const TITLE = 'L’Averse';
@@ -73,12 +75,10 @@
     },
     win: 'La pluie s’arrête. D’un coup.',
     win2: 'Un arc-en-ciel au-dessus de la ville. Dans les flaques, le cœur du ciel.',
-    card: 'La carte ♥ 8 descend sur le toit. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' descend sur le toit. Allez-y ensemble.',
     fallVoid: 'Le vide. Retour au dernier point sûr.',
   };
   CONFIG.cards.h8 = {
-    corner: '8\n♥',
-    big: '♥',
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
@@ -828,8 +828,8 @@
       };
       local.env = { hemi: R.hemi.intensity, moon: R.moon.intensity };
       applyEnv(c, c.S.x.stage);
-      HUD.visa('♥ 8 · ' + TITLE);
-      if (W.screen) W.screen.show(TITLE, '♥ 8 · un seul parapluie', '#ff8fb0');
+      HUD.visa(CARD + ' · ' + TITLE);
+      if (W.screen) W.screen.show(TITLE, CARD + ' · un seul parapluie', '#ff8fb0');
       if (!first) {
         await sleep(300);
         fadeTo(false);

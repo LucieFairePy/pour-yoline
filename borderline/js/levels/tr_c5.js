@@ -1,4 +1,6 @@
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c5');
   const T = CONFIG;
   const TITLE = 'La Bombe à cœurs II';
   const TXT = {
@@ -42,12 +44,10 @@
     boom: 'BOUM. Des cœurs partout. Ce qui n’était pas désamorcé recommence.',
     solved: 'Module désamorcé.',
     allDone: 'La bombe se tait. Les cœurs retombent en pluie.',
-    card: 'La carte ♣ 5 sort de la bombe. Prenez-la ensemble.',
+    card: 'La carte ' + CARD + ' sort de la bombe. Prenez-la ensemble.',
     readHint: 'Flèches gauche et droite : tourner les pages. Espace : refermer.',
   };
   CONFIG.cards.c5 = {
-    corner: '5\n♣',
-    big: '♣',
     title: TITLE,
     sub: 'Épreuve ♣ · réussie',
     lines: [
@@ -380,7 +380,7 @@
       City.mood({});
       c.fog(0.0045);
       Sound.mood('calm');
-      HUD.visa('♣ 5 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);

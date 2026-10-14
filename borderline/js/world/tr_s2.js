@@ -1,4 +1,4 @@
-// ♠ 2 · Les Toits qui tombent: a night rooftop run in three sections and a final leap.
+// ♠ 4 · Les Toits qui tombent: a night rooftop run in three sections and a final leap.
 // 1 · the rhythm (crumbling tiles, the Dame's grapple drops a ladder, the Valet kicks a plank),
 // 2 · the zip line, the swinging crane hook and the sliding billboard (one holds, one crosses),
 // 3 · the Joker's drones and the roof collapsing behind you, then the catch over the last gap.
@@ -982,7 +982,7 @@ const TrS2 = (() => {
       for (let i = -2; i <= 2; i++)
         K.deco(new THREE.BoxGeometry(0.12, 7, 0.12), ironM, CARD.x + i * 1.8, CARD.y + 3.5, CARD.z + 2.6);
       K.deco(new THREE.BoxGeometry(8, 0.12, 0.12), ironM, CARD.x, CARD.y + 1, CARD.z + 2.6);
-      card = LvKit.card('2', '♠', false);
+      card = LvKit.trialCard('s2', false);
       card.position.copy(P(CARD.x, CARD.y + 1.8, CARD.z));
       group.add(card);
     }

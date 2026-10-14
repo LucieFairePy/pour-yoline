@@ -1,4 +1,4 @@
-// ♣ 6 · Les Mondes miroirs. Two versions of one world, head to toe on either side of a liquid
+// ♣ 8 · Les Mondes miroirs. Two versions of one world, head to toe on either side of a liquid
 // mirror: a glass garden by day above, a crystal garden by night below. Each of you walks one of
 // them and sees the other through the floor, upside down, like a reflection. What is open on one
 // side is closed on the other: levers, bridges, objects dropped through the mirror, inversions
@@ -1366,8 +1366,8 @@ const C6M = (() => {
       heartArch(w, 'A', -5, 5.2, M.trim[w], w === 'U' ? M.glowGold : M.glowViolet);
       heartArch(w, 'A', 89, 5.2, M.trim[w], w === 'U' ? M.glowGold : M.glowViolet);
     });
-    plaque('U', 'A', 'Les Mondes miroirs', '♣ 6 · le jardin du jour', 0, 3.3, 11.6, Math.PI, '#ffcf8a');
-    plaque('L', 'A', 'Les Mondes miroirs', '♣ 6 · le jardin de la nuit', 0, 3.3, 11.6, Math.PI, '#b07cff');
+    plaque('U', 'A', 'Les Mondes miroirs', Cards.tagOf('c6') + ' · le jardin du jour', 0, 3.3, 11.6, Math.PI, '#ffcf8a');
+    plaque('L', 'A', 'Les Mondes miroirs', Cards.tagOf('c6') + ' · le jardin de la nuit', 0, 3.3, 11.6, Math.PI, '#b07cff');
     Object.keys(BRIDGES).forEach(makeBridge);
     Object.keys(LEVERS).forEach(makeLever);
     both((w) => {
@@ -1495,7 +1495,7 @@ const C6M = (() => {
 
     makeItems();
     makeBoss();
-    card = LvKit.card('6', '♣', false);
+    card = LvKit.trialCard('c6', false);
     dynG.add(card);
     cardHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.soft, color: new THREE.Color('#ffb98a').multiplyScalar(0.42), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     cardHalo.scale.setScalar(3.6);

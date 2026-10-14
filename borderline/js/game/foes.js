@@ -1,4 +1,4 @@
-// Extra enemy types for La Crypte (♠ 7) and Le Caveau (♣ R), registered into Enemies.
+// Extra enemy types for La Crypte (♠ 5) and Le Caveau (♣ 7), registered into Enemies.
 // Their visual models (except the Oracle's) are in enemy-models.js.
 (() => {
   const glow = (c, k = 2) =>

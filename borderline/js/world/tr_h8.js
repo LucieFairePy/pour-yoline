@@ -1,4 +1,4 @@
-// ♥ 8 · L’Averse: a city at night under a downpour. Wet cobbles, pink neons, gutters, puddles that
+// ♥ 9 · L’Averse: a city at night under a downpour. Wet cobbles, pink neons, gutters, puddles that
 // mirror the signs. One umbrella for two (the rain chills whoever is out from under it), a street
 // that floods (one sees the currents from a balcony, the other wades), roofs that only a flash of
 // lightning shows, and the Storm Spirit above the roofs: open its four lightning-rod umbrellas.
@@ -2056,7 +2056,7 @@ const H8 = (() => {
     boss = makeBoss('D');
     rainbow = makeRainbow('D');
     // the card, and the heart that forms once the sky clears
-    card = LvKit.card('8', '♥', true);
+    card = LvKit.trialCard('h8', true);
     card.position.copy(P(C.x, 15.8, C.z));
     zg.D.add(card);
     const hg = Heart.galaxy(9000, 1.05, 88);

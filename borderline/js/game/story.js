@@ -106,8 +106,13 @@ const Story = (() => {
       s.chapter = s.done.length;
       s.clues = p.clues || [];
       s.seen = p.seen || [];
-      // one card per épreuve done, plus the story cards already won
-      const story = (p.cards || []).filter((id) => Object.values(Trials.STORY_CARDS).includes(id));
+      // one card per épreuve done, plus the story cards already won (before v5 the finale gave
+      // ♦ R and ♥ D, now its aces; the old ids are épreuve cards and must not count as aces)
+      const OLD_STORY = { dR: ['d1', 's1', 'c1'], hD: ['h1'], J: ['J'] };
+      const story =
+        p.v >= 5
+          ? (p.cards || []).filter((id) => Trials.storyPhaseOf(id))
+          : (p.cards || []).flatMap((id) => OLD_STORY[id] || []);
       s.cards = [...new Set([...Trials.cardsOf(s.done), ...story])];
     }
     s.x = PH[s.phase] && PH[s.phase].init ? PH[s.phase].init(s) : {};
@@ -205,6 +210,8 @@ const Story = (() => {
     HUD.goal(null, null, false);
     HUD.danger(0);
     Cam.focus = null;
+    // the world's title card and why we are here, before the épreuve's own intro
+    Lore.enter(ph, prev);
     if (PH[ph] && PH[ph].enter) PH[ph].enter(ctx, first, prev);
   };
 
@@ -234,7 +241,7 @@ const Story = (() => {
       if (checkpoint(S.phase) && S.phase !== 'prologue')
         save.set({
           progress: {
-            v: 4,
+            v: 5,
             phase: S.phase,
             chapter: S.chapter,
             done: S.done,

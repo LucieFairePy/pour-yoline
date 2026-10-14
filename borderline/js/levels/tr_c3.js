@@ -1,8 +1,10 @@
-// ♣ 3 · La Bascule — everything tilts under your weight. The host simulates every moving
+// ♣ 5 · La Bascule — everything tilts under your weight. The host simulates every moving
 // surface (seesaws, the maze table and its marbles, the hanging bridges, the final dais) from
 // both players' positions and streams the angles; each client rides them with one dynamic box
 // kept under its own player at the exact surface height (no falling through a tilted plank).
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c3');
   const T = CONFIG;
   const W = TrC3;
   const TITLE = 'La Bascule';
@@ -36,14 +38,12 @@
     win: 'Vous n’avez jamais penché du même côté sans le vouloir. La carte est à vous.',
   };
   CONFIG.cards.c3 = {
-    corner: '3\n♣',
-    big: '♣',
     title: TITLE,
     sub: 'Épreuve ♣ · réussie',
     lines: [
       'Quand l’un penchait, l’autre faisait contrepoids.',
       'Personne ne tient seul en équilibre.',
-      'Trois trèfles. Le Oui retrouve son aplomb.',
+      'Le Oui retrouve son aplomb.',
     ],
   };
 
@@ -305,8 +305,8 @@
       City.mood({});
       c.fog(0.005);
       Sound.mood('calm');
-      HUD.visa('♣ 3 · ' + TITLE);
-      W.screen.show('♣ 3', TITLE, '#4fd1b5');
+      HUD.visa(CARD + ' · ' + TITLE);
+      W.screen.show(CARD, TITLE, '#4fd1b5');
       if (!first) {
         await sleep(300);
         fadeTo(false);

@@ -1,14 +1,16 @@
-// ♠ 5 · Les Lames (épreuve s5). Kits as usual: Yoline the dame kit (grapple, rifle), William the
+// ♠ 8 · Les Lames (épreuve s5). Kits as usual: Yoline the dame kit (grapple, rifle), William the
 // valet kit (sword, veil). Three parts: the hall of blades (one runs, one jams the traps from the
 // gallery, then swap), the armoury (three waves of blade automatons), the Maître des Lames.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s5');
   const T = CONFIG;
   const W = TrS5;
   const TX = {
-    card: '♠ 5',
+    card: CARD,
     title: 'Les Lames',
     boss: 'Le Maître des Lames',
-    intro: 'Épreuve ♠ 5. La Forge des Lames : ici, tout coupe. Traversez le couloir, l’un en bas, l’autre en haut.',
+    intro: 'Épreuve ' + CARD + '. La Forge des Lames : ici, tout coupe. Traversez le couloir, l’un en bas, l’autre en haut.',
     hall1: {
       dame: 'Le couloir des lames. Monte sur la passerelle (l’escalier à gauche). Chaque levier bloque un piège 4 secondes, un seul à la fois : dis à {mate} quand passer.',
       valet:
@@ -51,11 +53,9 @@
     ring: 'Les scies. Restez au centre.',
     wipe: 'Vous êtes tombés tous les deux. On reprend.',
     won: 'Le Maître s’effondre. La forge s’éteint, et il pleut des étincelles.',
-    cardObj: 'La carte ♠ 5 attend au cœur de la forge. Allez-y ensemble.',
+    cardObj: 'La carte ' + CARD + ' attend au cœur de la forge. Allez-y ensemble.',
   };
   CONFIG.cards.s5 = {
-    corner: '5\n♠',
-    big: '♠',
     title: 'Les Lames',
     sub: 'Épreuve ♠ · réussie',
     lines: [

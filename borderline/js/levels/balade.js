@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.balade;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h2');
   const local = {
     stage: 0,
     signs: new Set(),
@@ -59,7 +61,7 @@
       City.mood({ gold: 0.25 });
       c.fog(0.011);
       Sound.mood('gold');
-      HUD.visa(A.card + ' · ' + A.title);
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

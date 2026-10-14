@@ -1,16 +1,21 @@
 (() => {
   const T = CONFIG;
   const seen = new Set();
-  // one épreuve = one card, in the order of js/game/trials.js (numbers first, then faces)
-  const PLACES = ['cafe', 'message', 'banc', 'pluie', 'kino', 'etoiles', 'chanson'];
+  // one épreuve = one card, in the order of js/game/trials.js (world by world)
   const LAST_PLACE = 'danse';
   const SUIT_COL = { h: '#ff5f8a', s: '#b9a6ff', d: '#ff9a3a', c: '#7ce0ff' };
   const colorOf = (t) => (t.card.length && SUIT_COL[t.card[0]]) || '#ffcf8a';
   const labelOf = (t) => Cards.label(t.card);
   const done = (c) => c.S.done || [];
   const nextTrial = (c) => Trials.next(done(c));
-  // the memory that the last épreuve brought back (one per épreuve for the first ones)
-  const placeNow = (c) => (nextTrial(c) ? PLACES[done(c).length - 1] : LAST_PLACE);
+  // one memory per world (js/game/lore.js), back once its last épreuve is done; the newest one
+  // waits to be looked at, then the last memory comes once every épreuve is done
+  const worldPlaces = (c) => Lore.completed(done(c)).map((w) => w.memory);
+  const placeNow = (c) => {
+    const newest = worldPlaces(c).pop();
+    if (newest && !seen.has(newest)) return newest;
+    return nextTrial(c) ? null : LAST_PLACE;
+  };
   // every built épreuve gets a door: the old ones keep theirs, the new ones take a free facade
   const doorOf = (t) => {
     if (t.door) return t.door;
@@ -18,6 +23,10 @@
     City.addDoor(t.id, k, labelOf(t), t.title.toUpperCase(), colorOf(t));
     return t.id;
   };
+  // the old doors are built with the city: their signs follow the plan too
+  Trials.list
+    .filter((t) => t.door)
+    .forEach((t) => City.relabel(t.door, Cards.tag(t.card), t.title.toUpperCase()));
 
   Clues.add('c1', V3(-45, 1.1, 77));
 
@@ -28,7 +37,10 @@
     Player.checkpoint = () => City.hubSpawn[c.role];
     City.mood({});
     Sound.mood('calm');
-    PLACES.slice(0, Math.max(0, done(c).length - 1)).forEach((id) => City.showPlace(id, true));
+    const now = placeNow(c);
+    worldPlaces(c)
+      .filter((id) => id !== now)
+      .forEach((id) => City.showPlace(id, true));
   };
 
   Story.register('prologue', {
@@ -91,9 +103,9 @@
     const t = nextTrial(c);
     if (place && !seen.has(place)) return t ? T.city.memory : T.city.memoryLast;
     if (t)
-      return (
-        T.city.doors[t.id] ||
-        T.city.doorNew.replace('{card}', labelOf(t)).replace('{title}', t.title)
+      return (T.city.doors[t.id] || T.city.doorNew.replace('{title}', t.title)).replace(
+        '{card}',
+        Cards.tag(t.card),
       );
     return '';
   };
@@ -216,17 +228,18 @@
       Player.mode = 'frozen';
       const tr = Trials.byId[c.S.x.card];
       const id = tr ? tr.card : 'J';
-      // the old épreuves have their card text in config.js, the new ones register it at load
+      // the old épreuves have their card text in config.js, the new ones register it at load;
+      // the card itself always comes from the plan
       const k = T.cards[c.S.x.card] || {
-        corner: Cards.label(id).replace(' ', '\n'),
-        big: Cards.label(id).split(' ')[1] || '',
         title: tr ? tr.title : '',
         sub: (tr && tr.face ? 'Figure' : 'Épreuve') + ' · réussie',
         lines: [],
       };
-      HUD.card(k.corner, k.big, k.title, k.sub);
+      const [rank, suit] = Cards.label(id).split(' ');
+      HUD.card(suit ? rank + '\n' + suit : rank, suit || '', k.title, k.sub);
       await sleep(2600);
-      for (const l of k.lines) {
+      // the reward lines, then what the épreuve sets off (js/game/lore.js)
+      for (const l of [...k.lines, Lore.next(c.S.x.card)].filter(Boolean)) {
         if (Story.S.phase !== 'reward') return;
         HUD.say(l, T.master, 1400);
       }
@@ -239,7 +252,7 @@
     host(c) {
       Cards.award(c, Cards.rewardOf(c.S.x.card));
       const id = c.S.x.card;
-      if (c.phaseT > 9.5)
+      if (c.phaseT > 11)
         c.goto('city', (s) => {
           s.done = [...new Set([...(s.done || []), id])];
           s.chapter = s.done.length;

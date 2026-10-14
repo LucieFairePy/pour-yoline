@@ -1,8 +1,10 @@
-// ♣ A · Le Câble — tethered together. Each client constrains only its own body toward the
+// ♣ 3 · Le Câble — tethered together. Each client constrains only its own body toward the
 // partner's drawn position (tolerant slack, smooth, capped), so lag never yanks anyone.
 // E held: on the ground = anchor (you can't be pulled, ledges hold under you), in the air =
 // ballast (you are the weight: the pulley hoists your partner). Anchored + Shift = reel in.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c1');
   const T = CONFIG;
   const TITLE = 'Le Câble';
   const TX = {
@@ -30,14 +32,12 @@
     win: 'Pas un pas sans l’autre. La carte est à vous.',
   };
   CONFIG.cards.c1 = {
-    corner: 'A\n♣',
-    big: '♣',
     title: TITLE,
     sub: 'Épreuve ♣ · réussie',
     lines: [
       'Un câble entre vous deux.',
       'Quand l’un tombait, l’autre tenait bon.',
-      'Le trèfle commence ici.',
+      'Ce fil-là, rien ne le coupera.',
     ],
   };
 
@@ -154,7 +154,7 @@
       City.mood({});
       c.fog(0.006);
       Sound.mood('calm');
-      HUD.visa('♣ A · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);

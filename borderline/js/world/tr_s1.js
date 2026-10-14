@@ -1,4 +1,4 @@
-// ♠ A · Premiers pas. A coop parkour course above a sea of clouds, in three parts:
+// ♠ 2 · Premiers pas. A coop parkour course above a sea of clouds, in three parts:
 //  1. Les dalles jumelles: two lanes; a ghost slab in one lane is solid only while the partner
 //     stands on its paired plate in the other lane (relay, one step each).
 //  2. Le pont-levis et la carte-bloc: the grapple kit crosses the chasm by a ring and lowers the
@@ -300,7 +300,7 @@ const TrS1 = (() => {
     // steps of the start: a tiny warm-up, two little ledges to hop on
     slab(-6, 0.9, -5, 3, 3, { noKeel: true });
     slab(6, 1.6, -5, 3, 3, { noKeel: true });
-    // entrance arch over the start of the lanes, with the ♠ A
+    // entrance arch over the start of the lanes, with the ♠ 2
     [-8.2, 8.2].forEach((x) => {
       K.solid(x, 3.2, 7, 1.1, 6.4, 1.1, M.stone);
       K.deco(new THREE.BoxGeometry(1.4, 0.3, 1.4), M.gold, x, 0.15, 7);
@@ -308,7 +308,7 @@ const TrS1 = (() => {
     });
     K.deco(new THREE.BoxGeometry(17.5, 0.9, 1.1), M.stone, 0, 7, 7);
     K.deco(new THREE.BoxGeometry(17.7, 0.12, 1.3), M.gold, 0, 7.5, 7);
-    const archCard = LvKit.card('A', '♠', false);
+    const archCard = LvKit.trialCard('s1', false);
     archCard.visible = true;
     archCard.material.color.setScalar(0.72);
     archCard.children.forEach((h) => (h.visible = false));
@@ -536,7 +536,7 @@ const TrS1 = (() => {
     // central pedestal
     K.solid(0, altarY + 0.55, AZ + 2.5, 1.2, 1.1, 1.2, M.stone);
     K.deco(new THREE.BoxGeometry(1.4, 0.12, 1.4), M.gold, 0, altarY + 1.16, AZ + 2.5);
-    altarCard = LvKit.card('A', '♠', false);
+    altarCard = LvKit.trialCard('s1', false);
     altarCard.position.copy(P(0, altarY + 2.6, AZ + 2.5));
     group.add(altarCard);
     altarCard.visible = true;

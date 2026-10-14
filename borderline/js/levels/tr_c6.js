@@ -1,8 +1,10 @@
-// ♣ 6 · Les Mondes miroirs. One of you walks the glass garden by day, the other the crystal garden
+// ♣ 8 · Les Mondes miroirs. One of you walks the glass garden by day, the other the crystal garden
 // by night, head to toe on either side of a liquid mirror. Levers raise bridges on the other side;
 // objects dropped in the well come out of the other one; inversions swap your worlds; the Reflet
 // can only be struck from the world where it is not.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c6');
   const T = CONFIG;
   const W = C6M;
   const TITLE = 'Les Mondes miroirs';
@@ -95,13 +97,11 @@
     cross: 'Le Reflet traverse le miroir : les rôles s’inversent !',
     win: 'Le Reflet éclate en mille éclats de miroir.',
     reunite: 'Le miroir se calme. Les deux mondes n’en font plus qu’un.',
-    card: 'La carte ♣ 6 vous attend au centre de l’arène. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' vous attend au centre de l’arène. Allez-y ensemble.',
     fall: 'Le miroir te recrache au dernier passage.',
     fallMate: '{mate} est tombé{pe} dans le miroir.',
   };
   CONFIG.cards.c6 = {
-    corner: '6\n♣',
-    big: '♣',
     title: TITLE,
     sub: 'Épreuve ♣ · réussie',
     lines: [
@@ -1171,7 +1171,7 @@
       City.mood({});
       Sound.mood(x.stage >= 5 ? 'gold' : x.stage === 4 ? 'tense' : 'calm');
       W.Syn.ambient(true);
-      HUD.visa('♣ 6 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);

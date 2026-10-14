@@ -1,4 +1,4 @@
-// ♦ 4 · Le Code: the Veilleurs' vault. A heist in three rooms where every code is split between
+// ♦ 6 · Le Code: the Veilleurs' vault. A heist in three rooms where every code is split between
 // the two of you: four safes hidden in the gallery's clues, a laser hall that only one of you can
 // read, and a vault door whose three rings turn only when both hands turn together.
 const D4 = (() => {
@@ -1130,7 +1130,7 @@ const D4 = (() => {
     });
     K.solid(0, 0.6, 144, 1.6, 1.2, 1.6, marble);
     K.deco(bx(1.8, 0.12, 1.8), brass, 0, 1.22, 144);
-    card = LvKit.card('4', '♦', true);
+    card = LvKit.trialCard('d4', true);
     card.position.copy(P(0, 2.4, 144));
     group.add(card);
     heart = Heart.galaxy(4200, 0.26, 44);

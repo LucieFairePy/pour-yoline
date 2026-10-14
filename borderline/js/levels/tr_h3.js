@@ -1,4 +1,6 @@
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h3');
   const T = CONFIG;
   const TITLE = 'Les Yeux bandés';
   const TXT = {
@@ -33,11 +35,9 @@
     miss: 'Contretemps. On reprend ce pas.',
     final: 'Dernier pas : rejoignez-vous au milieu, sur le cœur.',
     win: 'Vous vous êtes retrouvés au milieu, sans vous voir.',
-    card: 'La carte ♥ 3 descend au-dessus du cœur. Prenez-la ensemble.',
+    card: 'La carte ' + CARD + ' descend au-dessus du cœur. Prenez-la ensemble.',
   };
   CONFIG.cards.h3 = {
-    corner: '3\n♥',
-    big: '♥',
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
@@ -144,7 +144,7 @@
     const who = BLIND[st] === r ? 'blind' : 'guide';
     if (st === 1) {
       HUD.objective(TXT.s1[who]);
-      H3.screen.show('♥ 3', TITLE, '#ff5f8a');
+      H3.screen.show(CARD, TITLE, '#ff5f8a');
     }
     if (st === 2) {
       HUD.objective(TXT.s2[who]);
@@ -168,7 +168,7 @@
       say(c, TXT.win, 3000);
       Sound.mood('gold');
       Sound.play('reveal');
-      H3.danceScreen.show('♥ 3', 'Sans vous voir', '#ff5f8a');
+      H3.danceScreen.show(CARD, 'Sans vous voir', '#ff5f8a');
     }
   };
 
@@ -236,7 +236,7 @@
       City.mood({});
       c.fog(0.011);
       Sound.mood('calm');
-      HUD.visa('♥ 3 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);

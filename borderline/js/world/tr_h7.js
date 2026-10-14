@@ -1,4 +1,4 @@
-// ♥ 7 · Le Bal: an abandoned, enchanted palace at night. Crystal chandeliers, marquetry parquet,
+// ♥ 8 · Le Bal: an abandoned, enchanted palace at night. Crystal chandeliers, marquetry parquet,
 // mirrors, columns, tall windows on the stars and the heart-galaxy. Four rooms: the waltz salon
 // (one leads and sees the steps, the other follows), the masked ball (find each other among the
 // masks by an agreed sign), the gallery of mirrors (one sees the way in the mirrors, the other on
@@ -1629,7 +1629,7 @@ const H7 = (() => {
     }
     makeDust('D', -18, 18, R4C.z - 18, R4C.z + 18, 20, 700);
     makePetals('D', 0, R4C.z, 17, 16, 160);
-    card = LvKit.card('7', '♥', true);
+    card = LvKit.trialCard('h7', true);
     card.position.copy(P(0, 3.6, R4C.z));
     zg.D.add(card);
   };

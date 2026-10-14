@@ -1,4 +1,4 @@
-// ♦ A · Les Interrupteurs: the Veilleurs' clockmaker workshop. Three rooms of switches that only
+// ♦ 3 · Les Interrupteurs: the Veilleurs' clockmaker workshop. Three rooms of switches that only
 // work when the two of you talk: crossed light boards, coloured crystals read from above, and a
 // clock guarded by an automaton.
 const D1 = (() => {
@@ -486,7 +486,7 @@ const D1 = (() => {
     heart.core.material.opacity = 0;
     heart.group.visible = false;
     group.add(heart.group);
-    card = LvKit.card('A', '♦', true);
+    card = LvKit.trialCard('d1', true);
     card.position.copy(P(0, 1.6, 104));
     group.add(card);
     LvKit.light(group, P(0, 14, 99), '#ffd2a0', 1.6, 40);
@@ -533,7 +533,7 @@ const D1 = (() => {
       if (role === 'done') {
         g.fillStyle = '#ffcf8a';
         g.font = 'italic 300px "Bodoni Moda", Georgia, serif';
-        Icons.fillText(g, '♦ A', 512, 520);
+        Icons.fillText(g, Cards.tagOf('d1'), 512, 520);
       } else if (role === 'valet' && seq.length) {
         // the sequence around the face, the current symbol pulsing
         seq.forEach((k, i) => {

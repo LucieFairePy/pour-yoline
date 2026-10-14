@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const G = T.garde;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('sK');
   const local = { stage: 0, laser: 0, wipe: 0, bossSeen: false };
 
   const players = (c) =>
@@ -21,7 +23,7 @@
     const r = c.role;
     if (st === 1) {
       HUD.objective(G.entrance);
-      Garde.screen.show(G.card, G.title, '#ff5f8a');
+      Garde.screen.show(CARD, G.title, '#ff5f8a');
     }
     if (st === 2) {
       HUD.objective(G.wave1);
@@ -36,17 +38,17 @@
     }
     if (st === 4) {
       HUD.objective(G.gate);
-      Garde.screen.show('Le Roi de Pique', 'Entrez dans l’arène', '#ffcf8a');
+      Garde.screen.show(G.boss, 'Entrez dans l’arène', '#ffcf8a');
       Sound.play('reveal');
     }
     if (st === 5) {
       HUD.objective(G.phase1Obj[r]);
-      Garde.screen.show('♠ R', G.boss, '#ff2a3a');
+      Garde.screen.show(CARD, G.boss, '#ff2a3a');
     }
     if (st === 6) {
       HUD.objective(G.victory);
       HUD.boss(null);
-      Garde.screen.show('♠ R', 'Victoire', '#ffcf8a');
+      Garde.screen.show(CARD, 'Victoire', '#ffcf8a');
       Sound.mood('calm');
       Sound.play('card');
     }
@@ -98,7 +100,7 @@
       City.mood({});
       c.fog(0.009);
       Combat.enable(true);
-      HUD.visa('♠ R · ' + G.title);
+      HUD.visa(CARD + ' · ' + G.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

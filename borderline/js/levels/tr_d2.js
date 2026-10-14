@@ -1,10 +1,12 @@
-// ♦ 2 · Les Miroirs. Kits swapped: Yoline carries the Valet kit, William the Dame kit.
+// ♦ 4 · Les Miroirs. Kits swapped: Yoline carries the Valet kit, William the Dame kit.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d2');
   const T = CONFIG;
   const W = TrD2;
   const TX = {
     title: 'Les Miroirs',
-    card: '♦ 2',
+    card: CARD,
     intro: 'Épreuve de logique. Une galerie de glaces : la lumière ne va que là où vous l’envoyez.',
     hint: {
       dame: 'Ce chapitre, tu vises : clic gauche et F orientent les tourelles de lumière.',
@@ -39,7 +41,7 @@
       'Vous voyez la même chose, mais pas du même côté.',
       'Personne ne m’a jamais regardé en face.',
     ],
-    s7: 'Le Gardien s’est brisé. La carte ♦ 2 est au centre : approchez ensemble.',
+    s7: 'Le Gardien s’est brisé. La carte ' + CARD + ' est au centre : approchez ensemble.',
     lit: 'Le cristal s’allume.',
     hints1: [
       'Un miroir en diagonale tourne la lumière d’un quart de tour.',
@@ -54,8 +56,6 @@
     wave: 'Saute !',
   };
   T.cards.d2 = {
-    corner: '2\n♦',
-    big: '♦',
     title: 'Les Miroirs',
     sub: 'Épreuve ♦ · réussie',
     lines: [
@@ -116,7 +116,7 @@
     }
     if (st === 3) {
       HUD.objective(TX.s3);
-      W.screen.show('♦ 2', 'Le Gardien des Miroirs', '#ff9a3a');
+      W.screen.show(CARD, 'Le Gardien des Miroirs', '#ff9a3a');
       Sound.play('reveal');
       Sound.play('door');
     }

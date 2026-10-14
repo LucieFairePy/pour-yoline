@@ -1,7 +1,9 @@
-// ♥ 6 · Le Jardin. Water and light: one of you waters, the other shines, and only where both meet
+// ♥ 7 · Le Jardin. Water and light: one of you waters, the other shines, and only where both meet
 // does anything grow. A vine bridge, lily pads, a springboard flower, a sunflower that follows the
 // light; then spring, summer, autumn, winter; then the Thorn Queen and her three roses.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h6');
   const T = CONFIG;
   const TITLE = 'Le Jardin';
   const TXT = {
@@ -46,7 +48,7 @@
       intro: 'La Reine des Épines. Elle étouffe la serre. Faites pousser les trois roses à ses racines.',
       fight: 'Les roses de cœur, à ses racines : l’eau et la lumière ensemble. Esquivez ses fouets et ses ronces. Roses : {n} / 3.',
     },
-    card: 'La carte ♥ 6 est au cœur de la grande rose. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' est au cœur de la grande rose. Allez-y ensemble.',
     grown: {
       vine: 'La vigne s’est tressée en pont.',
       lily: 'Un nénuphar s’ouvre.',
@@ -83,8 +85,6 @@
     win: 'La Reine se fane. La serre fleurit.',
   };
   CONFIG.cards.h6 = {
-    corner: '6\n♥',
-    big: '♥',
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
@@ -553,8 +553,8 @@
       City.mood({ gold: c.S.x.stage >= 10 ? 0.75 : 0.45 });
       c.fog(0.008);
       Sound.mood(c.S.x.stage >= 10 ? 'gold' : c.S.x.stage === 9 ? 'tense' : 'calm');
-      HUD.visa('♥ 6 · ' + TITLE);
-      if (H6.screen) H6.screen.show(TITLE, '♥ 6 · l’eau et la lumière', '#ff8fb0');
+      HUD.visa(CARD + ' · ' + TITLE);
+      if (H6.screen) H6.screen.show(TITLE, CARD + ' · l’eau et la lumière', '#ff8fb0');
       if (!first) {
         await sleep(300);
         fadeTo(false);

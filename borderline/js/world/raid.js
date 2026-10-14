@@ -1,4 +1,4 @@
-// ♣ R · Le Caveau: an ascent split by roles, the Galerie des Sceaux (each player raises the
+// ♣ 7 · Le Caveau: an ascent split by roles, the Galerie des Sceaux (each player raises the
 // other's bridge), then the Oracle's circular arena.
 const Raid = (() => {
   const O = V3(-1400, 80, 0);
@@ -499,7 +499,7 @@ const Raid = (() => {
     }
     lights.push(LvKit.light(group, P(0, FLOOR + 6, 96), '#7cf0c8', 1.2, 30));
     lights.push(LvKit.light(group, P(0, FLOOR + 10, 140), '#ffcf8a', 1.2, 40));
-    card = LvKit.card('R', '♣', false);
+    card = LvKit.trialCard('cR', false);
     card.position.copy(P(0, FLOOR + 2.2, ARENA.z));
     group.add(card);
     screen = makeScreen(18, 7, 1024);

@@ -121,7 +121,7 @@
       local.phase = null;
       local.line = -1;
       local.voice = 0;
-      HUD.visa('♦ ♠ · ' + A.title);
+      HUD.visa(Trials.STORY_CARDS.act5.map(Cards.tag).join(' · ') + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

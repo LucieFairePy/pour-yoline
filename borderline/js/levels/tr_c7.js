@@ -1,10 +1,12 @@
-// ♣ 7 · Le Pilote. Teamwork: one of you flies and sees only ahead, into the haze; the other
+// ♣ 9 · Le Pilote. Teamwork: one of you flies and sees only ahead, into the haze; the other
 // navigates (the light arches, the radar, the turret, the grapple). On foot first: cast off the
 // moorings and choose the seats. Then four sections between checkpoints: the canyon, the storm,
 // the drones, the mothership in a closing rift; and a landing on the heart.
 // The flight is simulated on the pilot's screen (no input lag) and streamed to the other one,
 // who plays it back smoothly; the host owns everything else (hull, drones, boss, progress).
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c7');
   const T = CONFIG;
   const W = TrC7;
   const TITLE = 'Le Pilote';
@@ -53,7 +55,7 @@
     },
     fast: 'Trop vite pour se poser : freine.',
     landed: 'Posés. Le cœur s’illumine.',
-    card: 'La carte ♣ 7 est au milieu du cœur. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' est au milieu du cœur. Allez-y ensemble.',
     cp: 'Point de passage.',
     crash: 'Le vaisseau décroche… Retour au dernier point de passage.',
     fire: 'Feu à bord !',
@@ -65,8 +67,6 @@
     debris: 'La faille s’effondre : des rochers tombent ! Les cercles orange sur le radar.',
   };
   CONFIG.cards.c7 = {
-    corner: '7\n♣',
-    big: '♣',
     title: TITLE,
     sub: 'Épreuve ♣ · réussie',
     lines: [
@@ -2553,8 +2553,8 @@
       City.mood({ gold: 0.6 });
       lightMood(0);
       c.fog(0.006);
-      HUD.visa('♣ 7 · ' + TITLE);
-      if (W.pad.screen) W.pad.screen.show(TITLE, '♣ 7 · l’un pilote, l’autre voit', '#ffb0c8');
+      HUD.visa(CARD + ' · ' + TITLE);
+      if (W.pad.screen) W.pad.screen.show(TITLE, CARD + ' · l’un pilote, l’autre voit', '#ffb0c8');
       // the parked skiff's colliders (walk around it, not through it)
       if (!local.parkBoxes) {
         const p = W.rel(W.world(W.PAD_S, 0, W.PAD_Y + PARK_H));

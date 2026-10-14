@@ -1,8 +1,10 @@
-// ♥ 7 · Le Bal. Trust: one of you sees, the other follows. The waltz (one leads and sees the
+// ♥ 8 · Le Bal. Trust: one of you sees, the other follows. The waltz (one leads and sees the
 // steps of light, the other only sees the one who leads), the masked ball (find each other among
 // the masks by an agreed sign), the gallery of mirrors (each sees the other's way, never their
 // own), then the Grand Lustre: one last waltz hand in hand, on the beat, to relight the hall.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h7');
   const T = CONFIG;
   const TITLE = 'Le Bal';
   const TXT = {
@@ -69,11 +71,9 @@
       lone: '{mate} a frappé le « un » sans toi : appuie en même temps que {lui}.',
     },
     win: 'À la dernière mesure, le Grand Lustre remonte doucement à sa place, tout illuminé. Les danseurs saluent.',
-    card: 'La carte ♥ 7 brille au-dessus du lustre. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' brille au-dessus du lustre. Allez-y ensemble.',
   };
   CONFIG.cards.h7 = {
-    corner: '7\n♥',
-    big: '♥',
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
@@ -1154,8 +1154,8 @@
       City.mood({ gold: 0.25 });
       c.fog(0.006);
       Sound.mood('calm');
-      HUD.visa('♥ 7 · ' + TITLE);
-      if (H7.screen) H7.screen.show(TITLE, '♥ 7 · la confiance', '#ff8fb0');
+      HUD.visa(CARD + ' · ' + TITLE);
+      if (H7.screen) H7.screen.show(TITLE, CARD + ' · la confiance', '#ff8fb0');
       if (!first) {
         await sleep(300);
         fadeTo(false);

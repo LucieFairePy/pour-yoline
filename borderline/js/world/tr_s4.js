@@ -1,4 +1,4 @@
-// ♠ 4 · La Tour. The inside of a colossal clock tower, 74 m of climb in four stages:
+// ♠ 6 · La Tour. The inside of a colossal clock tower, 74 m of climb in four stages:
 //  1. Les engrenages: three rings of cog discs orbit the hall and a great arm sweeps across it;
 //     while a brake lever is held the cogs crawl and the arm stops, so one brakes, one climbs.
 //  2. Le monte-charge: a lift rises up the shaft only while its crank is held; pawns climb over
@@ -898,7 +898,7 @@ const TrS4 = (() => {
     beam.position.copy(P(0, TOP + 11.6, 0));
     group.add(beam);
     // the card and a little heart-galaxy, revealed after the fight
-    card = LvKit.card('4', '♠', false);
+    card = LvKit.trialCard('s4', false);
     card.position.copy(P(0, TOP + 2.2, 0));
     group.add(card);
     // a small heart-galaxy high under the bell, well above the card so it never washes it out

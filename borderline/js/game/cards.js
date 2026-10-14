@@ -1,5 +1,5 @@
-// The 52 cards of the Oui (+ the Joker). Numbers first (1 to 10 of every suit), then the faces
-// (Valet, Dame, Roi), then the Joker. Every card comes from a step of an épreuve, the end of an
+// The 52 cards of the Oui (+ the Joker): the numbers (2 to 10, and the aces) of every suit, the
+// faces (Valet, Dame, Roi), then the Joker. Every card comes from a step of an épreuve, the end of an
 // épreuve, or a hiding place in the city. Host-authoritative: owned ids live in Story.S.cards.
 const Cards = (() => {
   const T = CONFIG;
@@ -33,16 +33,29 @@ const Cards = (() => {
     const r = NAME[rank] || rank;
     return (rank === 'D' ? 'Dame' : r) + ' de ' + SUIT_NAME[s];
   };
+  // the way the épreuves write a card: suit first ('♠ 7', '♥ A')
+  const tag = (id) => {
+    const { suit, rank } = parse(id);
+    return id === 'J' ? 'Joker' : suit + ' ' + (rank === '1' ? 'A' : rank);
+  };
+  // an épreuve shows its own card from js/game/trials.js, so a new deal never leaves a stale label
+  const cardOf = (trialId) => Trials.byId[trialId].card;
   const texOf = (id) => {
     const { suit, rank } = parse(id);
     return Tex.card(rank === '1' ? 'A' : rank, suit);
   };
 
   // ---------- where each card comes from ----------
-  // one card per épreuve (js/game/trials.js); the story finale gives its own three cards
+  // one card per épreuve (js/game/trials.js); the story finale gives the four aces and the Joker:
+  // ♦ A and ♠ A once both worlds are crossed, ♣ A for the jump, ♥ A (the Oui itself) at the end
+  const crossed = (x) => ['converge', 'caught'].includes(x.stage);
   const STAGE = {
-    act5: [['dR', (x) => x.stage === 'caught']],
-    final: [['hD', (x) => ['letter', 'visa'].includes(x.step)]],
+    act5: [
+      ['d1', crossed],
+      ['s1', crossed],
+      ['c1', (x) => x.stage === 'caught'],
+    ],
+    final: [['h1', (x) => ['letter', 'visa'].includes(x.step)]],
     epilogue: [['J', (x) => x.step >= 1]],
   };
   const rewardOf = (trialId) => {
@@ -53,8 +66,7 @@ const Cards = (() => {
   const hintOf = (id) => {
     const t = Trials.byCard[id];
     if (!t) {
-      const ph = Object.keys(Trials.STORY_CARDS).find((k) => Trials.STORY_CARDS[k] === id);
-      return D.where[ph] || '';
+      return D.where[Trials.storyPhaseOf(id)] || '';
     }
     const what = (t.face ? 'Figure ' : 'Épreuve ') + label(id) + ' · ' + t.title;
     return Trials.built(t) ? what : D.soon + ' · ' + what;
@@ -382,6 +394,9 @@ const Cards = (() => {
     FACE_IDS,
     rewardOf,
     label,
+    tag,
+    cardOf,
+    tagOf: (trialId) => tag(cardOf(trialId)),
     longName,
     texOf,
     dataUrl,

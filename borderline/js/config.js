@@ -49,14 +49,14 @@ const CONFIG = {
   },
   city: {
     doors: {
-      h10: 'Une porte s’est allumée : ♥ A. Allez-y ensemble.',
-      s3: 'Une porte s’est allumée : ♠ 3. Un jeu d’enfant… en apparence.',
-      c4: 'Une nouvelle porte s’est allumée : ♣ 4. Allez-y ensemble.',
-      s7: 'Une porte de pierre s’est ouverte : ♠ 7. Une crypte. Descendez armés.',
-      d9: 'Une arche s’est allumée près du café : ♦ 9.',
-      h2: 'Une porte fleurie s’est ouverte : ♥ 2. Pas d’épreuve, cette fois. Juste une balade.',
-      sK: 'Les figures. Sous l’écran géant, une porte noire : ♠ Valet, Dame, Roi. Préparez-vous à vous battre.',
-      cR: 'Une porte de jade s’est allumée : ♣ Valet, Dame, Roi. Le Caveau des Veilleurs. Un vrai raid.',
+      h10: 'Une porte s’est allumée : {card}. Allez-y ensemble.',
+      s3: 'Une porte s’est allumée : {card}. Un jeu d’enfant… en apparence.',
+      c4: 'Une nouvelle porte s’est allumée : {card}. Allez-y ensemble.',
+      s7: 'Une porte de pierre s’est ouverte : {card}. Une crypte. Descendez armés.',
+      d9: 'Une arche s’est allumée près du café : {card}.',
+      h2: 'Une porte fleurie s’est ouverte : {card}. Pas d’épreuve, cette fois. Juste une balade.',
+      sK: 'Sous l’écran géant, une porte noire : {card}, la garde du Roi de Pique. Préparez-vous à vous battre.',
+      cR: 'Une porte de jade s’est allumée : {card}. Le Caveau des Veilleurs. Un vrai raid.',
     },
     doorNew: 'Une porte s’est allumée : {card} · {title}. Allez-y ensemble.',
     memory: 'Un nouveau souvenir s’est allumé. Suivez la colonne de lumière.',
@@ -86,12 +86,11 @@ const CONFIG = {
       dame: 'Ton bouton est dans la cage de verre : utilise tes portails. Le sien est tout en haut.',
       valet: 'Grimpe jusqu’au bouton du haut. Tenez vos deux boutons ensemble.',
     },
-    card: 'La carte ♦ 9 est apparue. Ensemble.',
+    card: 'La carte {card} est apparue. Ensemble.',
   },
   garde: {
-    title: 'Le Roi de Pique',
-    card: '♠ R',
-    boss: 'Le Roi de Pique',
+    title: 'La Garde royale',
+    boss: 'Le Capitaine de la Garde',
     intro: 'Épreuve de combat. Les Veilleurs veulent voir si vous savez vous battre ensemble.',
     entrance: 'Entrez dans la salle. Ensemble.',
     hint: {
@@ -102,17 +101,17 @@ const CONFIG = {
     wave1: 'Vague 1 : débarrassez-vous des Pions.',
     wave2: 'Vague 2 : les Tours ont un bouclier. L’épée l’étourdit, le fusil l’achève.',
     towers: 'Un bouclier ne tombe que sous l’épée. Ensuite, le fusil peut tirer.',
-    gate: 'La porte s’ouvre. Le Roi vous attend.',
-    phase1: 'Personne ne touche le Roi. Personne.',
+    gate: 'La porte s’ouvre. Le Capitaine de la Garde vous attend.',
+    phase1: 'Personne ne touche au trône du Roi. Personne.',
     phase2: 'Assez joué. À genoux.',
     phase3: 'Je garde votre Oui dans ce cristal.',
     phase1Obj: {
-      dame: 'Phase 1 : le Roi est sous bouclier. Garde les Pions loin pendant que {mate} passe la grille.',
+      dame: 'Phase 1 : le Capitaine est sous bouclier. Garde les Pions loin pendant que {mate} passe la grille.',
       valet:
         'Phase 1 : deviens invisible (clic droit), traverse la grille laser derrière le trône, coupe le bouclier.',
     },
     phase2Obj: {
-      dame: 'Phase 2 : esquive les cercles rouges. Quand le Roi est étourdi, vise le cœur lumineux.',
+      dame: 'Phase 2 : esquive les cercles rouges. Quand le Capitaine est étourdi, vise le cœur lumineux.',
       valet:
         'Phase 2 : esquive les cercles rouges. Juste après sa frappe, frappe-le pour l’étourdir.',
     },
@@ -123,11 +122,10 @@ const CONFIG = {
     down: 'Tu es à terre. Ton partenaire peut te relever.',
     wipe: 'Vous êtes tombés tous les deux. On recommence.',
     laser: 'La grille brûle tout ce qu’elle voit.',
-    victory: 'Le Roi est tombé. La carte est à vous.',
+    victory: 'Le Capitaine est tombé. La carte est à vous.',
   },
   soleil: {
     title: 'Un, deux, trois, Soleil',
-    card: '♠ 3',
     doll: 'La Poupée',
     intro: 'Épreuve d’adresse. Les Veilleurs ont trouvé ce jeu dans vos souvenirs d’enfance.',
     rule: 'Quand elle chante, avancez. Quand elle se retourne, plus un geste.',
@@ -157,7 +155,6 @@ const CONFIG = {
   },
   donjon: {
     title: 'La Crypte',
-    card: '♠ 7',
     boss: 'Le Cavalier noir',
     intro:
       'Épreuve de combat. Sous la ville, les Veilleurs gardent leurs trésors… et leurs gardiens.',
@@ -187,7 +184,6 @@ const CONFIG = {
   },
   balade: {
     title: 'La Rivière',
-    card: '♥ 2',
     intro: 'Pas d’épreuve. Pas de chrono. Une rivière, des lanternes, et vous deux.',
     objective: 'Remontez la rivière jusqu’à la cascade. Prenez votre temps.',
     signs: [
@@ -209,10 +205,8 @@ const CONFIG = {
   },
   raid: {
     title: 'Le Caveau',
-    card: '♣ R',
     boss: 'L’Oracle',
-    intro:
-      'Épreuve finale avant l’Heure dorée. Un raid. Des rôles, des mécaniques, aucune place pour le hasard.',
+    intro: 'Épreuve d’équipe. Un raid. Des rôles, des mécaniques, aucune place pour le hasard.',
     climb: {
       dame: 'L’ascension : vise les anneaux et lance ton grappin (F).',
       valet: 'L’ascension : les plaques bleues ne propulsent que toi. Marche dessus, puis avance.',
@@ -247,8 +241,6 @@ const CONFIG = {
   },
   cards: {
     s3: {
-      corner: '3\n♠',
-      big: '♠',
       title: 'Un, deux, trois, Soleil',
       sub: 'Épreuve d’adresse · réussie',
       lines: [
@@ -258,41 +250,33 @@ const CONFIG = {
       ],
     },
     s7: {
-      corner: '7\n♠',
-      big: '♠',
       title: 'La Crypte',
       sub: 'Épreuve de combat · réussie',
       lines: [
         'Dans le noir, l’un voyait.',
         'L’autre frappait là où il fallait.',
-        'Le pique est presque complet. Le Oui reprend des couleurs.',
+        'Même sous la terre, le Oui reprend des couleurs.',
       ],
     },
     h2: {
-      corner: '2\n♥',
-      big: '♥',
       title: 'La Rivière',
       sub: 'Balade · réussie',
       lines: [
         'Pas d’épreuve. Juste vous deux.',
         'C’était peut-être ça, la plus difficile à gagner.',
-        'Deux cartes d’un coup : l’As et le 2 de cœur. Une paire.',
+        'Les Veilleurs vous ont écoutés. Ils commencent à comprendre.',
       ],
     },
     cR: {
-      corner: 'R\n♣',
-      big: '♣',
       title: 'Le Caveau',
       sub: 'Raid · réussi',
       lines: [
         'Un œil, un bouclier.',
         'Aucun monstre n’est assez grand pour vous deux.',
-        'Le trèfle est complet. Il reste les carreaux et les cœurs.',
+        'Et l’Oracle, enfin, a parlé.',
       ],
     },
     h10: {
-      corner: 'A\n♥',
-      big: '♥',
       title: 'La Balance',
       sub: 'Épreuve de confiance · réussie',
       lines: [
@@ -302,8 +286,6 @@ const CONFIG = {
       ],
     },
     d9: {
-      corner: '9\n♦',
-      big: '♦',
       title: 'Les Portes',
       sub: 'Épreuve de logique · réussie',
       lines: [
@@ -313,19 +295,15 @@ const CONFIG = {
       ],
     },
     sK: {
-      corner: 'R\n♠',
-      big: '♠',
-      title: 'Le Roi de Pique',
+      title: 'La Garde royale',
       sub: 'Épreuve de combat · réussie',
       lines: [
         'Un fusil, une épée.',
         'Et chacun son tour. Personne n’a su dire qui portait l’autre.',
-        'Valet, Dame, Roi : le pique est complet.',
+        'La garde est tombée. Le Roi de Pique, lui, attend encore.',
       ],
     },
     c4: {
-      corner: '4\n♣',
-      big: '♣',
       title: 'Le Labyrinthe noir',
       sub: 'Épreuve de communication · réussie',
       lines: [
@@ -336,7 +314,6 @@ const CONFIG = {
     },
   },
   act1: {
-    card: '♥ A',
     title: 'La Balance',
     intro: 'Épreuve de confiance. Ce que l’un ne voit pas, l’autre le voit.',
     bridge: {
@@ -365,7 +342,6 @@ const CONFIG = {
     },
   },
   act2: {
-    card: '♣ 4',
     title: 'Le Labyrinthe noir',
     intro: 'Épreuve de communication. Chacun sait ce que l’autre ignore.',
     maze: {
@@ -437,7 +413,7 @@ const CONFIG = {
     wall: 'Le Joker t’a rattrapé{e}.',
   },
   final: {
-    title: 'Dame de Cœur',
+    title: 'Le Oui',
     place: 'L’endroit de notre rencontre',
     joker: 'Vous croyez vraiment qu’il suffit d’être ensemble ?',
     approach: 'Entrez ensemble dans le cercle lumineux, au centre.',
@@ -448,17 +424,17 @@ const CONFIG = {
       'La voici, en entier.',
     ],
     letter: [
-      ['♥ A', 'Je te fais confiance, même quand je ne vois rien.'],
+      ['♥ 3', 'Je te fais confiance, même quand je ne vois rien.'],
       ['♠ 3', 'Quand le monde nous regarde, je me mets devant toi.'],
-      ['♣ 4', 'Dans le noir, c’est ta voix que je suis.'],
-      ['♠ 7', 'Dans les couloirs les plus sombres, je ne lâche pas ta main.'],
-      ['♦ 9', 'Avec toi, même les casse-têtes ont un sens.'],
+      ['♣ 2', 'Dans le noir, c’est ta voix que je suis.'],
+      ['♠ 5', 'Dans les couloirs les plus sombres, je ne lâche pas ta main.'],
+      ['♦ 2', 'Avec toi, même les casse-têtes ont un sens.'],
       ['♥ 2', 'Mes endroits préférés, ce sont ceux où l’on marche à deux.'],
-      ['♠ R', 'Je me battrai à tes côtés. Et parfois, c’est toi qui me protégeras.'],
-      ['♣ R', 'Aucun monstre n’est assez grand pour nous deux.'],
-      ['♦ R', 'Je courrai toujours, tant que c’est vers toi.'],
-      ['\u{1F0CF}', 'Et quand la peur arrive, je saute quand même.'],
-      ['♛', 'Tu es ma Dame de Cœur, Yoline.'],
+      ['♠ 7', 'Je me battrai à tes côtés. Et parfois, c’est toi qui me protégeras.'],
+      ['♣ 7', 'Aucun monstre n’est assez grand pour nous deux.'],
+      ['♠ A', 'Je courrai toujours, tant que c’est vers toi.'],
+      ['♣ A', 'Et quand la peur arrive, je saute quand même.'],
+      ['♥ A', 'Tu es ma Dame de Cœur, Yoline.'],
     ],
     signature: '— Moi',
     visa: 'Visa : illimité.',
@@ -489,7 +465,7 @@ const CONFIG = {
     locked: 'fermé',
     lockedHint: 'Les figures s’ouvrent quand les 40 chiffres sont réunis.',
     jokerHint: 'Le Joker : la dernière carte, quand les 52 sont réunies.',
-    numbersNote: 'Une épreuve, une carte. D’abord les chiffres, de l’As au 10 dans les quatre couleurs : ♠ le corps, ♦ la tête, ♣ l’équipe, ♥ la confiance. Les figures viendront après.',
+    numbersNote: 'Une épreuve, une carte. La couleur dit le jeu (♠ le corps, ♦ la tête, ♣ l’équipe, ♥ la confiance), le rang dit la difficulté : du 2 au 10, puis les figures. Les As viendront en dernier.',
     facesNote: 'Les figures : Valet, Dame et Roi de chaque couleur. Le Joker viendra en dernier.',
     figuresTitle: 'Les figures',
     figures: 'Les quarante chiffres sont à vous. Les figures se réveillent : Valets, Dames et Rois.',
@@ -498,17 +474,10 @@ const CONFIG = {
     later: 'Ensuite',
     soon: 'À venir',
     soonN: 'épreuves en construction',
+    // the story cards (the épreuves' own cards say where they come from, js/game/trials.js)
     where: {
-      act1: 'Épreuve ♥ A · La Balance',
-      soleil: 'Épreuve ♠ 3 · Un, deux, trois, Soleil',
-      act2: 'Épreuve ♣ 4 · Le Labyrinthe noir',
-      donjon: 'Épreuve ♠ 7 · La Crypte',
-      portes: 'Épreuve ♦ 9 · Les Portes',
-      balade: 'Balade ♥ 2 · La Rivière',
-      garde: 'Figures ♠ · Le Roi de Pique',
-      raid: 'Figures ♣ · Le Caveau',
-      act5: 'Figures ♦ · Deux mondes',
-      final: 'Figures ♥ · Dame de Cœur',
+      act5: 'Les As · Deux mondes',
+      final: 'L’As de cœur · Le Oui',
       epilogue: 'Le vrai Joker',
       city: 'Cachée dans la ville',
     },
@@ -524,37 +493,39 @@ const CONFIG = {
   places: [
     {
       id: 'cafe',
-      tag: 'Souvenir · 01',
-      name: 'Notre café',
-      text: 'Ici, la première fois, on a parlé si longtemps qu’ils ont commencé à ranger les chaises autour de nous.',
+      tag: 'Souvenir · Monde 4',
+      name: 'Toi qui règles tout',
+      text: 'Toutes les fois où tu règles les problèmes : tu me pousses à avancer, tu me donnes des outils pour progresser, tu remets la connexion internet, ton calme incarné, ta note d’humour qui enlève de l’importance à mes complexes.',
     },
     {
       id: 'message',
-      tag: 'Souvenir · 02',
-      name: 'Le premier message',
-      text: 'Le premier message. Je l’ai réécrit dix fois avant d’oser appuyer sur « envoyer ».',
+      tag: 'Souvenir · Monde 1',
+      name: 'Le premier appel',
+      text: 'On ne s’est pas dit un mot. On s’est regardés pendant des dizaines de minutes, passionnément, avec amour, les yeux pétillants.',
     },
     {
       id: 'banc',
-      tag: 'Souvenir · 03',
-      name: 'Notre banc',
-      text: 'Le banc où on s’est assis sans rien dire, et où ce silence-là voulait tout dire.',
+      tag: 'Souvenir · Monde 3',
+      name: 'Ton appel à l’aide',
+      text: 'La première fois que tu m’as demandé de l’aide, alors que tu n’en demandes jamais.',
     },
+    // placeholder: the memory of the world 6 is still to be written
     {
       id: 'pluie',
-      tag: 'Souvenir · 04',
+      tag: 'Souvenir · Monde 6',
       name: 'L’averse',
       text: 'L’averse qui nous a coincés sous un abribus. On aurait pu courir. On est restés.',
     },
     {
       id: 'kino',
-      tag: 'Souvenir · 05',
-      name: 'Notre cinéma',
-      text: 'Le film dont on ne se souvient pas. Parce qu’on n’a pas regardé l’écran une seule fois.',
+      tag: 'Souvenir · Monde 2',
+      name: 'Nos fous rires',
+      text: 'Les fous rires sur les jeux.',
     },
+    // placeholder: the memory of the world 5 is still to be written
     {
       id: 'etoiles',
-      tag: 'Souvenir · 06',
+      tag: 'Souvenir · Monde 5',
       name: 'La nuit des étoiles',
       text: 'Tu m’as montré une étoile. Je n’ai jamais su laquelle : je ne regardais que toi.',
     },

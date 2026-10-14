@@ -350,7 +350,7 @@ const Soleil = (() => {
     [ring, tri, sq].forEach((m) => (m.renderOrder = 1));
     // start gate
     K.deco(new THREE.BoxGeometry(12.6, 0.5, 0.6), LvKit.glow('#ff9ec4', 1.2), 0, 9, -4.8);
-    card = LvKit.card('3', '♠', false);
+    card = LvKit.trialCard('s3', false);
     card.position.copy(P(0, 2.4, 90));
     group.add(card);
     screen = makeScreen(26, 9, 1024);

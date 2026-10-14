@@ -1,4 +1,4 @@
-// ♦ 5 · La Gravité: the Veilleurs' observatory where gravity is the puzzle. A brass room that
+// ♦ 7 · La Gravité: the Veilleurs' observatory where gravity is the puzzle. A brass room that
 // turns over when both levers are pulled (what was on the ceiling ends up on the floor, mirrored),
 // a floating slab driven by a gravity beam over the void with low-gravity bubbles, gravity
 // streams that only flow while someone stands on a stone, and the orrery whose three rings must
@@ -638,7 +638,7 @@ const D5 = (() => {
     const rule = sign('Ce qui est en haut à gauche', 'TOMBE EN BAS À DROITE', 6, 1.5, '#ffcf8a');
     rule.position.set(0, 0, CZ0 + 0.02);
     cubePivot.add(rule);
-    const tl = sign('♦ 5 · La Gravité', 'LA SALLE QUI SE RETOURNE', 4.4, 1.3, '#ff9a3a');
+    const tl = sign(Cards.tagOf('d5') + ' · La Gravité', 'LA SALLE QUI SE RETOURNE', 4.4, 1.3, '#ff9a3a');
     tl.position.set(0, 2.2, CZ0 + 0.02);
     cubePivot.add(tl);
     const tl2 = tl.clone();
@@ -1320,7 +1320,7 @@ const D5 = (() => {
     heart.group.rotation.x = Math.PI / 2;
     heart.U.uForm.value = 0.2;
     group.add(heart.group);
-    card = LvKit.card('5', '♦', true);
+    card = LvKit.trialCard('d5', true);
     card.position.copy(P(0, 2, OC));
     group.add(card);
     const l1 = new THREE.PointLight('#cfa8ff', 0.75, 40, 2);

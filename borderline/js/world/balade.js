@@ -487,7 +487,7 @@ const Balade = (() => {
     LvKit.light(group, P(0, 6, LEN - 6), '#b8c8ff', 2.2, 26);
     // facing the waterfall, square to the axes so its collider matches what you see
     bench(-RW - 4, LEN - 14, 0);
-    card = LvKit.card('2', '♥', true);
+    card = LvKit.trialCard('h2', true);
     card.position.copy(P(-3, -0.6, LEN - 10));
     group.add(card);
     // trees along the banks

@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.donjon;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s7');
   const local = { stage: 0, phase: 0, dark: false, win: 0, wipe: 0, plates: 0 };
 
   const players = (c) =>
@@ -49,7 +51,7 @@
     const scr = (a, b, col) => Donjon.screen.show(a, b, col);
     if (st === 1) {
       HUD.objective(A.room1);
-      scr(A.card, A.title, '#b9a6ff');
+      scr(CARD, A.title, '#b9a6ff');
     }
     if (st === 2) {
       Sound.mood('tense');
@@ -90,7 +92,7 @@
       Sound.play('reveal');
     }
     if (st === 13) {
-      HUD.objective(T.portes.card.replace('♦ 9', A.card));
+      HUD.objective(T.portes.card.replace('{card}', CARD));
       Sound.play('card');
     }
     if (prev && st < prev) c.spawn(Donjon.spawn(st, r), 0);
@@ -120,7 +122,7 @@
       City.mood({ dark: 0.8 });
       c.fog(0.018);
       Combat.enable(true);
-      HUD.visa(A.card + ' · ' + A.title);
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

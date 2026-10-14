@@ -1,4 +1,4 @@
-// ♣ 5 · La Bombe à cœurs II: the Veilleurs' night train. A heart-shaped bomb rides in the luggage
+// ♣ 6 · La Bombe à cœurs II: the Veilleurs' night train. A heart-shaped bomb rides in the luggage
 // van; one of you defuses it, the other reads the manual three cars away. Then the bomb rolls
 // to the locomotive, the roles swap, the reader also fights the steam valves, and the last
 // module needs both hands on the bomb while the train dives into a tunnel.
@@ -2154,7 +2154,7 @@ const C5 = (() => {
     buildBomb();
     scenery = buildScenery();
     buildConfetti();
-    card = LvKit.card('5', '♣', false);
+    card = LvKit.trialCard('c5', false);
     card.position.copy(P(0, 3.4, BOMB_Z[2]));
     group.add(card);
     heart = Heart.galaxy(5200, 1.5, 61);
@@ -2349,7 +2349,7 @@ const C5 = (() => {
       if (r.key !== key) {
         r.key = key;
         if (want) r.show(want[0], want[1], want[2]);
-        else r.show('♣ 5', 'La Bombe à cœurs II', '#7ce0ff');
+        else r.show(Cards.tagOf('c5'), 'La Bombe à cœurs II', '#7ce0ff');
       }
     });
     // the card and the heart in the sky at the end

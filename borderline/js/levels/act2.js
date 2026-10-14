@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.act2;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c4');
   const SYMS = ['♥', '♠', '♦', '♣'];
   const local = { stage: 0, round: -1, boom: 0, manual: false, card: false, scr: '' };
   // reused every frame
@@ -63,7 +65,7 @@
     }
     if (st === 4) {
       HUD.objective(A.cardLine);
-      Maze.screen.show('♣ 4', 'Le Labyrinthe noir', '#7ce0ff');
+      Maze.screen.show(CARD, A.title, '#7ce0ff');
       Sound.play('reveal');
     }
   };
@@ -102,7 +104,7 @@
         return Maze.spawn(st, c.role);
       };
       Sound.mood('tense');
-      HUD.visa('♣ 4 · ' + A.title);
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

@@ -64,6 +64,19 @@ setTimeout(function () {
   <p class="card-sub" id="cardSub"></p>
 </div>
 
+<div id="chapter" hidden>
+  <div class="chapter-in">
+    <span class="label" id="chapNum"></span>
+    <h2 id="chapName"></h2>
+    <p class="chapter-sub" id="chapSub"></p>
+    <span class="chapter-suits"><i data-ic="heart"></i><i data-ic="spade"></i><i data-ic="diamond"></i><i data-ic="club"></i></span>
+    <dl>
+      <dt class="label">Tenue</dt><dd id="chapOutfit"></dd>
+      <dt class="label" id="chapPowerK">Pouvoir</dt><dd id="chapPower"></dd>
+    </dl>
+  </div>
+</div>
+
 <div id="cardToast" hidden>
   <i id="ctImg"></i>
   <div><span class="label">Carte récupérée</span><p id="ctName"></p><span class="label" id="ctSub"></span></div>
@@ -276,6 +289,7 @@ setTimeout(function () {
 <script src="js/game/weapons.js"></script>
 <script src="js/game/combat.js"></script>
 <script src="js/game/trials.js"></script>
+<script src="js/game/lore.js"></script>
 <script src="js/game/cards.js"></script>
 <script src="js/game/story.js"></script>
 <script src="js/game/lobby.js"></script>

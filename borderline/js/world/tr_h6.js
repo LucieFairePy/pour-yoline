@@ -1,4 +1,4 @@
-// ♥ 6 · Le Jardin: a giant overgrown glasshouse. One of you carries the watering can, the other a
+// ♥ 7 · Le Jardin: a giant overgrown glasshouse. One of you carries the watering can, the other a
 // little sun on a chain: a plant only grows where water and light meet. Vines become bridges,
 // flowers springboards, lily pads stepping stones, a sunflower turns to follow the light. Then the
 // four seasons, and the Thorn Queen strangling the glass dome: grow three heart-roses at her roots.
@@ -2235,7 +2235,7 @@ const H6 = (() => {
     bigRose = makeRose(4.2, '#e04a74', false);
     bigRose.g.position.copy(P(C.x, -9, C.z));
     zg.Q.add(bigRose.g);
-    card = LvKit.card('6', '♥', true);
+    card = LvKit.trialCard('h6', true);
     card.position.copy(P(C.x, 3.4, C.z));
     zg.Q.add(card);
     bloomHeart = Heart.galaxy(5000, 0.42, 66);

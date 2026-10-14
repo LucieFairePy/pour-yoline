@@ -853,7 +853,7 @@ const City = (() => {
     h10: makeDoor(
       V3(LOT - HALF - 0.1, 0, 0),
       0,
-      '♥ A',
+      '♥ 3',
       'LA BALANCE',
       '#ff5f8a',
       V3(LOT - HALF - 1.5, 0, 0),
@@ -861,8 +861,8 @@ const City = (() => {
     c4: makeDoor(
       V3(0, 0, LOT - HALF - 0.1),
       -Math.PI / 2,
-      '♣ 4',
-      'LE LABYRINTHE',
+      '♣ 2',
+      'LE LABYRINTHE NOIR',
       '#7ce0ff',
       V3(0, 0, LOT - HALF - 1.5),
     ),
@@ -871,8 +871,8 @@ const City = (() => {
   doors.sK = makeDoor(
     V3(0, 0, -(LOT - HALF) + 0.1),
     Math.PI / 2,
-    '♠ R',
-    'LE ROI DE PIQUE',
+    '♠ 7',
+    'LA GARDE ROYALE',
     '#ffcf8a',
     V3(0, 0, -(LOT - HALF) + 1.5),
   );
@@ -880,7 +880,7 @@ const City = (() => {
   doors.d9 = makeDoor(
     V3(-LOT + HALF + 0.6, 0, -9),
     0,
-    '♦ 9',
+    '♦ 2',
     'LES PORTES',
     '#ff9a3a',
     V3(-LOT + HALF + 2, 0, -9),
@@ -888,9 +888,9 @@ const City = (() => {
 
   [
     ['s3', 1, 24, '♠ 3', 'UN, DEUX, TROIS, SOLEIL', '#ff9ec4'],
-    ['s7', -1, 24, '♠ 7', 'LA CRYPTE', '#b9a6ff'],
+    ['s7', -1, 24, '♠ 5', 'LA CRYPTE', '#b9a6ff'],
     ['h2', 1, -24, '♥ 2', 'LA RIVIÈRE', '#ffb3c7'],
-    ['cR', -1, -24, '♣ R', 'LE CAVEAU', '#7cf0c8'],
+    ['cR', -1, -24, '♣ 7', 'LE CAVEAU', '#7cf0c8'],
   ].forEach(([id, sx, z, txt, sub, col]) => {
     const x = sx * (LOT - HALF - 0.1);
     doors[id] = makeDoor(
@@ -2111,6 +2111,13 @@ const City = (() => {
       Math.abs(p.x - LIFT.x) < 2.1 && Math.abs(p.z - LIFT.z) < 2.1 && Math.abs(p.y - y) < 0.8,
     door(id, on) {
       if (doors[id]) doors[id].target = on;
+    },
+    // a door's sign, redrawn when the plan gives its épreuve another card
+    relabel(id, txt, sub) {
+      const d = doors[id];
+      if (!d) return;
+      d.sign.material.map.dispose();
+      d.sign.material.map = signTex(txt, sub, '#' + d.color.getHexString());
     },
     doorSlots,
     addDoor,

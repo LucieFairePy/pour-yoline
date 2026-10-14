@@ -1,4 +1,4 @@
-// ♠ 7 · La Crypte: a stone dungeon of four rooms under the city.
+// ♠ 5 · La Crypte: a stone dungeon of four rooms under the city.
 const Donjon = (() => {
   const O = V3(1400, 80, 0);
   const group = new THREE.Group();
@@ -271,7 +271,7 @@ const Donjon = (() => {
     // the chest only blocks once it has appeared (after the boss)
     chestB = Phys.box(O.x, O.y + 0.6, O.z + 182, 2, 1.2, 1.3);
     chestB.on = false;
-    card = LvKit.card('7', '♠', false);
+    card = LvKit.trialCard('s7', false);
     card.position.copy(P(0, 2.8, 182));
     group.add(card);
     gate('g1', 0, 11, 4.4);

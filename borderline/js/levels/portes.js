@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.portes;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d9');
   const local = { stage: 0, cd: 0, held: 0, aimFx: 0 };
   const fwd = V3();
 
@@ -23,8 +25,8 @@
       Sound.play('reveal');
     }
     if (st === 4) {
-      HUD.objective(A.card);
-      Portes.screen.show('♦ 9', A.title, '#ff9a3a');
+      HUD.objective(A.card.replace('{card}', CARD));
+      Portes.screen.show(CARD, A.title, '#ff9a3a');
       Sound.play('reveal');
     }
     const q = Portes.rel(Player.body.p);
@@ -94,7 +96,7 @@
       City.mood({});
       c.fog(0.006);
       Sound.mood('calm');
-      HUD.visa('♦ 9 · ' + A.title);
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

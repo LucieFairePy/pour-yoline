@@ -1,4 +1,4 @@
-// ♠ 6 · Le Sol de lave. A volcano, three parts along +z:
+// ♠ 9 · Le Sol de lave. A volcano, three parts along +z:
 //  1. Les champs de lave: a basalt canyon flooded with lava. The frost kit freezes lava into
 //     floating crust discs (and plugs geysers), the grapple kit reaches the high lever. Sinking
 //     columns, crumbling bridge, a lava tide that swells on a shared clock.
@@ -820,7 +820,7 @@ const TrS6 = (() => {
     pillarCard.position.copy(P(CAL.x, -6, CAL.z));
     group.add(pillarCard);
     pillarCard.userData.box = dyn();
-    card = LvKit.card('6', '♠', false);
+    card = LvKit.trialCard('s6', false);
     card.position.copy(P(CAL.x, 2.6, CAL.z));
     group.add(card);
     cardHeart = Heart.galaxy(6000, 4, 61);

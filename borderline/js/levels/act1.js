@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.act1;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h10');
   const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0, hp: V3() };
   // reused every frame
   const qd = V3();
@@ -80,7 +82,7 @@
       Sound.mood('calm');
       HUD.danger(0);
       HUD.say(C.win, T.master, 2500);
-      Arena.screen.show('♥ A', C.win, '#ff5f8a');
+      Arena.screen.show(CARD, C.win, '#ff5f8a');
       Arena.cabShow('♥', 'Bravo', '#ff5f8a');
       HUD.objective('Allez chercher la carte, ensemble.');
       Sound.play('reveal');
@@ -111,8 +113,8 @@
       Player.targets = () =>
         c.role === 'dame' && Story.S.x.stage === 3 ? Arena.rings.map((r) => r.pos) : [];
       c.fog(0.006);
-      Arena.screen.show(A.card, A.title, '#ff5f8a');
-      HUD.visa('♥ A · ' + A.title);
+      Arena.screen.show(CARD, A.title, '#ff5f8a');
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

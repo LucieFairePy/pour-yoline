@@ -575,6 +575,85 @@ kbd {
   animation: rise 1.2s var(--expo) 0.7s both;
 }
 
+#chapter {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: radial-gradient(circle, rgba(43, 12, 32, 0.55), rgba(13, 6, 18, 0.88));
+  pointer-events: none;
+  transition: opacity 0.9s ease;
+}
+
+#chapter.out {
+  opacity: 0;
+}
+
+.chapter-in {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.chapter-in > .label {
+  color: var(--gold);
+  letter-spacing: 0.4em;
+  animation: rise 1.2s var(--expo) both;
+}
+
+.chapter-in h2 {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: clamp(2.4rem, 7vw, 4.2rem);
+  line-height: 1.05;
+  animation: rise 1.4s var(--expo) 0.2s both;
+}
+
+.chapter-sub {
+  font-size: 1.15rem;
+  color: rgba(251, 239, 230, 0.85);
+  animation: rise 1.2s var(--expo) 0.4s both;
+}
+
+.chapter-suits {
+  display: flex;
+  gap: 0.9rem;
+  margin: 0.4rem 0;
+  color: var(--gold);
+  opacity: 0.8;
+  animation: rise 1.2s var(--expo) 0.6s both;
+}
+
+.chapter-suits svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chapter-in dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+  text-align: left;
+  padding: 1rem 1.4rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(232, 189, 132, 0.35);
+  background: linear-gradient(170deg, rgba(43, 12, 32, 0.85), rgba(20, 6, 15, 0.85));
+  animation: rise 1.2s var(--expo) 0.8s both;
+}
+
+.chapter-in dd {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: rgba(251, 239, 230, 0.9);
+}
+
 #memory {
   position: fixed;
   inset: 0;

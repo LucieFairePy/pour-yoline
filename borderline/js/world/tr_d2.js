@@ -1,4 +1,4 @@
-// ♦ 2 · Les Miroirs. A hall of mirrors where light beams bounce, built at O = (-2100, 0, 4200).
+// ♦ 4 · Les Miroirs. A hall of mirrors where light beams bounce, built at O = (-2100, 0, 4200).
 // Room 1 (z 4..32): one glass wall, mirrors on both sides, turn them (E) to bring the beam
 // to the crystal. Room 2 (z 38..76): the Dame aims a turret by shooting white plaques, the
 // Valet carries a mirror block and a prism to sockets. Arena (centre z 100): the Mirror
@@ -1060,7 +1060,7 @@ const TrD2 = (() => {
     screen.mesh.position.copy(P(0, 6.5, -9.9));
     group.add(screen.mesh);
     // the card, revealed when the Guardian shatters
-    card = LvKit.card('2', '♦', true);
+    card = LvKit.trialCard('d2', true);
     card.position.copy(P(0, 2.2, 100));
     group.add(card);
   };

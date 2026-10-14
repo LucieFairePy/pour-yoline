@@ -1,4 +1,6 @@
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d1');
   const T = CONFIG;
   const TITLE = 'Les Interrupteurs';
   const TXT = {
@@ -31,11 +33,9 @@
     r3round: ['Premier tour : trois symboles.', 'Deuxième tour : quatre symboles.', 'Dernier tour : cinq symboles.'],
     r3floor: 'Au sol, la lumière du Gardien vous voit. Sur les plateformes, vous êtes à l’abri.',
     r3win: 'L’horloge s’arrête. Le cœur s’ouvre.',
-    card: 'La carte ♦ A est apparue au pied de l’horloge. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' est apparue au pied de l’horloge. Allez-y ensemble.',
   };
   CONFIG.cards.d1 = {
-    corner: 'A\n♦',
-    big: '♦',
     title: TITLE,
     sub: 'Épreuve ♦ · réussie',
     lines: [
@@ -89,7 +89,7 @@
     const r = c.role;
     if (st === 1) {
       HUD.objective(TXT.r1[r]);
-      D1.screen.show('♦ A', TITLE, '#ff9a3a');
+      D1.screen.show(CARD, TITLE, '#ff9a3a');
     }
     if (st === 2) {
       HUD.objective(TXT.r2[r]);
@@ -175,7 +175,7 @@
       City.mood({});
       c.fog(0.01);
       Sound.mood('calm');
-      HUD.visa('♦ A · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);

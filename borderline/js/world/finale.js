@@ -122,7 +122,7 @@ const Finale = (() => {
     queen = new THREE.Mesh(
       new THREE.PlaneGeometry(3.6, 5),
       new THREE.MeshBasicMaterial({
-        map: Tex.card('D', '♥'),
+        map: Cards.texOf('h1'),
         alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,

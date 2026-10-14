@@ -1,4 +1,4 @@
-// ♥ 5 · La Chute: sky islands over an endless sea of clouds at sunset. Leaps of faith onto
+// ♥ 6 · La Chute: sky islands over an endless sea of clouds at sunset. Leaps of faith onto
 // clouds only the partner can see, a cloud-raft that has to be under the one who drops through
 // the rings, then a long dive together down the Well, hand in hand, to a heart-shaped island.
 const H5 = (() => {
@@ -993,7 +993,7 @@ const H5 = (() => {
       tree(WELL.x + 6, WELL.z + 3, 0.9, true, HEART_Y);
       flowerBed(WELL.x, WELL.z - 6, 0.08, HEART_Y);
     }
-    card = LvKit.card('5', '♥', true);
+    card = LvKit.trialCard('h5', true);
     card.position.copy(P(WELL.x, HEART_Y + 14, WELL.z - 1));
     group.add(card);
     galaxy = Heart.galaxy(9000, 1.1, 51);

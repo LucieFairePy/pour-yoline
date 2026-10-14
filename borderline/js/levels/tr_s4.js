@@ -1,13 +1,15 @@
-// ♠ 4 · La Tour (épreuve s4). Kits swapped in this trial (js/game/trials.js): Yoline carries the
+// ♠ 6 · La Tour (épreuve s4). Kits swapped in this trial (js/game/trials.js): Yoline carries the
 // valet kit (double jump, sword, veil), William the dame kit (grapple, rifle, sees the wind).
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s4');
   const T = CONFIG;
   const W = TrS4;
   const TX = {
-    card: '♠ 4',
+    card: CARD,
     title: 'La Tour',
     boss: 'La Sentinelle de la Tour',
-    intro: 'Épreuve ♠ 4. La Tour de l’Horloge : soixante-quatorze mètres à grimper. Ensemble, et armés.',
+    intro: 'Épreuve ' + CARD + '. La Tour de l’Horloge : soixante-quatorze mètres à grimper. Ensemble, et armés.',
     gears: {
       dame: 'Les engrenages. Sans frein, tout tourne trop vite et le grand bras balaie. Tiens un frein (maintiens E) pendant que {mate} grimpe, puis {il} tiendra le sien pour toi, sur le balcon.',
       valet:
@@ -48,17 +50,15 @@
     wipe: 'Vous êtes tombés tous les deux. On reprend.',
     wipeLift: 'Vous êtes tombés tous les deux. Le monte-charge redescend.',
     won: 'La Sentinelle s’arrête. La Tour sonne pour vous.',
-    cardObj: 'La carte ♠ 4 est sous la cloche. Prenez-la ensemble.',
+    cardObj: 'La carte ' + CARD + ' est sous la cloche. Prenez-la ensemble.',
   };
   CONFIG.cards.s4 = {
-    corner: '4\n♠',
-    big: '♠',
     title: 'La Tour',
     sub: 'Épreuve ♠ · réussie',
     lines: [
       'Soixante-quatorze mètres.',
       'L’un tournait, l’autre veillait. Puis l’inverse.',
-      'Et tout en haut, la plus belle vue du Borderland.',
+      'Et tout en haut, sous la cloche, le cadran du Visa.',
     ],
   };
 

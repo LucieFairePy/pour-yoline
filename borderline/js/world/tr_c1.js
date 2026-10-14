@@ -1,4 +1,4 @@
-// ♣ A · Le Câble. A floating cable works above a sea of clouds: the two astronauts are tied
+// ♣ 3 · Le Câble. A floating cable works above a sea of clouds: the two astronauts are tied
 // together by a glowing cable and cross it as one. Course along +z:
 //   atrium (z -6..22) · the 2.95 m wall · the chasm with the alcove under its edge (z 34..48)
 //   · crumbling ledges (z 54..91) · the pulley over a deep well (z 92..132)
@@ -359,7 +359,7 @@ const TrC1 = (() => {
     ped.position.copy(P(0, TOP + 0.55, 205));
     group.add(ped);
     K.collider(0, TOP + 0.55, 205, 1.2, 1.1, 1.2);
-    card = LvKit.card('A', '♣', false);
+    card = LvKit.trialCard('c1', false);
     card.position.copy(P(0, TOP + 2.2, 205));
     group.add(card);
     LvKit.light(group, P(0, TOP + 4, 205), '#ff8fb0', 2.5, 18);
@@ -429,7 +429,7 @@ const TrC1 = (() => {
       g.textBaseline = 'middle';
       g.fillStyle = '#7ce0ff';
       g.font = 'italic 220px Georgia, serif';
-      Icons.fillText(g, '♣ A', w / 2, 230);
+      Icons.fillText(g, Cards.tagOf('c1'), w / 2, 230);
       g.fillStyle = '#fbefe6';
       g.font = '600 110px "IBM Plex Mono", monospace';
       g.fillText('LE CÂBLE', w / 2, 430);

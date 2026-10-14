@@ -82,7 +82,7 @@ const Arena = (() => {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
       new THREE.MeshBasicMaterial({
-        map: Tex.card('A', '♥'),
+        map: Cards.texOf(Cards.cardOf('h10')),
         alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,

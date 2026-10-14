@@ -1,9 +1,11 @@
-// ♠ A · Premiers pas (épreuve s1). Kits swapped in this trial (js/game/trials.js).
+// ♠ 2 · Premiers pas (épreuve s1). Kits swapped in this trial (js/game/trials.js).
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s1');
   const T = CONFIG;
   const W = TrS1;
   const TX = {
-    card: '♠ A',
+    card: CARD,
     title: 'Premiers pas',
     intro: 'Épreuve ♠, la première. Ici, on apprend à marcher. Ensemble, évidemment.',
     lanes: {
@@ -35,8 +37,6 @@
     blockOk: 'Là ! Juste sous l’encoche.',
   };
   CONFIG.cards.s1 = {
-    corner: 'A\n♠',
-    big: '♠',
     title: 'Premiers pas',
     sub: 'Épreuve ♠ · réussie',
     lines: [

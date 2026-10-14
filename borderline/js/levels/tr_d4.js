@@ -1,4 +1,6 @@
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d4');
   const T = CONFIG;
   const TITLE = 'Le Code';
   const TXT = {
@@ -44,12 +46,10 @@
     timeout: 'Le verrou horaire se referme. Les couronnes se brouillent.',
     aligned: 'Les trois couronnes sont alignées. Les verrous sautent.',
     ringOk: ['Couronne I en place.', 'Couronne II en place.', 'Couronne III en place.'],
-    card: 'Le caveau est ouvert. La carte ♦ 4 vous attend au fond. Ensemble.',
+    card: 'Le caveau est ouvert. La carte ' + CARD + ' vous attend au fond. Ensemble.',
     pending: { L: 'Manivelle ♥ prête…', R: 'Manivelle ♠ prête…' },
   };
   CONFIG.cards.d4 = {
-    corner: '4\n♦',
-    big: '♦',
     title: TITLE,
     sub: 'Épreuve ♦ · réussie',
     lines: [
@@ -121,7 +121,7 @@
     const r = c.role;
     if (st === 1) {
       HUD.objective(TXT.r1[r]);
-      D4.screen.show('♦ 4', TITLE, '#ff9a3a');
+      D4.screen.show(CARD, TITLE, '#ff9a3a');
     }
     if (st === 2) {
       HUD.objective(TXT.r2[r]);
@@ -228,7 +228,7 @@
       City.mood({});
       c.fog(0.009);
       Sound.mood('calm');
-      HUD.visa('♦ 4 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);

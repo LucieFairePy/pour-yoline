@@ -1,4 +1,6 @@
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('d3');
   const T = CONFIG;
   const TITLE = 'Les Poids';
   const ME = 2; // what one astronaut weighs on the Veilleurs' scales
@@ -47,11 +49,9 @@
     wrong: 'Ce n’était pas elle. Le plafond remonte, les orbes se mélangent.',
     late: 'Le plafond est en bas. On recommence, les orbes se mélangent.',
     win: 'La plus lourde. Le cœur s’allume.',
-    card: 'La carte ♦ 3 est sur l’autel. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' est sur l’autel. Allez-y ensemble.',
   };
   CONFIG.cards.d3 = {
-    corner: '3\n♦',
-    big: '♦',
     title: TITLE,
     sub: 'Épreuve ♦ · réussie',
     lines: [
@@ -208,7 +208,7 @@
     const r = c.role;
     if (st === 1) {
       HUD.objective(TXT.r1[r]);
-      D3.screen.show('♦ 3', TITLE, '#ff9a3a');
+      D3.screen.show(CARD, TITLE, '#ff9a3a');
     }
     if (st === 2) {
       HUD.objective(TXT.r2[r]);
@@ -227,7 +227,7 @@
     }
     if (st === 4) {
       HUD.objective(TXT.card);
-      HUD.visa('♦ 3 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       HUD.say(TXT.win, T.master, 2600);
       Sound.mood('calm');
       Sound.play('reveal');
@@ -302,7 +302,7 @@
       City.mood({});
       c.fog(0.008);
       Sound.mood('calm');
-      HUD.visa('♦ 3 · ' + TITLE);
+      HUD.visa(CARD + ' · ' + TITLE);
       if (!first) {
         await sleep(300);
         fadeTo(false);
@@ -674,7 +674,7 @@
             const left = Math.max(0, CEIL_TIME - ((19 - local.ceil) / CEIL_DROP) * CEIL_TIME);
             const mm = Math.floor(left / 60);
             const ss = String(Math.floor(left % 60)).padStart(2, '0');
-            HUD.visa(`♦ 3 · Pesées ${r3.weighs} / 3 · Plafond ${mm}:${ss}`);
+            HUD.visa(`${CARD} · Pesées ${r3.weighs} / 3 · Plafond ${mm}:${ss}`);
             // spoken warnings, once each, on both screens (each one computes its own)
             [60, 30, 10].forEach((k) => {
               if (r3.state === 'run' && left <= k && left > k - 2 && local.warned !== k) {

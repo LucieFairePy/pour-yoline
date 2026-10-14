@@ -1,6 +1,8 @@
-// ♥ 4 · La Lanterne. One lantern for two: share the light, hand it over, leave it on a post so the
+// ♥ 5 · La Lanterne. One lantern for two: share the light, hand it over, leave it on a post so the
 // other can cross, walk back blind on the partner's voice, then kindle the Great Shadow's braziers.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('h4');
   const T = CONFIG;
   const TITLE = 'La Lanterne';
   const TXT = {
@@ -65,14 +67,12 @@
       dark: 'Il faut la lumière de la lanterne pour allumer un brasier.',
       win: 'La Grande Ombre se dissout. L’aube se lève sur la forêt.',
     },
-    card: 'La carte ♥ 4 descend au centre de la clairière. Allez-y ensemble.',
+    card: 'La carte ' + CARD + ' descend au centre de la clairière. Allez-y ensemble.',
     scared: 'Une ombre t’a touché{e}. Retour au dernier passage.',
     near: 'Une ombre approche. Rejoins la lumière.',
     scaredMate: 'Une ombre a touché {mate}.',
   };
   CONFIG.cards.h4 = {
-    corner: '4\n♥',
-    big: '♥',
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
@@ -377,8 +377,8 @@
       City.mood({ dark: 1 });
       c.fog(c.S.x.won ? 0.012 : 0.03);
       Sound.mood(c.S.x.stage >= 7 ? 'gold' : c.S.x.stage >= 6 ? 'tense' : 'dark');
-      HUD.visa('♥ 4 · ' + TITLE);
-      if (H4.screen) H4.screen.show(TITLE, '♥ 4 · une seule lumière pour deux', '#ffcf8a');
+      HUD.visa(CARD + ' · ' + TITLE);
+      if (H4.screen) H4.screen.show(TITLE, CARD + ' · une seule lumière pour deux', '#ffcf8a');
       if (!first) {
         await sleep(300);
         fadeTo(false);

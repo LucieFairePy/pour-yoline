@@ -1,4 +1,4 @@
-// ♦ 3 · Les Poids: the Veilleurs' observatory of weights. Two brass scales that only balance
+// ♦ 5 · Les Poids: the Veilleurs' observatory of weights. Two brass scales that only balance
 // when you share what you see, a counterweight lift over a shaft, and the great balance where
 // one orb out of nine is heavier, found in three weighings while the gear ceiling comes down.
 const D3 = (() => {
@@ -831,7 +831,7 @@ const D3 = (() => {
     ceiling.position.copy(P(0, F + 19, 99));
     group.add(ceiling);
     // the card, once the great balance is solved
-    card = LvKit.card('3', '♦', true);
+    card = LvKit.trialCard('d3', true);
     card.position.copy(P(0, F + 2.4, 112));
     group.add(card);
     LvKit.light(group, P(0, F + 12, 92), '#ffd9a8', 1.4, 30);

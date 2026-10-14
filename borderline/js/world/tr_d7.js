@@ -1,4 +1,4 @@
-// ♦ 7 · Le Temps. Inside an immense clock tower, above a void of clouds, four parts along +z:
+// ♦ 9 · Le Temps. Inside an immense clock tower, above a void of clouds, four parts along +z:
 //  1. Le Cadran: a horizontal clock face over the abyss. Its giant hands are the walkways; the
 //     crank (Valet) sets the time, the walker (Dame) rides the minute hand from niche to niche.
 //  2. L'Écho: record ten seconds of yourself, a golden echo replays it (plates, gates).
@@ -1907,7 +1907,7 @@ const TrD7 = (() => {
       S4.rings.push(r);
     }
     // the card and a heart galaxy for the end
-    S4.card = LvKit.card('7', '♦', true);
+    S4.card = LvKit.trialCard('d7', true);
     S4.card.position.copy(P(C4.x, C4.y + 2.2, C4.z));
     group.add(S4.card);
     S4.heart = Heart.galaxy(7000, 0.5, 77);

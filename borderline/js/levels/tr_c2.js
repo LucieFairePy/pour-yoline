@@ -1,16 +1,18 @@
-// ♣ 2 · Le Téléphone. Three rooms of asymmetric calls (see js/world/tr_c2.js for the places).
+// ♣ 4 · Le Téléphone. Three rooms of asymmetric calls (see js/world/tr_c2.js for the places).
 // Round 1 « Le Cadran »: the reader stands in the booth and reads the turning drum, the other
 // one dials it. Round 2 « Le Standard »: the reader sees the connections from the gallery, the
 // other carries the plugs. Round 3 « L'Appel »: back to back, the caller changes every call,
 // and the last button must be pressed by both at the same moment. A mistake only resets the
 // current call. Host-authoritative: every action goes through c.act, every effect through S.x.
 (() => {
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('c2');
   const T = CONFIG;
   const W = TrC2;
   const SYMS = W.SYMS;
   const TX = {
     title: 'Le Téléphone',
-    card: '♣ 2',
+    card: CARD,
     intro: 'Épreuve de communication. Les Veilleurs ont branché tous vos fils dans le même central.',
     r1: {
       dame: 'Le Cadran : entre dans la cabine vitrée. Le tambour fait défiler un numéro : lis-le à {mate}, symbole par symbole, à partir de l’étoile.',
@@ -24,7 +26,7 @@
     },
     r3: 'L’Appel : chacun sa console, dos à dos. Quand ton écran dit « Tu appelles », lis ta suite à {mate}. Quand il dit « Tu décroches », écoute et appuie dans l’ordre.',
     final: 'Dernier appel : montez chacun sur votre cœur, et appuyez (E) au même instant. Comptez ensemble.',
-    cardObj: 'Le combiné se décroche. La carte ♣ 2 descend : allez-y ensemble.',
+    cardObj: 'Le combiné se décroche. La carte ' + CARD + ' descend : allez-y ensemble.',
     calls: 'Appel',
     ring: ['Ça sonne ! Appel transmis.', 'Allô ? La ligne tient.', 'Connexion établie.'],
     alarm: [
@@ -40,8 +42,6 @@
     winAll: 'Les deux appels n’en font qu’un.',
   };
   CONFIG.cards.c2 = {
-    corner: '2\n♣',
-    big: '♣',
     title: 'Le Téléphone',
     sub: 'Épreuve ♣ · réussie',
     lines: [

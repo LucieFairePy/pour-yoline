@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.soleil;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('s3');
   const local = {
     stage: 0,
     n: -1,
@@ -72,7 +74,7 @@
       Sound.play('dollTurn', pos);
       Soleil.screen.show(A.turn, A.doll, '#ff2a5a');
     }
-    if (d.ph === 'sleep') Soleil.screen.show(A.card, A.win, '#ffcf8a');
+    if (d.ph === 'sleep') Soleil.screen.show(CARD, A.win, '#ffcf8a');
   };
 
   const caught = (c) => {
@@ -116,7 +118,7 @@
       City.mood({});
       c.fog(0.004);
       Sound.mood('tense');
-      HUD.visa(A.card + ' · ' + A.title);
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);
@@ -140,7 +142,7 @@
           Sound.play('reveal');
         }
         if (x.stage === 3) {
-          HUD.objective(T.portes.card.replace('♦ 9', A.card));
+          HUD.objective(T.portes.card.replace('{card}', CARD));
           HUD.say(A.win, T.master, 2600);
           Sound.play('card');
           HUD.danger(0);

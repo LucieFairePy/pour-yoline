@@ -26,35 +26,22 @@ const Lobby = (() => {
       const nDone = typeof progress === 'object' && progress.v >= 4 ? (progress.done || []).length : -1;
       const tr = typeof Trials !== 'undefined' && Trials.byPhase[ph];
       const where = tr
-        ? 'à ' + Cards.label(tr.card) + ' · ' + tr.title
+        ? 'à ' + Cards.tag(tr.card) + ' · ' + tr.title
         : ph === 'city' && nDone >= 0
           ? 'après ' + nDone + (nDone > 1 ? ' épreuves' : ' épreuve')
           : ph === 'final'
-          ? 'avant la Dame de Cœur'
+          ? 'avant le Oui'
           : ph === 'act5'
             ? 'aux Deux mondes'
             : ph === 'act3'
               ? 'à l’Heure dorée'
-              : {
-                  soleil: 'à ♠ 3',
-                  donjon: 'à ♠ 7',
-                  garde: 'à ♠ R',
-                  portes: 'à ♦ 9',
-                  balade: 'à ♥ 2',
-                  raid: 'à ♣ R',
-                }[ph] ||
-                [
-                  'après les retrouvailles',
-                  'après ♥ A',
-                  'après ♠ 3',
-                  'après ♣ 4',
-                  'après ♠ 7',
-                  'après ♠ R',
-                  'après ♦ 9',
-                  'après ♥ 2',
-                  'après ♣ R',
-                ][ch] ||
-                'en ville';
+              : // saves from before the plan: chapters in a fixed order
+                ch === 0
+                ? 'après les retrouvailles'
+                : (typeof Trials !== 'undefined' &&
+                    Trials.fromChapter(ch).length === ch &&
+                    'après ' + Cards.tag(Trials.byId[Trials.fromChapter(ch)[ch - 1]].card)) ||
+                  'en ville';
       $('resumeText').innerHTML = Icons.glyphs(
         'Partie sauvegardée : ' +
           where +

@@ -1,4 +1,4 @@
-// Small shared toolkit for the chapter worlds (♠ 3, ♠ 7, ♥ 2, ♣ R).
+// Small shared toolkit for the épreuve worlds.
 const LvKit = (() => {
   const glow = (c, k = 2) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
@@ -112,6 +112,12 @@ const LvKit = (() => {
     };
   };
 
+  // an épreuve's own card, from the plan (js/game/trials.js; read when the world is built)
+  const trialCard = (trialId, red) => {
+    const [rank, suit] = Cards.label(Cards.cardOf(trialId)).split(' ');
+    return card(rank, suit, red);
+  };
+
   const light = (group, pos, color, intensity, distance) => {
     const l = new THREE.PointLight(color, intensity, distance, 2);
     l.position.copy(pos);
@@ -119,5 +125,5 @@ const LvKit = (() => {
     return l;
   };
 
-  return { glow, tex, grain, card, builder, light };
+  return { glow, tex, grain, card, trialCard, builder, light };
 })();

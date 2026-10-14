@@ -214,7 +214,7 @@ const Portes = (() => {
     card = new THREE.Mesh(
       new THREE.PlaneGeometry(1.2, 1.7),
       new THREE.MeshBasicMaterial({
-        map: Tex.card('9', '♦'),
+        map: Cards.texOf(Cards.cardOf('d9')),
         alphaTest: 0.5,
         side: THREE.DoubleSide,
         toneMapped: false,

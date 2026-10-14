@@ -20,7 +20,7 @@
       City.mood({});
       c.fog(0.008);
       Sound.mood('tense');
-      HUD.visa('♛ · ' + F.title);
+      HUD.visa(Cards.tag('h1') + ' · ' + F.title);
       Finale.screen.show(F.place, F.title, '#ff5f8a');
       local.step = null;
       local.inside = -1;

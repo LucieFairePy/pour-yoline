@@ -1,6 +1,8 @@
 (() => {
   const T = CONFIG;
   const A = T.raid;
+  // this épreuve's card, from the plan (js/game/trials.js)
+  const CARD = Cards.tagOf('cR');
   // stages: 1 ascent · 2 Galerie des Sceaux · 3 enter the arena · 4 the Oracle · 5 victory
   // x.ms (milestones read by the card system): 1 = vault crossed, 2 = Oracle broken once
   const L = {
@@ -240,7 +242,7 @@
     const r = c.role;
     if (st === 1) {
       HUD.objective(A.climb[r]);
-      Raid.screen.show(A.card, A.title, '#7cf0c8');
+      Raid.screen.show(CARD, A.title, '#7cf0c8');
     }
     if (st === 2) {
       HUD.say(L.galerie, T.master, 3600);
@@ -259,11 +261,11 @@
     }
     if (st === 5) {
       HUD.boss(null);
-      HUD.objective(T.portes.card.replace('♦ 9', A.card));
+      HUD.objective(T.portes.card.replace('{card}', CARD));
       HUD.say(A.victory, T.master, 2800);
       Sound.mood('calm');
       Sound.play('card');
-      Raid.screen.show(A.card, 'Victoire', '#ffcf8a');
+      Raid.screen.show(CARD, 'Victoire', '#ffcf8a');
     }
   };
 
@@ -312,7 +314,7 @@
       local.abilLabel = lab.textContent;
       lab.textContent = 'Égide';
       Sound.mood('calm');
-      HUD.visa(A.card + ' · ' + A.title);
+      HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
         await sleep(300);
         fadeTo(false);

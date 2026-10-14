@@ -60,8 +60,14 @@ const HUD = (() => {
   const runQueue = async () => {
     if (typing) return;
     while (queue.length) {
-      const { who, text, hold } = queue.shift();
+      const { who, text, hold, wait } = queue.shift();
       typing = true;
+      // a silent beat (the chapter title card is on screen): the lines after it wait
+      if (wait) {
+        el.sub.hidden = true;
+        await sleep(wait);
+        continue;
+      }
       el.sub.hidden = false;
       put(el.subWho, who || '');
       el.subText.textContent = '';
@@ -96,6 +102,37 @@ const HUD = (() => {
     say(text, who = CONFIG.master, hold) {
       queue.push({ who: F(who), text: F(text), hold });
       runQueue();
+    },
+    pause(ms) {
+      queue.push({ wait: ms });
+      runQueue();
+    },
+    // the title card of a world (js/game/lore.js), over the start of its first épreuve
+    chapter(w, ms = 5200) {
+      const c = $('chapter');
+      put($('chapNum'), 'Monde ' + w.n);
+      put($('chapName'), w.name);
+      put($('chapSub'), w.sub);
+      put($('chapOutfit'), w.outfit);
+      put($('chapPower'), w.power || '');
+      $('chapPowerK').hidden = $('chapPower').hidden = !w.power;
+      c.classList.remove('out');
+      c.hidden = false;
+      c.querySelectorAll('.chapter-in > *').forEach((n) => {
+        n.style.animation = 'none';
+        void n.offsetWidth;
+        n.style.animation = '';
+      });
+      clearTimeout(c.t1);
+      clearTimeout(c.t2);
+      c.t1 = setTimeout(() => c.classList.add('out'), ms);
+      c.t2 = setTimeout(() => (c.hidden = true), ms + 900);
+    },
+    hideChapter() {
+      const c = $('chapter');
+      clearTimeout(c.t1);
+      clearTimeout(c.t2);
+      c.hidden = true;
     },
     get talking() {
       return !!typing || queue.length > 0;
