@@ -1,7 +1,8 @@
 const Benches = (() => {
   // every bench: seat top 0.5 m above its base, backrest behind (local -z), facing local +z
-  const SEAT_Z = -0.04;
-  const SIDE = 0.7;
+  // two seats close together, so a head can rest on the other's shoulder
+  const SEAT_Z = -0.16;
+  const SIDE = 0.42;
   let cur = null;
   let curSide = 1;
 

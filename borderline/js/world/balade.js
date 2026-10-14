@@ -240,13 +240,14 @@ const Balade = (() => {
     const g = new THREE.Group();
     const woodM = mats().wood;
     // seat top at 0.5 m like every bench (Benches seats the avatar at that height)
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 0.7), woodM);
-    seat.position.y = 0.44;
+    // shallow seat (front edge at +0.17) so the knees clear it, like the city benches
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 0.5), woodM);
+    seat.position.set(0, 0.44, -0.08);
     const back = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 0.1), woodM);
     back.position.set(0, 0.82, -0.36);
     [-1.3, 1.3].forEach((lx) => {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.38, 0.6), woodM);
-      leg.position.set(lx, 0.19, 0);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.38, 0.44), woodM);
+      leg.position.set(lx, 0.19, -0.1);
       g.add(leg);
     });
     g.add(seat, back);
@@ -254,7 +255,15 @@ const Balade = (() => {
     g.rotation.y = yaw;
     group.add(g);
     const along = Math.abs(Math.sin(yaw)) > 0.5;
-    K.collider(x, 0.25, z, along ? 0.8 : 3, 0.5, along ? 3 : 0.8, { tag: 'bench' });
+    K.collider(
+      x - Math.sin(yaw) * 0.1,
+      0.25,
+      z - Math.cos(yaw) * 0.1,
+      along ? 0.56 : 3,
+      0.5,
+      along ? 3 : 0.56,
+      { tag: 'bench' },
+    );
     const bx = x - Math.sin(yaw) * 0.36;
     const bz = z - Math.cos(yaw) * 0.36;
     K.collider(bx, 0.81, bz, along ? 0.12 : 3, 0.62, along ? 3 : 0.12, { tag: 'bench' });

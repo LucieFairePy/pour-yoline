@@ -100,6 +100,11 @@ const HQRig = (() => {
         const s = L.s;
         const Hp = V3(s * 0.11, -0.32, 0);
         const [d1, d2] = limbDir(s, l.p, l.a, l.k, 1);
+        // the body rolled sideways (leaning on someone): the legs turn back so the feet stay put
+        if (P.legRoll) {
+          d1.applyAxisAngle(Z, P.legRoll);
+          d2.applyAxisAngle(Z, P.legRoll);
+        }
         const K = Hp.clone().addScaledVector(d1, LEG.th);
         const An = K.clone().addScaledVector(d2, LEG.sh);
         HQ.limb(L.th, Hp, K, A.T.th);

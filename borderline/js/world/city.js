@@ -612,12 +612,13 @@ const City = (() => {
   const ironM = Tex.mat('metal', { color: '#2c2630', metal: 0.8, rough: 0.6, scale: 1 });
   const slatGeo = new THREE.BoxGeometry(3, 0.05, 0.16);
   const backSlatGeo = new THREE.BoxGeometry(3, 0.14, 0.04);
-  const legGeo = new THREE.BoxGeometry(0.08, 0.5, 0.7);
+  const legGeo = new THREE.BoxGeometry(0.08, 0.5, 0.5);
   const legBackGeo = new THREE.BoxGeometry(0.08, 0.6, 0.06);
   const benches = [];
+  // a shallow seat (3 slats, front edge at +0.17): the knees clear it and the shins drop in front
   const addBench = (x, y, z, yaw, group = R.scene) => {
     const g = new THREE.Group();
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       const sl = new THREE.Mesh(slatGeo, woodM);
       sl.position.set(0, 0.48, -0.27 + i * 0.18);
       g.add(sl);
@@ -630,7 +631,7 @@ const City = (() => {
     }
     for (const sx of [-1.3, 1.3]) {
       const leg = new THREE.Mesh(legGeo, ironM);
-      leg.position.set(sx, 0.22, -0.02);
+      leg.position.set(sx, 0.22, -0.11);
       const lb = new THREE.Mesh(legBackGeo, ironM);
       lb.position.set(sx, 0.75, -0.38);
       g.add(leg, lb);
@@ -639,7 +640,9 @@ const City = (() => {
     g.rotation.y = yaw;
     group.add(g);
     const along = Math.abs(Math.sin(yaw)) > 0.5;
-    Phys.box(x, y + 0.25, z, along ? 0.8 : 3, 0.5, along ? 3 : 0.8, { tag: 'bench' });
+    const sx0 = x - Math.sin(yaw) * 0.1;
+    const sz0 = z - Math.cos(yaw) * 0.1;
+    Phys.box(sx0, y + 0.25, sz0, along ? 0.56 : 3, 0.5, along ? 3 : 0.56, { tag: 'bench' });
     // backrest: you can lean on it, not walk through it
     const bx = x - Math.sin(yaw) * 0.38;
     const bz = z - Math.cos(yaw) * 0.38;

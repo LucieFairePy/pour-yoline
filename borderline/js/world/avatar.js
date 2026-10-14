@@ -410,6 +410,61 @@ const Avatar = (() => {
     let holdK = 0;
     let holdArm = 0;
     const holdLast = V3();
+    // Seated on a bench. William leans back, both arms along the backrest; Yoline sits with her
+    // hands in her lap and, when he is beside her, leans in with her head on his arm by his
+    // shoulder. Looks follow the person (role = look), not the kit of the épreuve.
+    let duo = 0;
+    let duoSide = 1;
+    const seated = (dt, s, k) => {
+      let pair = false;
+      if (k > 0.01 && typeof Player !== 'undefined' && Remote.has) {
+        const mine = Player.avatar && Player.avatar.root === root;
+        const op = mine ? Remote.pos : Player.body.p;
+        const om = mine ? Remote.state.mode : Player.mode;
+        const dx = op.x - root.position.x;
+        const dz = op.z - root.position.z;
+        if (om === 'sit' && Math.hypot(dx, dz) < 1.4 && Math.abs(op.y - root.position.y) < 0.6) {
+          pair = true;
+          // the partner on my +x (left) side or my -x side, in my own frame
+          const ry = root.rotation.y;
+          duoSide = dx * Math.cos(ry) - dz * Math.sin(ry) > 0 ? 1 : -1;
+        }
+      }
+      duo = damp(duo, pair ? 1 : 0, 3, dt);
+      hips.rotation.z = 0;
+      hips.position.x = 0;
+      pose.legRoll = 0;
+      if (k <= 0.01) return;
+      const arms = pose.arms;
+      if (role === 'valet') {
+        // back against the backrest, arms spread out and back along its top rail
+        hips.rotation.x += -0.3 * k;
+        arms.forEach((P) => {
+          P.p = lerp(P.p, -1.25, k);
+          P.a = lerp(P.a, 0.95, k);
+          P.e = lerp(P.e, 0.15, k);
+          P.g = lerp(P.g, 0.35, k);
+        });
+        pose.head.p = lerp(pose.head.p, 0.12, k);
+        pose.head.y = lerp(0, duoSide * 0.35, duo * k);
+      } else {
+        // hands resting in the lap
+        arms.forEach((P) => {
+          P.p = lerp(P.p, 0.42, k);
+          P.a = lerp(P.a, -0.08, k);
+          P.e = lerp(P.e, 1.3, k);
+          P.g = lerp(P.g, 0.4, k);
+        });
+        // leaning into him: hips slide toward him, the torso tips over, head on his arm
+        const d = duo * k;
+        hips.position.x = duoSide * 0.12 * d;
+        hips.rotation.z = -duoSide * 0.34 * d;
+        pose.legRoll = duoSide * 0.34 * d;
+        hips.rotation.x += 0.06 * d;
+        pose.head.p = lerp(pose.head.p, 0.1, d);
+        pose.head.y = duoSide * 0.25 * d;
+      }
+    };
 
     return {
       role,
@@ -485,6 +540,7 @@ const Avatar = (() => {
         });
         pose.head.p = o.headX;
         pose.head.y = 0;
+        seated(dt, s, o.sit);
         rig.apply(pose);
         spin.rotation.x = s.flip || 0;
         placeShadow(root, shadow, s);
@@ -708,10 +764,46 @@ const Avatar = (() => {
     Player.handPose = near;
     Remote.handPose = near;
     hold.on = near;
-    if (!near) return false;
+    if (!near) {
+      hold.rel = hold.my = null;
+      return false;
+    }
     if (Player.mode !== 'walk' || d < 1e-3) return true;
+    // Turning on the spot carries the other one round: where I stand is kept in the partner's
+    // frame, so when they spin while I stand still I orbit them, hand in hand. Whoever moves
+    // leads: my own steps just re-anchor that place.
+    const mine = Math.hypot(Player.body.v.x, Player.body.v.z);
+    const rs = Remote.state;
+    const theirs = rs && rs.speed ? rs.speed : 0;
+    const rel = Math.atan2(-dx, -dz) - Remote.yaw;
+    const turn = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+    const dM = hold.my == null ? 0 : turn(Player.yaw, hold.my);
+    // only the one being turned follows: if I walk or turn myself (or they walk), I lead and my
+    // place beside them is simply where I now stand
+    const leading = mine > 0.4 || theirs > 0.4 || Math.abs(dM) > 1e-4;
+    if (hold.rel == null || leading) {
+      hold.rel = rel;
+      hold.r = d;
+      hold.my = Player.yaw;
+      hold.ay = Remote.yaw;
+    } else if (Math.abs(turn(Remote.yaw, hold.ay)) < 0.03) {
+      // nobody has turned: stay put (two followers chasing each other's lag would drift away)
+      return true;
+    } else {
+      // (my own facing is left alone: turning it would read as me turning on their screen,
+      // and they would start following me back). The radius is the one I stood at, so while
+      // nobody turns the target is exactly where I am and two still players never push.
+      const a = Remote.yaw + hold.rel;
+      const tx = rp.x + Math.sin(a) * hold.r;
+      const tz = rp.z + Math.cos(a) * hold.r;
+      const k = Math.min(1, 6 * dt);
+      p.x += (tx - p.x) * k;
+      p.z += (tz - p.z) * k;
+      return true;
+    }
     const err = d - 1.05;
-    if (Math.abs(err) < 0.12) return true;
+    // standing still, the arm's length is the walker's business (or the follower's, above)
+    if (Math.abs(err) < 0.12 || mine < 0.4) return true;
     let nx = dx / d;
     let nz = dz / d;
     // only correct sideways while walking: the partner is drawn slightly in the past

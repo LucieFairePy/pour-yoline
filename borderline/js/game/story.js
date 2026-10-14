@@ -194,6 +194,11 @@ const Story = (() => {
   const enter = (ph, first) => {
     const prev = local.phase;
     if (prev && PH[prev] && PH[prev].exit) PH[prev].exit(ctx, ph);
+    // a phase never inherits held hands or a seat from the one before
+    Player.handPose = false;
+    Remote.handPose = false;
+    Avatar.hold.on = false;
+    if (Player.mode === 'sit') Player.mode = 'walk';
     setKit(ph, !first || SWAP.has(ph));
     local.phase = ph;
     HUD.prompt(null);

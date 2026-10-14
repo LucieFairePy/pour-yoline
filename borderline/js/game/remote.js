@@ -63,6 +63,9 @@ const Remote = (() => {
     role: null,
     handPose: false,
     pos,
+    get yaw() {
+      return yaw;
+    },
     get state() {
       return state;
     },
