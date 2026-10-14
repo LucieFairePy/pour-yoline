@@ -1380,7 +1380,11 @@ const D4 = (() => {
         sf.value = v;
         sf.win.material = numMat(v);
       }
-      sf.ang = damp(sf.ang, -((v - 1) / 9) * Math.PI * 2, 10, dt);
+      // number i sits at (i-1)/9 turn clockwise: rotating by +that brings x.dial[s] under the tick,
+      // the same value as the window above and the E prompt (shortest way round)
+      let dA = ((v - 1) / 9) * Math.PI * 2 - sf.ang;
+      dA = Math.atan2(Math.sin(dA), Math.cos(dA));
+      sf.ang += dA * Math.min(1, dt * 10);
       sf.shake = Math.max(0, sf.shake - dt);
       sf.dial.rotation.z = sf.ang + (sf.shake > 0 ? Math.sin(t * 60) * 0.05 : 0);
       sf.wheel.rotation.z = opened ? -sf.open * 2.4 : sf.shake > 0 ? Math.sin(t * 50) * 0.2 : 0;
