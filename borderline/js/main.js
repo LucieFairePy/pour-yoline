@@ -59,6 +59,7 @@ const Game = (() => {
         Combat.on ||
         (Story.role === 'dame' && Story.S && Story.S.phase === 'portes'),
       Player.lockTarget >= 0,
+      Combat.ads,
     );
 
     // 30 snapshots a second, stamped with our clock (the other side plays them back on our

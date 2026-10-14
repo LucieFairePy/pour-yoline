@@ -116,9 +116,10 @@ const HUD = (() => {
     status(t) {
       el.status.innerHTML = Icons.glyphs(t);
     },
-    crosshair(on, lock) {
+    crosshair(on, lock, ads) {
       el.cross.classList.toggle('on', on);
       el.cross.classList.toggle('lock', !!lock);
+      el.cross.classList.toggle('ads', !!ads);
     },
     danger(v) {
       el.vign.style.opacity = v;

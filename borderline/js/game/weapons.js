@@ -109,6 +109,9 @@ const Weapons = (() => {
       holder.add(m);
     });
     avatar.spin.add(holder);
+    // the detailed astronauts hold the rifle in both hands, on a mount the avatar poses itself
+    const mount = avatar.gunMount || null;
+    if (mount) mount.add(models.rifle);
     const hv = V3();
     let kind = null;
     let flashT = 0;
@@ -132,6 +135,13 @@ const Weapons = (() => {
         }
         holder.visible = !!k && avatar.root.visible;
         if (!k) return;
+        if (k === 'rifle' && mount) {
+          flashT -= dt;
+          const f = models.rifle.userData.flash;
+          f.visible = flashT > 0;
+          if (f.visible) f.rotation.z = Math.random() * 6;
+          return;
+        }
         avatar.root.updateMatrixWorld(true);
         avatar.hand(hv);
         avatar.spin.worldToLocal(hv);

@@ -492,6 +492,15 @@ kbd {
   box-shadow: 0 0 10px var(--wax-hot);
 }
 
+/* down the sights: a small bright dot inside a thin ring */
+.crosshair.ads {
+  background: #fff;
+  transform: scale(0.75);
+  box-shadow:
+    0 0 0 7px transparent,
+    0 0 0 8px rgba(255, 207, 138, 0.75);
+}
+
 .vign {
   position: absolute;
   inset: 0;

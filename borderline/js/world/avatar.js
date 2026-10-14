@@ -410,6 +410,38 @@ const Avatar = (() => {
     let holdK = 0;
     let holdArm = 0;
     const holdLast = V3();
+    // The rifle is held with both hands, mounted on the torso: low ready (muzzle down and across)
+    // or shouldered when aiming (pitched to the crosshair). The arms reach for it by IK, right
+    // hand on the grip, left hand under the handguard, so it never floats off one fist.
+    const gunMount = new THREE.Group();
+    rig.A.body.add(gunMount);
+    const GUN_S = 0.8;
+    const gunE = new THREE.Euler(0, 0, 0, 'YXZ');
+    let gunK = 0;
+    let gunAim = 0;
+    const holdGun = (dt, s) => {
+      gunK = damp(gunK, s.gun && s.mode !== 'sit' ? 1 : 0, 10, dt);
+      gunAim = damp(gunAim, s.gun && s.aim ? 1 : 0, 14, dt);
+      if (gunK < 0.01) return;
+      const a = gunAim;
+      gunMount.position.set(lerp(-0.12, -0.08, a), lerp(0.0, 0.31, a), lerp(0.25, 0.3, a));
+      gunE.set(lerp(0.55, s.pitch || 0, a), lerp(0.5, 0, a), lerp(-0.2, 0, a));
+      gunMount.quaternion.setFromEuler(gunE);
+      gunMount.scale.setScalar(GUN_S);
+      [
+        [1, 0, -0.02, 0, 0.9],
+        [0, 0, 0, 0.2, 0.85],
+      ].forEach(([arm, x, y, z, g]) => {
+        ikT.set(x, y, z).multiplyScalar(GUN_S).applyQuaternion(gunMount.quaternion);
+        ikT.add(gunMount.position);
+        rig.reach(arm, ikT, ik);
+        const P = pose.arms[arm];
+        P.p = lerp(P.p, ik.p, gunK);
+        P.a = lerp(P.a, ik.a, gunK);
+        P.e = lerp(P.e, Math.max(0.05, ik.e), gunK);
+        P.g = lerp(P.g, g, gunK);
+      });
+    };
     // Seated on a bench. William leans back, both arms along the backrest; Yoline sits with her
     // hands in her lap and, when he is beside her, leans in with her head on his arm by his
     // shoulder. Looks follow the person (role = look), not the kit of the épreuve.
@@ -474,6 +506,7 @@ const Avatar = (() => {
       glow,
       hq: true,
       rig,
+      gunMount,
       ghost: ghostable(root),
       hand(out = V3()) {
         return rig.handWorld(0, out);
@@ -527,6 +560,7 @@ const Avatar = (() => {
           P.e = lerp(P.e, Math.max(0.05, ik.e), holdK);
           P.g = lerp(P.g, 0.92, holdK);
         }
+        holdGun(dt, s);
         rig.A.legs.forEach((Lg, k) => {
           const l = o.legs[legOf[k]];
           const P = pose.legs[k];

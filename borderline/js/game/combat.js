@@ -81,6 +81,13 @@ const Combat = (() => {
   const shoot = () => {
     const cam = R.camera;
     fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    // from the hip the shots scatter a little; down the sights they go where the dot is
+    if (!C.ads) {
+      fwd.x += (Math.random() - 0.5) * 0.045;
+      fwd.y += (Math.random() - 0.5) * 0.045;
+      fwd.z += (Math.random() - 0.5) * 0.045;
+      fwd.normalize();
+    }
     const hit = Enemies.raycast(cam.position, fwd, 80);
     const from = Player.weapon.muzzle(handV).clone();
     const to = hit
@@ -200,12 +207,23 @@ const Combat = (() => {
         C.downT = (C.downT || 0) + dt;
         if (C.downT > 3) C.revived();
       } else C.downT = 0;
-      if (!C.on) return null;
+      const gun = C.on && Story.role === 'dame';
+      Input.gunHand = gun;
+      if (!C.on) {
+        C.ads = false;
+        return null;
+      }
       C.atkCd -= dt;
       C.cloakCd = Math.max(0, C.cloakCd - dt);
       C.cloak = Math.max(0, C.cloak - dt);
       C.punch = Math.max(0, C.punch - dt);
       C.aim = Math.max(0, C.aim - dt);
+      // right mouse held: rifle to the shoulder, camera over the shoulder, body turns with the view
+      C.ads = gun && !C.down && Input.held('aim') && Player.mode === 'walk';
+      if (C.ads) {
+        C.aim = Math.max(C.aim, 0.12);
+        Player.yaw = Cam.yaw;
+      }
       if (C.aim > 0) {
         // barrel follows the crosshair: from the shoulder to the point the camera looks at
         const cam = R.camera;

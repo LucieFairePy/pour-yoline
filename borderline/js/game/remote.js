@@ -218,7 +218,8 @@ const Remote = (() => {
       avatar.root.position.copy(pos);
       avatar.root.rotation.y = yaw;
       const gy = Phys.groundAt(pos.x, pos.y + 0.1, pos.z);
-      avatar.update(dt, { ...state, groundY: gy, hand: this.handPose }, t);
+      const gun = Combat.on && this.role === 'dame';
+      avatar.update(dt, { ...state, groundY: gy, hand: this.handPose, gun }, t);
       this.weapon.update(
         dt,
         Combat.on ? (this.role === 'dame' ? 'rifle' : 'sword') : null,

@@ -19,7 +19,11 @@ const Input = (() => {
     pause: { k: ['Escape'], b: [9] },
     deck: { k: ['KeyP', 'Tab'], b: [8] },
     ping: { k: ['KeyG'], b: [12] },
+    // aim down the sights: right mouse / left trigger, only while a rifle is in hand (gunHand)
+    aim: { k: [], m: [2], b: [6] },
   };
+  // with a rifle in hand the right mouse button aims; the ability stays on F / RB
+  let gunHand = false;
 
   addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -54,9 +58,10 @@ const Input = (() => {
     for (const a in MAP) {
       const m = MAP[a];
       let v = sim.held.has(a);
-      if (enabled) {
+      const rmb = (a === 'aim' && gunHand) || (a !== 'aim' && !(a === 'ability' && gunHand));
+      if (enabled && (a !== 'aim' || gunHand)) {
         v = v || m.k.some((k) => keys.has(k));
-        if (m.m) v = v || m.m.some((b) => mouse.has(b));
+        if (m.m && rmb) v = v || m.m.some((b) => mouse.has(b));
         if (pad) v = v || m.b.some((b) => pad.buttons[b] && pad.buttons[b].pressed);
       }
       prev[a] = now[a];
@@ -80,6 +85,12 @@ const Input = (() => {
       return enabled;
     },
     sim,
+    set gunHand(v) {
+      gunHand = !!v;
+    },
+    get gunHand() {
+      return gunHand;
+    },
     rawPad(buttons) {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       for (const p of pads)

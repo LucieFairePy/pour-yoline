@@ -228,6 +228,7 @@ const Player = (() => {
         hand: P.handPose,
         flip: P.flip,
         punch: P.punch || 0,
+        gun: Combat.on && P.role === 'dame',
         aim: Combat.on && P.role === 'dame' && Combat.aim > 0,
         pitch: Combat.pitch || 0,
       },

@@ -21,7 +21,7 @@ const Cam = (() => {
     );
     C.sideK = damp(
       C.sideK || 0.55,
-      typeof Combat !== 'undefined' && Combat.on ? 1.05 : 0.55,
+      typeof Combat !== 'undefined' && Combat.on ? (Combat.ads ? 1.3 : 1.05) : 0.55,
       4,
       dt || 1,
     );
@@ -54,7 +54,15 @@ const Cam = (() => {
       C.yaw -= l.x;
       C.pitch = clamp(C.pitch + l.y, -0.95, 1.2);
     }
-    C.dist = damp(C.dist, sprinting ? 6.1 : 5.4, 3, dt);
+    // aiming down the sights: closer over the shoulder, narrower field of view
+    const ads = typeof Combat !== 'undefined' && Combat.ads;
+    C.adsK = damp(C.adsK || 0, ads ? 1 : 0, 10, dt);
+    C.dist = damp(C.dist, ads ? 2.7 : sprinting ? 6.1 : 5.4, ads ? 12 : 3, dt);
+    const fov = 62 - 20 * C.adsK;
+    if (Math.abs(cam.fov - fov) > 0.01) {
+      cam.fov = fov;
+      cam.updateProjectionMatrix();
+    }
     pivot.x = damp(pivot.x, p.x, 18, dt);
     pivot.z = damp(pivot.z, p.z, 18, dt);
     pivot.y = damp(pivot.y, p.y + 1.55, 10, dt);
