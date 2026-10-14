@@ -963,6 +963,7 @@ const D4 = (() => {
       tg.position.set(1.35, r - 0.62, 0.66);
       const tgRing = new THREE.Mesh(new THREE.RingGeometry(0.58, 0.68, 40), glow('#ffcf8a', 1.1));
       tg.add(tgRing);
+      tg.userData.halo = tgRing;
       const tgBack = new THREE.Mesh(discGeo, enamel);
       tgBack.position.z = -0.01;
       tg.add(tgBack);
@@ -1475,7 +1476,8 @@ const D4 = (() => {
     lever.pivot.rotation.x = -0.6 + lever.pulled * 1.2;
     // vault door
     rings.forEach((rg, i) => {
-      const want = -(((x.ring && x.ring[i]) || 0) * Math.PI) / 2;
+      // suit k sits at angle k/4 turn: rotating by +ring quarters brings SUITS[ring] under the arrow
+      const want = (((x.ring && x.ring[i]) || 0) * Math.PI) / 2;
       let da = want - rg.ang;
       da = Math.atan2(Math.sin(da), Math.cos(da));
       rg.ang += da * Math.min(1, dt * 5);
@@ -1488,6 +1490,13 @@ const D4 = (() => {
         tg.material = suitPlate(SUITS[x.target[i]], 1.05).clone();
       }
       if (tg.visible) tg.material.opacity = 0.9 + Math.sin(t * 3 + i) * 0.1;
+      if (tg.visible) {
+        const okR = x.ring && x.ring[i] === x.target[i];
+        if (tg.userData.ok !== okR) {
+          tg.userData.ok = okR;
+          tg.userData.halo.material.color.set(okR ? '#5dff9a' : '#ffcf8a').multiplyScalar(okR ? 1.4 : 1.1);
+        }
+      }
     });
     const opening = x.stage >= 4 ? 1 : 0;
     D4.openK = damp(D4.openK || 0, opening, 0.7, dt);

@@ -43,6 +43,7 @@
     sweptMate: 'Le rayon a renversé {mate}.',
     timeout: 'Le verrou horaire se referme. Les couronnes se brouillent.',
     aligned: 'Les trois couronnes sont alignées. Les verrous sautent.',
+    ringOk: ['Couronne I en place.', 'Couronne II en place.', 'Couronne III en place.'],
     card: 'Le caveau est ouvert. La carte ♦ 4 vous attend au fond. Ensemble.',
     pending: { L: 'Manivelle ♥ prête…', R: 'Manivelle ♠ prête…' },
   };
@@ -411,6 +412,11 @@
           both(c, 'ring', D4.P(0, 7, 130).toArray());
           const vents = D4.vents();
           both(c, 'steam', vents[(Math.random() * vents.length) | 0].toArray());
+          const okNow = ring[d.ring] === x.target[d.ring];
+          if (okNow && !ring.every((v, i) => v === x.target[i])) {
+            say(c, TXT.ringOk[d.ring], 1800);
+            both(c, 'good', D4.P(0, 7, 130).toArray());
+          }
           if (ring.every((v, i) => v === x.target[i])) {
             say(c, TXT.aligned, 3000);
             both(c, 'bolt', D4.P(0, 7, 130).toArray());
