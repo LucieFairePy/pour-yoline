@@ -14,6 +14,8 @@ const HUD = (() => {
     subText: $('subText'),
     partner: $('partner'),
     pDist: $('partnerDist'),
+    goal: $('goal'),
+    goalDist: $('goalDist'),
     status: $('status'),
     cross: $('crosshair'),
     vign: $('vign'),
@@ -122,12 +124,19 @@ const HUD = (() => {
       el.vign.style.opacity = v;
     },
     partner(pos, cam, show, label) {
+      this.marker(el.partner, el.pDist, pos, cam, show, label, 2.3);
+    },
+    // where to go next in the city (the lit door or the memory): same marker, gold
+    goal(pos, cam, show, label) {
+      this.marker(el.goal, el.goalDist, pos, cam, show, label, 3);
+    },
+    marker(node, text, pos, cam, show, label, lift) {
       if (!show) {
-        el.partner.classList.remove('on');
+        node.classList.remove('on');
         return;
       }
       proj.copy(pos);
-      proj.y += 2.3;
+      proj.y += lift;
       proj.project(cam);
       const behind = proj.z > 1;
       let x = proj.x;
@@ -144,12 +153,18 @@ const HUD = (() => {
       }
       const sx = ((x + 1) / 2) * innerWidth;
       const sy = ((1 - y) / 2) * innerHeight;
-      el.partner.style.left = sx + 'px';
-      el.partner.style.top = sy + 'px';
-      const arrow = el.partner.firstElementChild;
+      node.style.left = sx + 'px';
+      node.style.top = sy + 'px';
+      const arrow = node.firstElementChild;
       arrow.style.transform = off ? `rotate(${Math.atan2(x, y)}rad)` : 'rotate(180deg)';
-      el.pDist.textContent = label;
-      el.partner.classList.add('on');
+      text.textContent = label;
+      node.classList.add('on');
+    },
+    // a ping: the goal marker swells for a moment
+    pingGoal() {
+      el.goal.classList.remove('ping');
+      void el.goal.offsetWidth;
+      el.goal.classList.add('ping');
     },
     card(corner, big, title, sub) {
       put($('cardCorner'), corner);

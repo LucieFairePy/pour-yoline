@@ -18,6 +18,7 @@ const Input = (() => {
     call: { k: ['KeyC'], b: [3] },
     pause: { k: ['Escape'], b: [9] },
     deck: { k: ['KeyP', 'Tab'], b: [8] },
+    ping: { k: ['KeyG'], b: [12] },
   };
 
   addEventListener('keydown', (e) => {

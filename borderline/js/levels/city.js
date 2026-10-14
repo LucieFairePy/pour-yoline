@@ -167,6 +167,27 @@
     update(c) {
       const p = Player.body.p;
       const place = placeNow(c);
+      // where to go: the memory to look at first, else the lit door. Always marked on screen;
+      // G pings it (beam of light + ring + sound) for when you have lost your way.
+      const t = nextTrial(c);
+      let goal = null;
+      let label = '';
+      let col = '#ffcf8a';
+      if (place && City.places[place].shown && !seen.has(place)) {
+        goal = City.places[place].entry;
+        label = 'SOUVENIR';
+      } else if (t) {
+        goal = City.doors[doorOf(t)].entry;
+        label = 'PORTE ' + labelOf(t);
+        col = colorOf(t);
+      }
+      const far = goal && Math.hypot(goal.x - p.x, goal.z - p.z);
+      HUD.goal(goal, R.camera, !!goal && far > 6, goal ? label + ' · ' + Math.round(far) + ' m' : '');
+      if (goal && Input.pressed('ping')) {
+        City.ping(goal, col);
+        HUD.pingGoal();
+        Sound.play('beacon', goal.clone().add(V3(0, 1.6, 0)), c.role);
+      }
       if (
         place &&
         City.places[place].shown &&

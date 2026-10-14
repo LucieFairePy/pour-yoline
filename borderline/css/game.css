@@ -380,6 +380,28 @@ kbd {
   filter: drop-shadow(0 0 6px rgba(242, 196, 204, 0.8));
 }
 
+.partner.goal {
+  color: #ffd99a;
+}
+
+.partner.goal .arrow {
+  border-bottom-color: #ffcf8a;
+  filter: drop-shadow(0 0 8px rgba(255, 207, 138, 0.9));
+}
+
+.partner.goal.ping {
+  animation: goal-ping 1.2s ease-out;
+}
+
+@keyframes goal-ping {
+  0% {
+    transform: translate(-50%, -50%) scale(2.2);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 .prompt {
   position: absolute;
   left: 50%;

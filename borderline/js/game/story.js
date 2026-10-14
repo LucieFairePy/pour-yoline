@@ -202,6 +202,7 @@ const Story = (() => {
     setKit(ph, !first || SWAP.has(ph));
     local.phase = ph;
     HUD.prompt(null);
+    HUD.goal(null, null, false);
     HUD.danger(0);
     Cam.focus = null;
     if (PH[ph] && PH[ph].enter) PH[ph].enter(ctx, first, prev);

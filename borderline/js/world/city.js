@@ -736,23 +736,98 @@ const City = (() => {
   const glowMat = (c, k = 1.6) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
 
+  // A door of the Borderland: a stone arch, two studded oak leaves that swing open when the
+  // door is lit, and behind them the Veilleurs' rift in the colour of the card. The street side
+  // is local -x.
+  const doorStone = Tex.mat('stone', { color: '#8a7f86', scale: 1.4, bump: 0.8 });
+  const doorWood = Tex.mat('wood', { color: '#5a3424', scale: 2.2, bump: 0.7 });
+  const doorIron = Tex.mat('metal', { color: '#2a2428', metal: 0.85, rough: 0.45, scale: 1 });
+  const riftMat = (color) =>
+    new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uOn: { value: 0 }, uCol: { value: new THREE.Color(color) } },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uOn;
+        uniform vec3 uCol;
+        varying vec2 vUv;
+        float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float n(vec2 p) {
+          vec2 i = floor(p), f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
+        }
+        void main() {
+          vec2 p = (vUv - vec2(0.5, 0.45)) * vec2(1.0, 1.25);
+          float r = length(p);
+          float a = atan(p.y, p.x);
+          float sw = a + r * 6.0 - uTime * 1.3;
+          float v = n(vec2(sw * 1.6, r * 7.0 - uTime * 0.8)) * 0.6 + n(vec2(sw * 3.4, r * 15.0)) * 0.4;
+          float core = smoothstep(0.55, 0.0, r);
+          vec3 c = mix(vec3(0.02, 0.0, 0.05), uCol * 0.75, v * (0.35 + core * 0.65));
+          c += vec3(1.0, 0.9, 0.95) * pow(core, 3.0) * 0.35;
+          gl_FragColor = vec4(c * (0.25 + uOn * 0.75), 1.0);
+        }`,
+    });
+
   const makeDoor = (pos, rotY, txt, sub, color, entry) => {
     const g = new THREE.Group();
+    // thin neon trim inside the arch: it pulses in the card's colour when the door is lit
     const frame = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), toneMapped: false });
-    [
-      [0, 4.1, 0, 0.3, 0.3, 4.2],
-      [0, 2, -2, 0.3, 4.2, 0.3],
-      [0, 2, 2, 0.3, 4.2, 0.3],
-    ].forEach(([x, y, z, sx, sy, sz]) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), frame);
+    const box = (sx, sy, sz, mat, x, y, z) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
       m.position.set(x, y, z);
+      m.castShadow = m.receiveShadow = true;
       g.add(m);
+      return m;
+    };
+    // stone jambs with a plinth and a capital, a lintel and a keystone, two worn steps
+    [-2.15, 2.15].forEach((z) => {
+      box(0.62, 4.3, 0.62, doorStone, 0, 2.15, z);
+      box(0.78, 0.32, 0.78, doorStone, 0, 0.16, z);
+      box(0.76, 0.24, 0.76, doorStone, 0, 4.36, z);
     });
-    const fill = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.7, 4).rotateY(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.9 }),
-    );
-    fill.position.set(-0.05, 2, 0);
+    box(0.7, 0.62, 5.0, doorStone, 0, 4.78, 0);
+    box(0.78, 0.86, 0.7, doorStone, -0.04, 4.86, 0);
+    box(1.3, 0.14, 4.6, doorStone, -0.75, 0.07, 0);
+    box(0.7, 0.12, 4.2, doorStone, -1.6, 0.06, 0);
+    box(0.06, 0.08, 3.62, frame, -0.33, 4.4, 0);
+    [-1.84, 1.84].forEach((z) => box(0.06, 4.3, 0.08, frame, -0.33, 2.2, z));
+    // the rift behind the leaves
+    const rift = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.3).rotateY(-Math.PI / 2), riftMat(color));
+    // just in front of the facade (local x = 0 is 0.1 m out from the wall)
+    rift.position.set(-0.03, 2.18, 0);
+    g.add(rift);
+    // two oak leaves on hinges at the jambs, planks, iron bands and studs, a ring handle each
+    const leaves = [-1, 1].map((s) => {
+      const hinge = new THREE.Group();
+      hinge.position.set(-0.05, 0, s * 1.82);
+      const leaf = new THREE.Group();
+      leaf.position.z = -s * 0.9;
+      hinge.add(leaf);
+      const add = (geo, mat, x, y, z) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.castShadow = m.receiveShadow = true;
+        leaf.add(m);
+      };
+      for (let i = 0; i < 4; i++)
+        add(new THREE.BoxGeometry(0.12, 4.28, 0.44), doorWood, 0, 2.18, -0.66 + i * 0.44);
+      [0.7, 2.2, 3.7].forEach((y) => {
+        add(new THREE.BoxGeometry(0.15, 0.13, 1.8), doorIron, -0.01, y, 0);
+        for (let i = 0; i < 5; i++)
+          add(new THREE.SphereGeometry(0.035, 6, 4), doorIron, -0.09, y, -0.72 + i * 0.36);
+      });
+      add(new THREE.TorusGeometry(0.13, 0.025, 6, 16).rotateY(Math.PI / 2), doorIron, -0.12, 2.0, -s * 0.66);
+      g.add(hinge);
+      return { hinge, s };
+    });
+    const fill = rift;
     const sign = new THREE.Mesh(
       new THREE.PlaneGeometry(5, 2.5).rotateY(-Math.PI / 2),
       new THREE.MeshBasicMaterial({
@@ -763,15 +838,15 @@ const City = (() => {
         depthWrite: false,
       }),
     );
-    sign.position.set(-0.2, 6, 0);
-    g.add(fill, sign);
+    sign.position.set(-0.2, 6.6, 0);
+    g.add(sign);
     g.position.copy(pos);
     g.rotation.y = rotY;
     R.scene.add(g);
-    [-2, 2].forEach((lz) =>
-      Phys.box(pos.x + lz * Math.sin(rotY), 2.1, pos.z + lz * Math.cos(rotY), 0.34, 4.2, 0.34),
+    [-2.15, 2.15].forEach((lz) =>
+      Phys.box(pos.x + lz * Math.sin(rotY), 2.15, pos.z + lz * Math.cos(rotY), 0.62, 4.3, 0.62),
     );
-    return { frame, fill, sign, color: new THREE.Color(color), on: 0, target: 0, entry };
+    return { frame, fill, sign, leaves, color: new THREE.Color(color), on: 0, target: 0, entry };
   };
 
   const doors = {
@@ -896,6 +971,43 @@ const City = (() => {
     R.scene.add(m);
     pillars.push(m);
     return m;
+  };
+
+  // the ping (G): a beam of light over where to go, and a ring that runs out along the ground
+  const pingBeam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.35, 1.1, 80, 16, 1, true).translate(0, 40, 0),
+    new THREE.MeshBasicMaterial({
+      color: '#ffcf8a',
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  const pingRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.85, 1, 48).rotateX(-Math.PI / 2),
+    pingBeam.material.clone(),
+  );
+  pingBeam.visible = pingRing.visible = false;
+  R.scene.add(pingBeam, pingRing);
+  let pingT = 1;
+  const ping = (pos, color) => {
+    pingBeam.position.copy(pos);
+    pingRing.position.set(pos.x, pos.y + 0.06, pos.z);
+    const col = new THREE.Color(color || '#ffcf8a').multiplyScalar(0.8);
+    pingBeam.material.color.copy(col);
+    pingRing.material.color.copy(col);
+    pingT = 0;
+  };
+  const pingTick = (dt) => {
+    pingT = Math.min(1, pingT + dt / 3.5);
+    const k = 1 - pingT;
+    pingBeam.visible = pingRing.visible = k > 0.001;
+    pingBeam.material.opacity = Math.min(1, pingT * 8) * k * 0.55;
+    pingRing.scale.setScalar(1 + pingT * 14);
+    pingRing.material.opacity = k * 0.8;
   };
 
   const places = {};
@@ -2002,6 +2114,7 @@ const City = (() => {
     },
     doorSlots,
     addDoor,
+    ping,
     showPlace(id, instant) {
       const pl = places[id];
       if (!pl || pl.shown) return;
@@ -2023,13 +2136,17 @@ const City = (() => {
     update(t, dt) {
       ground.material.uniforms.uTime.value = t;
       liftTick(dt);
+      pingTick(dt);
       bigCard.rotation.y = t * 0.6;
       bigCard.position.y = 5.5 + Math.sin(t * 0.9) * 0.3;
       Object.values(doors).forEach((d) => {
         d.on = damp(d.on, d.target, 3, dt);
         d.frame.color.copy(d.color).multiplyScalar(0.15 + d.on * (2 + Math.sin(t * 3) * 0.6));
         d.sign.material.opacity = d.on;
-        d.fill.material.opacity = 0.9 - d.on * 0.3;
+        // the lit door swings open on its rift (leaves open inward, away from the street)
+        d.leaves.forEach((lf) => (lf.hinge.rotation.y = lf.s * d.on * 1.45));
+        d.fill.material.uniforms.uTime.value = t;
+        d.fill.material.uniforms.uOn.value = d.on;
       });
       Object.values(places).forEach((pl) => {
         if (pl.t >= 0 && pl.t < 1) {
