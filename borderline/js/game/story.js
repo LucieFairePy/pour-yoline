@@ -219,6 +219,11 @@ const Story = (() => {
   const enter = (ph, first) => {
     const prev = local.phase;
     if (prev && PH[prev] && PH[prev].exit) PH[prev].exit(ctx, ph);
+    // a level that names its world (def.world) unloads it once another phase is entered, unless
+    // that phase plays in the same world (the Cour's tables); the city always stays. The shared
+    // state S is not touched: entering again builds the world anew (js/world/LIFECYCLE.md)
+    const was = prev && PH[prev] && PH[prev].world;
+    if (was && was !== (PH[ph] && PH[ph].world)) Life.unload(was);
     // the last lines of a level don't spill into the next one (the reward keeps its win line)
     if (prev && ph !== 'reward') HUD.hush();
     // a phase never inherits held hands or a seat from the one before

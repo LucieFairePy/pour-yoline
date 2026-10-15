@@ -1123,6 +1123,8 @@ const Tex = (() => {
   const external = (kind, albedo, data, mul = 1, nrm = 0) => {
     const T = cache.get(kind) || build(kind);
     [albedo, data].forEach((t) => {
+      // now the kind's own maps, shared like them (a level may bind the same scan for itself)
+      Life.keep(t);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.anisotropy = R_ANISO();
       t.needsUpdate = true;
