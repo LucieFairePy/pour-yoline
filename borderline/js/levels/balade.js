@@ -3,6 +3,8 @@
   const A = T.balade;
   // this épreuve's card, from the plan (js/game/trials.js)
   const CARD = Cards.tagOf('h2');
+  // host only: when each one last asked for the hand / let go (clock times stay out of the shared state)
+  let tap = { req: {}, rel: {} };
   const local = {
     stage: 0,
     signs: new Set(),
@@ -45,9 +47,10 @@
   };
 
   Story.register('balade', {
-    init: () => ({ stage: 1, hand: false, req: {}, lan: {}, rel: {}, released: false }),
+    init: () => ({ stage: 1, hand: false, lan: {}, released: false }),
     voice: () => 1,
     async enter(c, first) {
+      tap = { req: {}, rel: {} };
       if (!first) await fadeTo(true);
       Balade.build();
       if (!local.benchAdded) {
@@ -123,13 +126,13 @@
       if (d.a === 'hand') {
         const now = performance.now();
         if (x.hand) return c.set((s) => (s.x.hand = false));
-        x.req[who] = now;
-        if (x.req[o] && now - x.req[o] < 2500) c.set((s) => (s.x.hand = true));
+        tap.req[who] = now;
+        if (tap.req[o] && now - tap.req[o] < 2500) c.set((s) => (s.x.hand = true));
       }
       if (d.a === 'lan' && x.stage === 2 && !x.lan[who]) c.set((s) => (s.x.lan[who] = true));
       if (d.a === 'release' && x.stage === 3) {
-        x.rel[who] = performance.now();
-        if (x.rel[o] && performance.now() - x.rel[o] < 3000)
+        tap.rel[who] = performance.now();
+        if (tap.rel[o] && performance.now() - tap.rel[o] < 3000)
           c.set((s) => {
             s.x.released = true;
             s.x.stage = 4;

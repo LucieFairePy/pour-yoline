@@ -4,6 +4,8 @@
   // this épreuve's card, from the plan (js/game/trials.js)
   const CARD = Cards.tagOf('s7');
   const local = { stage: 0, phase: 0, dark: false, win: 0, wipe: 0, plates: 0 };
+  // host only: when each one last touched the chest (clock times stay out of the shared state)
+  let chestAt = {};
 
   const players = (c) =>
     ['dame', 'valet'].map((who) => {
@@ -103,7 +105,7 @@
   };
 
   Story.register('donjon', {
-    init: () => ({ stage: 1, plates: [], open: {} }),
+    init: () => ({ stage: 1, plates: [] }),
     voice: () => 1,
     net: {
       dwipe: (c) => {
@@ -113,6 +115,7 @@
       },
     },
     async enter(c, first) {
+      chestAt = {};
       if (!first) await fadeTo(true);
       Donjon.build();
       Enemies.clear();
@@ -228,9 +231,9 @@
         else c.send('revived');
       }
       if (d.a === 'chest' && x.stage === 12) {
-        x.open[who] = performance.now();
+        chestAt[who] = performance.now();
         const o = who === 'dame' ? 'valet' : 'dame';
-        if (x.open[o] && performance.now() - x.open[o] < 3000) c.set((s) => (s.x.stage = 13));
+        if (chestAt[o] && performance.now() - chestAt[o] < 3000) c.set((s) => (s.x.stage = 13));
       }
     },
     update(c, dt, t) {
