@@ -193,6 +193,8 @@ const TrS1 = (() => {
     group.add(g);
     const b = K.collider(x, -0.35, zc, 3.2, 0.7, sz);
     b.on = false;
+    // an unseen lid over the gap: walking under it is free, a long double jump across is not
+    K.collider(x, 3.8, zc, 3.6, 0.4, sz - 1, { tag: 'nocam' });
     ghosts[id] = { id, g, body, edges, solidM, top, b, k: 0, on: false, x, zc, sz, lane, col: SUIT_COL[suitKey] };
   };
   const pad = (id, lane, z, suitKey) => {

@@ -186,7 +186,8 @@
         const warn = [];
         W.GHOSTS.forEach(([gid, , , , pid]) => {
           const held = pressed.includes(pid);
-          const occupied = qs.some((q) => W.onGhost(q, gid));
+          // standing on a slab keeps it, but only a plate lights it (flying over it does not)
+          const occupied = (local.grace[gid] || 0) > 0 && qs.some((q) => W.onGhost(q, gid));
           // grace: a slab lingers 1.4 s after its plate is released, and while someone is on it
           if (held || occupied) local.grace[gid] = held ? 1.4 : Math.max(local.grace[gid] || 0, 0.6);
           else local.grace[gid] = (local.grace[gid] || 0) - dt;
