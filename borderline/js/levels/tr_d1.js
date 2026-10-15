@@ -30,7 +30,7 @@
     r3seenMate: 'Le Gardien a vu {mate}. Il remonte l’horloge.',
     r3wrong: 'Mauvais levier. Le Gardien remonte l’horloge.',
     r3late: 'Trop tard. L’aiguille a fait le tour.',
-    r3round: ['Premier tour : trois symboles.', 'Deuxième tour : quatre symboles.', 'Dernier tour : cinq symboles.'],
+    r3round: ['Premier tour : trois symboles.', 'Deuxième tour : encore trois symboles.', 'Dernier tour : quatre symboles.'],
     r3floor: 'Au sol, la lumière du Gardien vous voit. Sur les plateformes, vous êtes à l’abri.',
     r3win: 'L’horloge s’arrête. Le cœur s’ouvre.',
     card: 'La carte ' + CARD + ' est apparue au pied de l’horloge. Allez-y ensemble.',
@@ -45,8 +45,8 @@
     ],
   };
   const NAMES = { rouge: 'rouge', bleu: 'bleu', or: 'or', vert: 'vert', blanc: 'blanc' };
-  const ROUNDS = [3, 4, 5];
-  const STEP = [12, 10, 9];
+  const ROUNDS = [3, 3, 4];
+  const STEP = [15, 13, 12];
   const SIDE_OF = { L: 'dame', R: 'valet' };
   // per-run state, rebuilt on every enter()
   const fresh = () => ({ stage: 0, gAng: 0, gTarget: 0, slam: 0, hand: 0, gT: 0, pulled: {}, msgCd: 0 });
