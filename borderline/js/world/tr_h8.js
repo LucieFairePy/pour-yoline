@@ -959,6 +959,8 @@ const H8 = (() => {
         uniforms: U,
         transparent: true,
         depthWrite: false,
+        // the streaks face the camera with their back side
+        side: THREE.DoubleSide,
         vertexShader: `
           attribute vec4 aSeed;
           uniform float uTime;
