@@ -390,6 +390,9 @@
         if (local.an) share = 0;
         else if (local.heavy) share = M.heavy ? 0.5 : M.an ? 1 : 0;
         else if (M.an || M.heavy) share = 1;
+        // feet planted (standing still, not jumping): a partner who merely walks away cannot
+        // drag you along or up a wall; only an anchor (reeling) or a ballast moves you
+        else if (b.grounded && Math.hypot(Input.move().x, Input.move().z) < 0.05 && !Input.held('jump')) share = 0;
         else if (!b.grounded && mateG) share = 1;
         else if (b.grounded && !mateG) share = 0.12;
         else share = 0.5;
