@@ -157,24 +157,98 @@ const HQ = (() => {
   const rubber = new THREE.MeshStandardMaterial({ color: 0x1a171e, roughness: 0.85, metalness: 0 });
 
   const sph = (r, ws = 64, hs = 48) => new THREE.SphereGeometry(r, ws, hs);
-  const cyl = new THREE.CylinderGeometry(1, 1, 1, 40, 1);
 
-  const limbGeo = (() => {
-    const pts = [];
-    for (let i = 0; i <= 128; i++) {
-      const y = -0.5 + i / 128,
-        a = Math.abs(y);
-      let r = 1 + 0.07 * Math.cos(y * Math.PI) - 0.05 * (y + 0.5);
-      if (a > 0.3)
-        r +=
-          0.09 *
-          Math.pow(Math.max(0, Math.sin((a - 0.3) * Math.PI * 22)), 1.5) *
-          Math.min(1, (a - 0.3) * 9);
-      if (a > 0.47) r *= 1 - (a - 0.47) * 6;
-      pts.push(new THREE.Vector2(r, y));
+  // Resolution of a build. detail 1 = the film's astronauts (intro, cinematic close-ups), every
+  // segment count as authored. A number < 1 scales every count; 'game' is the in-game avatar:
+  // counts picked per part so the suit reads the same from the game cameras (third person,
+  // aiming, a partner a few metres away) at a tenth of the triangles. Silhouettes (helmet,
+  // torso, limbs) keep the most; small, round or hidden parts (fingers, studs, the balls inside
+  // the elbows and knees) keep the least. The fine relief is left to the suit's shading.
+  const GAME = {
+    limb: 'fold',
+    limbR: 16,
+    torso: 0.3,
+    torsoR: 0.4,
+    shoulder: 0.38,
+    helmet: 0.38,
+    visor: 0.22,
+    ring: 0.3,
+    ringT: 0.32,
+    small: 0.33,
+    ball: 0.22,
+    pillow: 0.3,
+    finger: 0.25,
+    fingerP: 0.34,
+    tube: 0.4,
+    bevel: 0.35,
+  };
+  const resOf = (detail = 1) => {
+    // ('game', or an object overriding some of GAME's counts)
+    const D =
+      typeof detail === 'number'
+        ? { k: detail }
+        : Object.assign({ k: 0.3 }, GAME, typeof detail === 'object' ? detail : null);
+    const n = (seg, part, min = 3) =>
+      D.k === 1 && typeof detail === 'number'
+        ? seg
+        : Math.max(min, Math.round(seg * (typeof D[part] === 'number' ? D[part] : D.k)));
+    n.D = D;
+    return n;
+  };
+
+  // limb profile: a slight taper, the accordion bellows near both joints, the ends tucked in
+  const limbR = (y) => {
+    const a = Math.abs(y);
+    let r = 1 + 0.07 * Math.cos(y * Math.PI) - 0.05 * (y + 0.5);
+    if (a > 0.3)
+      r +=
+        0.09 *
+        Math.pow(Math.max(0, Math.sin((a - 0.3) * Math.PI * 22)), 1.5) *
+        Math.min(1, (a - 0.3) * 9);
+    if (a > 0.47) r *= 1 - (a - 0.47) * 6;
+    return r;
+  };
+  // heights where the light limb is sampled: each bellows fold gets its start, flanks, crest and
+  // end (they are 1/22 of the limb long), the creased middle one ring per 1/27 of the limb
+  const foldYs = () => {
+    const ys = new Set();
+    const add = (y) => ys.add(+y.toFixed(5));
+    for (let i = 0; i <= 16; i++) add(-0.3 + (0.6 * i) / 16);
+    [-1, 1].forEach((s) => {
+      for (let b = 0; b < 3; b++)
+        [0, 0.25, 0.5, 0.75, 1].forEach((f) => {
+          const a = 0.3 + (2 * b + f) / 22;
+          if (a < 0.5) add(s * a);
+        });
+      [0.47, 0.485, 0.5].forEach((a) => add(s * a));
+    });
+    return [...ys].sort((p, q) => p - q);
+  };
+  // A lathe's first and last columns are the same points with their own normals: at the film's
+  // density the two hardly differ, on a light mesh they would draw a hard seam down the limb.
+  const weldSeam = (g, segs, npts) => {
+    const nn = g.attributes.normal;
+    const v = new THREE.Vector3();
+    for (let j = 0; j < npts; j++) {
+      const a = j;
+      const b = segs * npts + j;
+      v.set(nn.getX(a) + nn.getX(b), nn.getY(a) + nn.getY(b), nn.getZ(a) + nn.getZ(b)).normalize();
+      nn.setXYZ(a, v.x, v.y, v.z);
+      nn.setXYZ(b, v.x, v.y, v.z);
     }
+  };
+  const limbCache = {};
+  const limbGeo = (res) => {
+    const D = res.D;
+    const fold = D.limb === 'fold';
+    const hs = fold ? 0 : res(128, 'limb', 8);
+    const rs = fold ? D.limbR : res(72, 'limb', 6);
+    const key = hs + '/' + rs;
+    if (limbCache[key]) return limbCache[key];
+    const ys = fold ? foldYs() : Array.from({ length: hs + 1 }, (_, i) => -0.5 + i / hs);
+    const pts = ys.map((y) => new THREE.Vector2(limbR(y), y));
 
-    const g = new THREE.LatheGeometry(pts, 72),
+    const g = new THREE.LatheGeometry(pts, rs),
       pp = g.attributes.position,
       v = new THREE.Vector3();
     for (let i = 0; i < pp.count; i++) {
@@ -192,8 +266,9 @@ const HQ = (() => {
       pp.setXYZ(i, v.x * k, y, v.z * k);
     }
     g.computeVertexNormals();
-    return g;
-  })();
+    if (rs < 72) weldSeam(g, rs, pts.length);
+    return (limbCache[key] = g);
+  };
   function limb(mesh, a, b, r) {
     const d = new THREE.Vector3().subVectors(b, a),
       L = d.length();
@@ -201,7 +276,7 @@ const HQ = (() => {
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
     mesh.scale.set(r, L, r);
   }
-  const roundBox = (w, h, d, r) => {
+  const roundBox = (w, h, d, r, bevelSegments = 6, curveSegments = 10) => {
     const s = new THREE.Shape(),
       x = -w / 2,
       y = -h / 2;
@@ -219,8 +294,8 @@ const HQ = (() => {
       bevelEnabled: true,
       bevelThickness: r / 2,
       bevelSize: r / 2,
-      bevelSegments: 6,
-      curveSegments: 10,
+      bevelSegments,
+      curveSegments,
     });
     g.translate(0, 0, -(d - r) / 2);
     return g;
@@ -260,45 +335,51 @@ const HQ = (() => {
     return g;
   }
 
-  function phalanx(L, r0, r1) {
-    const key = [L, r0, r1].map((v) => v.toFixed(4)).join();
+  function phalanx(L, r0, r1, n) {
+    const cap = n(8, 'fingerP', 3),
+      mid = n(10, 'fingerP', 2),
+      rad = n(24, 'finger', 6);
+    const key = [L, r0, r1].map((v) => v.toFixed(4)).join() + '/' + [cap, mid, rad];
     if (phCache[key]) return phCache[key];
     const pts = [];
-    for (let i = 0; i <= 8; i++) {
-      const a = -Math.PI / 2 + ((i / 8) * Math.PI) / 2;
+    for (let i = 0; i <= cap; i++) {
+      const a = -Math.PI / 2 + ((i / cap) * Math.PI) / 2;
       pts.push(new THREE.Vector2(Math.max(1e-4, Math.cos(a) * r0), Math.sin(a) * r0 * 0.9));
     }
-    for (let i = 1; i < 10; i++) {
-      const t = i / 10,
+    for (let i = 1; i < mid; i++) {
+      const t = i / mid,
         r = r0 + (r1 - r0) * t;
       pts.push(new THREE.Vector2(r * (1 + 0.05 * Math.sin(t * Math.PI)), L * t));
     }
-    for (let i = 0; i <= 8; i++) {
-      const a = ((i / 8) * Math.PI) / 2;
+    for (let i = 0; i <= cap; i++) {
+      const a = ((i / cap) * Math.PI) / 2;
       pts.push(new THREE.Vector2(Math.max(1e-4, Math.cos(a) * r1), L + Math.sin(a) * r1 * 0.95));
     }
-    return (phCache[key] = new THREE.LatheGeometry(pts, 24));
+    return (phCache[key] = new THREE.LatheGeometry(pts, rad));
   }
   function glove(mat, curl = 0.9, flip = 1, opts = {}) {
+    const n = opts.res || resOf(1);
+    const pw = n(40, 'pillow', 8);
+    const ball = (a, b) => sph(1, n(a, 'ball', 6), n(b, 'ball', 4));
     const g = new THREE.Group();
-    const palm = new THREE.Mesh(pillow(0.074, 0.074, 0.029, 3.2), mat);
+    const palm = new THREE.Mesh(pillow(0.074, 0.074, 0.029, 3.2, pw), mat);
     palm.position.y = 0.045;
     g.add(palm);
-    const thenar = new THREE.Mesh(sph(1, 32, 24), mat);
+    const thenar = new THREE.Mesh(ball(32, 24), mat);
     thenar.position.set(-0.02 * flip, 0.028, 0.006);
     thenar.scale.set(0.016, 0.022, 0.009);
     g.add(thenar);
-    const hypo = new THREE.Mesh(sph(1, 32, 24), mat);
+    const hypo = new THREE.Mesh(ball(32, 24), mat);
     hypo.position.set(0.023 * flip, 0.034, 0.005);
     hypo.scale.set(0.012, 0.022, 0.008);
     g.add(hypo);
-    const pad = new THREE.Mesh(pillow(0.05, 0.028, 0.006, 3), gloveGrip);
+    const pad = new THREE.Mesh(pillow(0.05, 0.028, 0.006, 3, pw), gloveGrip);
     pad.position.set(0.004 * flip, 0.06, 0.0125);
     g.add(pad);
-    const back = new THREE.Mesh(pillow(0.06, 0.052, 0.009, 2.6), mat);
+    const back = new THREE.Mesh(pillow(0.06, 0.052, 0.009, 2.6, pw), mat);
     back.position.set(0, 0.048, -0.0115);
     g.add(back);
-    const guard = new THREE.Mesh(pillow(0.07, 0.015, 0.014, 2.8), mat);
+    const guard = new THREE.Mesh(pillow(0.07, 0.015, 0.014, 2.8, pw), mat);
     guard.position.set(0, 0.078, -0.008);
     g.add(guard);
     const fingers = [];
@@ -311,7 +392,7 @@ const HQ = (() => {
     const BASEY = [0.08, 0.082, 0.081, 0.077],
       RAD = [0.0086, 0.009, 0.0087, 0.0078];
     for (let k = 0; k < 4; k++) {
-      const dome = new THREE.Mesh(sph(1, 20, 14), mat);
+      const dome = new THREE.Mesh(sph(1, n(20, 'small', 6), n(14, 'small', 4)), mat);
       dome.position.set((k - 1.5) * 0.0182 * flip, BASEY[k] - 0.004, -0.014);
       dome.scale.set(0.0075, 0.006, 0.0055);
       g.add(dome);
@@ -327,11 +408,11 @@ const HQ = (() => {
         parent.add(j);
         const r0 = RAD[k] * (1 - s * 0.08),
           r1 = RAD[k] * (1 - (s + 1) * 0.08);
-        const bone = new THREE.Mesh(phalanx(L, r0, r1), mat);
+        const bone = new THREE.Mesh(phalanx(L, r0, r1, n), mat);
         bone.scale.z = 0.86;
         j.add(bone);
         if (s === 2) {
-          const cap = new THREE.Mesh(phalanx(L * 0.42, r1 * 1.06, r1 * 1.04), gloveGrip);
+          const cap = new THREE.Mesh(phalanx(L * 0.42, r1 * 1.06, r1 * 1.04, n), gloveGrip);
           cap.position.y = L * 0.62;
           cap.scale.z = 0.88;
           j.add(cap);
@@ -345,38 +426,38 @@ const HQ = (() => {
     th0.position.set(-0.029 * flip, 0.024, 0.009);
     th0.rotation.set(0.55, -0.45 * flip, 0.55 * flip);
     g.add(th0);
-    const meta = new THREE.Mesh(phalanx(0.022, 0.0125, 0.0108), mat);
+    const meta = new THREE.Mesh(phalanx(0.022, 0.0125, 0.0108, n), mat);
     meta.scale.z = 0.85;
     th0.add(meta);
     const th1 = new THREE.Group();
     th1.position.y = 0.022;
     th0.add(th1);
-    th1.add(new THREE.Mesh(phalanx(0.022, 0.0106, 0.0098), mat));
+    th1.add(new THREE.Mesh(phalanx(0.022, 0.0106, 0.0098, n), mat));
     const th2 = new THREE.Group();
     th2.position.y = 0.022;
     th1.add(th2);
-    th2.add(new THREE.Mesh(phalanx(0.018, 0.0097, 0.0088), mat));
-    const tcap = new THREE.Mesh(phalanx(0.008, 0.0094, 0.009), gloveGrip);
+    th2.add(new THREE.Mesh(phalanx(0.018, 0.0097, 0.0088, n), mat));
+    const tcap = new THREE.Mesh(phalanx(0.008, 0.0094, 0.009, n), gloveGrip);
     tcap.position.y = 0.011;
     th2.add(tcap);
 
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.0062, 18, 64), chromeMat);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.0062, n(18, 'ringT'), n(64, 'ring', 12)), chromeMat);
     ring.rotation.x = Math.PI / 2;
     ring.scale.set(1, 0.66, 1);
     ring.position.y = 0.002;
     g.add(ring);
-    const lock = new THREE.Mesh(new THREE.TorusGeometry(0.0425, 0.0042, 14, 64), dark);
+    const lock = new THREE.Mesh(new THREE.TorusGeometry(0.0425, 0.0042, n(14, 'ringT'), n(64, 'ring', 12)), dark);
     lock.rotation.x = Math.PI / 2;
     lock.scale.set(1, 0.66, 1);
     lock.position.y = -0.009;
     g.add(lock);
-    const gaunt = new THREE.Mesh(new THREE.CylinderGeometry(0.041, 0.045, 0.05, 48, 2, false), mat);
+    const gaunt = new THREE.Mesh(new THREE.CylinderGeometry(0.041, 0.045, 0.05, n(48, 'ring', 12), 2, false), mat);
     gaunt.scale.z = 0.7;
     gaunt.position.y = -0.035;
     g.add(gaunt);
     if (opts.checklist) {
       const cl = new THREE.Mesh(
-        roundBox(0.05, 0.036, 0.008, 0.003),
+        roundBox(0.05, 0.036, 0.008, 0.003, n(6, 'bevel', 1), n(10, 'bevel', 2)),
         new THREE.MeshStandardMaterial({
           roughness: 0.7,
           map: canvasTex(256, 192, (x, w, h) => {
@@ -439,8 +520,14 @@ const HQ = (() => {
     accent = '#0c9455',
     accentDark = '#0b5e38',
     patchText = 'Y + MOI',
+    detail = 1,
   }) {
     const F = feminine;
+    const n = resOf(detail);
+    const rb = (w, h, d, r) => roundBox(w, h, d, r, n(6, 'bevel', 1), n(10, 'bevel', 2));
+    const small = (seg, min = 4) => n(seg, 'small', min);
+    const ring = (r, t, ts, rs, arc) =>
+      new THREE.TorusGeometry(r, t, n(ts, 'ringT', 4), n(rs, 'ring', 8), arc);
     const g = new THREE.Group(),
       body = new THREE.Group();
     g.add(body);
@@ -493,7 +580,8 @@ const HQ = (() => {
           ]
     ).map(([r, y]) => new THREE.Vector2(r, y));
 
-    const tGeo = new THREE.LatheGeometry(new THREE.SplineCurve(prof).getPoints(200), 144),
+    const tR = n(144, 'torsoR', 24);
+    const tGeo = new THREE.LatheGeometry(new THREE.SplineCurve(prof).getPoints(n(200, 'torso', 40)), tR),
       tp = tGeo.attributes.position,
       tv = new THREE.Vector3();
     for (let i = 0; i < tp.count; i++) {
@@ -513,18 +601,20 @@ const HQ = (() => {
           Math.exp(-Math.pow(Math.abs(fx) - 0.072, 2) / 0.0035 - Math.pow(y - 0.15, 2) / 0.0045);
       } else k += Math.max(0, Math.cos(a)) * 0.05 * Math.exp(-Math.pow(y - 0.2, 2) / 0.01);
       const waist = Math.exp(-Math.pow((y - (F ? -0.04 : -0.12)) / 0.09, 2));
-      k += waist * (0.014 * Math.sin(a * 9 + y * 40) + 0.008 * Math.sin(a * 17 - y * 25));
+      // (a lighter shell has too few columns for the finest crease: it would alias, so it goes)
+      k += waist * (0.014 * Math.sin(a * 9 + y * 40) + (tR >= 68 ? 0.008 * Math.sin(a * 17 - y * 25) : 0));
       k += ax * Math.exp(-Math.pow((y - 0.2) / 0.07, 2)) * 0.01 * Math.sin(y * 70 + a * 3);
       tp.setXYZ(i, tv.x * k, y, tv.z * k);
     }
     tGeo.computeVertexNormals();
+    if (tR < 144) weldSeam(tGeo, tR, tp.count / (tR + 1));
     const torso = add(tGeo, suit, 0, 0, 0, 1, 1, 0.78);
     const wy = F ? -0.06 : -0.15,
       wr = F ? 0.166 : 0.205;
-    add(new THREE.TorusGeometry(wr, 0.014, 24, 160), chromeMat, 0, wy, 0, 1, 1, 0.78).rotation.x =
+    add(ring(wr, 0.014, 24, 160), chromeMat, 0, wy, 0, 1, 1, 0.78).rotation.x =
       Math.PI / 2;
     add(
-      new THREE.TorusGeometry(wr - 0.006, 0.006, 12, 160),
+      ring(wr - 0.006, 0.006, 12, 160),
       dark,
       0,
       wy + 0.02,
@@ -535,12 +625,12 @@ const HQ = (() => {
     ).rotation.x = Math.PI / 2;
     const shX = F ? 0.232 : 0.27;
     [-1, 1].forEach((s) =>
-      add(sph(1), suit, s * shX, 0.3, 0, F ? 0.094 : 0.115, F ? 0.084 : 0.1, F ? 0.094 : 0.11),
+      add(sph(1, n(64, 'shoulder', 12), n(48, 'shoulder', 8)), suit, s * shX, 0.3, 0, F ? 0.094 : 0.115, F ? 0.084 : 0.1, F ? 0.094 : 0.11),
     );
     const nr = F ? 0.185 : 0.205;
-    add(new THREE.TorusGeometry(nr, 0.03, 28, 160), chromeMat, 0, 0.43, 0, 1, 1, 0.9).rotation.x =
+    add(ring(nr, 0.03, 28, 160), chromeMat, 0, 0.43, 0, 1, 1, 0.9).rotation.x =
       Math.PI / 2;
-    add(new THREE.TorusGeometry(nr, 0.011, 16, 160), gold, 0, 0.455, 0, 1, 1, 0.9).rotation.x =
+    add(ring(nr, 0.011, 16, 160), gold, 0, 0.455, 0, 1, 1, 0.9).rotation.x =
       Math.PI / 2;
 
     const dcm = new THREE.Group();
@@ -548,7 +638,7 @@ const HQ = (() => {
     dcm.rotation.x = -0.12;
     dcm.scale.setScalar(F ? 0.82 : 1);
     body.add(dcm);
-    dcm.add(new THREE.Mesh(roundBox(0.2, 0.12, 0.05, 0.018), white));
+    dcm.add(new THREE.Mesh(rb(0.2, 0.12, 0.05, 0.018), white));
     const scr = new THREE.Mesh(
       new THREE.PlaneGeometry(0.08, 0.04),
       new THREE.MeshBasicMaterial({
@@ -573,7 +663,7 @@ const HQ = (() => {
       [0.075, -0.012, 0x7aa8ff],
     ].forEach(([x, y, c]) => {
       const b = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.009, 0.009, 0.008, 24),
+        new THREE.CylinderGeometry(0.009, 0.009, 0.008, small(24)),
         new THREE.MeshStandardMaterial({
           color: c,
           emissive: c,
@@ -585,7 +675,7 @@ const HQ = (() => {
       b.position.set(x, y, 0.03);
       dcm.add(b);
     });
-    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.02, 32), chromeMat);
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.02, small(32)), chromeMat);
     knob.rotation.x = Math.PI / 2;
     knob.position.set(-0.035, -0.035, 0.03);
     dcm.add(knob);
@@ -612,7 +702,7 @@ const HQ = (() => {
     tag.rotation.set(-0.32, 0.3, 0);
     body.add(tag);
     const patch = new THREE.Mesh(
-      new THREE.CircleGeometry(0.045, 64),
+      new THREE.CircleGeometry(0.045, small(64, 12)),
       new THREE.MeshStandardMaterial({
         roughness: 0.75,
         transparent: true,
@@ -641,13 +731,13 @@ const HQ = (() => {
     body.add(patch);
 
     const pack = add(
-      roundBox(F ? 0.34 : 0.38, F ? 0.46 : 0.5, F ? 0.16 : 0.17, 0.04),
+      rb(F ? 0.34 : 0.38, F ? 0.46 : 0.5, F ? 0.16 : 0.17, 0.04),
       white,
       0,
       0.07,
       F ? -0.25 : -0.27,
     );
-    add(roundBox(F ? 0.28 : 0.32, 0.1, 0.02, 0.01), dark, 0, 0.25, -0.18).position.z = F
+    add(rb(F ? 0.28 : 0.32, 0.1, 0.02, 0.01), dark, 0, 0.25, -0.18).position.z = F
       ? -0.33
       : -0.355;
     for (let i = 0; i < 6; i++)
@@ -666,24 +756,24 @@ const HQ = (() => {
         new THREE.Vector3(s * 0.24 * k, F ? -0.02 : 0.05, 0.17 * k),
         new THREE.Vector3(s * 0.1 * k, F ? 0.01 : 0.1, F ? 0.19 : 0.23),
       ]);
-      body.add(new THREE.Mesh(new THREE.TubeGeometry(c, 72, 0.016, 18), cloth));
+      body.add(new THREE.Mesh(new THREE.TubeGeometry(c, n(72, 'tube', 12), 0.016, n(18, 'tube', 6)), cloth));
       for (let q = 1; q < 14; q++) {
         const p = c.getPoint(q / 14),
           tn = c.getTangent(q / 14);
-        const r = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.004, 10, 28), chromeMat);
+        const r = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.004, small(10, 3), small(28, 8)), chromeMat);
         r.position.copy(p);
         r.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tn);
         body.add(r);
       }
     });
     const nozL = add(
-        new THREE.CylinderGeometry(0.04, 0.062, 0.1, 40),
+        new THREE.CylinderGeometry(0.04, 0.062, 0.1, small(40, 10)),
         chromeMat,
         -0.1,
         -0.22,
         -0.29,
       ),
-      nozR = add(new THREE.CylinderGeometry(0.04, 0.062, 0.1, 40), chromeMat, 0.1, -0.22, -0.29);
+      nozR = add(new THREE.CylinderGeometry(0.04, 0.062, 0.1, small(40, 10)), chromeMat, 0.1, -0.22, -0.29);
     const flameMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -709,7 +799,7 @@ const HQ = (() => {
     `,
     });
     const flames = [nozL, nozR].map((n) => {
-      const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.5, 32, 1, true), flameMat);
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.5, small(32), 1, true), flameMat);
       f.rotation.x = Math.PI;
       f.position.set(n.position.x, n.position.y - 0.3, n.position.z);
       body.add(f);
@@ -731,16 +821,16 @@ const HQ = (() => {
         bevelEnabled: true,
         bevelThickness: 0.02,
         bevelSize: 0.018,
-        bevelSegments: 10,
-        curveSegments: 28,
+        bevelSegments: n(10, 'bevel', 2),
+        curveSegments: n(28, 'bevel', 6),
       });
       geo.translate(0, 0, -0.05);
       geo.rotateY(-Math.PI / 2);
       return geo;
     })();
     const legs = [-1, 1].map((s) => {
-      const th = add(limbGeo, suit, 0, 0, 0),
-        sh = add(limbGeo, suit, 0, 0, 0);
+      const th = add(limbGeo(n), suit, 0, 0, 0),
+        sh = add(limbGeo(n), suit, 0, 0, 0);
       const boot = new THREE.Group();
       boot.scale.setScalar(F ? 0.86 : 1);
       body.add(boot);
@@ -753,28 +843,28 @@ const HQ = (() => {
         l.position.set(0, -0.094, -0.06 + q * 0.034);
         boot.add(l);
       }
-      const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.012, 16, 56), chromeMat);
+      const cuff = new THREE.Mesh(ring(0.062, 0.012, 16, 56), chromeMat);
       cuff.rotation.x = Math.PI / 2;
       cuff.position.y = 0.075;
       boot.add(cuff);
-      const knee = add(sph(1), suit, 0, 0, 0, T.th * 1.12, T.th * 1.02, T.th * 1.12);
-      const kneePad = add(roundBox(0.07, 0.06, 0.02, 0.008), cloth, 0, 0, 0);
+      const knee = add(sph(1, n(64, 'ball', 8), n(48, 'ball', 6)), suit, 0, 0, 0, T.th * 1.12, T.th * 1.02, T.th * 1.12);
+      const kneePad = add(rb(0.07, 0.06, 0.02, 0.008), cloth, 0, 0, 0);
       kneePad.scale.setScalar(F ? 0.85 : 1);
       return { s, th, sh, boot, knee, kneePad };
     });
 
     const armR = {
-      up: add(limbGeo, suit, 0, 0, 0),
-      lo: add(limbGeo, suit, 0, 0, 0),
-      hand: glove(cloth, 0.5, -1),
+      up: add(limbGeo(n), suit, 0, 0, 0),
+      lo: add(limbGeo(n), suit, 0, 0, 0),
+      hand: glove(cloth, 0.5, -1, { res: n }),
       r1: T.ua,
       r2: T.la,
       hs: F ? 0.9 : 1,
     };
     const armL = {
-      up: add(limbGeo, suit, 0, 0, 0),
-      lo: add(limbGeo, suit, 0, 0, 0),
-      hand: glove(cloth, F ? 1.2 : 0.5, 1, { checklist: true }),
+      up: add(limbGeo(n), suit, 0, 0, 0),
+      lo: add(limbGeo(n), suit, 0, 0, 0),
+      hand: glove(cloth, F ? 1.2 : 0.5, 1, { checklist: true, res: n }),
       r1: T.ua,
       r2: T.la,
       hs: F ? 0.9 : 1,
@@ -782,11 +872,11 @@ const HQ = (() => {
     body.add(armR.hand);
     body.add(armL.hand);
     [armR, armL].forEach((a) => {
-      a.elbow = add(sph(1), suit, 0, 0, 0, T.la * 1.08, T.la * 1.08, T.la * 1.08);
+      a.elbow = add(sph(1, n(64, 'ball', 8), n(48, 'ball', 6)), suit, 0, 0, 0, T.la * 1.08, T.la * 1.08, T.la * 1.08);
     });
 
-    const brgGeo = new THREE.TorusGeometry(1, 0.13, 16, 72).rotateX(Math.PI / 2),
-      lockGeo = new THREE.TorusGeometry(1, 0.09, 12, 72).rotateX(Math.PI / 2);
+    const brgGeo = ring(1, 0.13, 16, 72).rotateX(Math.PI / 2),
+      lockGeo = ring(1, 0.09, 12, 72).rotateX(Math.PI / 2);
     [armR, armL].forEach((a) => {
       a.brg = add(brgGeo, chromeMat, 0, 0, 0);
       a.brg2 = add(lockGeo, dark, 0, 0, 0);
@@ -800,10 +890,18 @@ const HQ = (() => {
     helmet.position.set(0, 0.66, 0);
     helmet.scale.setScalar(F ? 0.96 : 1);
     body.add(helmet);
-    add(sph(0.27, 128, 96), white, 0, 0, 0, 1, 1, 1, helmet);
+    add(sph(0.27, n(128, 'helmet', 24), n(96, 'helmet', 16)), white, 0, 0, 0, 1, 1, 1, helmet);
     helmet.add(
       new THREE.Mesh(
-        new THREE.SphereGeometry(0.2745, 128, 96, Math.PI / 2 - 1.05, 2.1, 0.76, 1.44),
+        new THREE.SphereGeometry(
+          0.2745,
+          n(128, 'visor', 12),
+          n(96, 'visor', 8),
+          Math.PI / 2 - 1.05,
+          2.1,
+          0.76,
+          1.44,
+        ),
         rubber,
       ),
     );
@@ -819,19 +917,27 @@ const HQ = (() => {
     );
     helmet.add(
       new THREE.Mesh(
-        new THREE.SphereGeometry(0.279, 160, 120, Math.PI / 2 - 1.0, 2.0, 0.8, 1.36),
+        new THREE.SphereGeometry(
+          0.279,
+          n(160, 'visor', 12),
+          n(120, 'visor', 8),
+          Math.PI / 2 - 1.0,
+          2.0,
+          0.8,
+          1.36,
+        ),
         visorMat,
       ),
     );
     const rimG = new THREE.Mesh(
-      new THREE.TorusGeometry(0.282, 0.016, 24, 180, Math.PI * 1.22),
+      ring(0.282, 0.016, 24, 180, Math.PI * 1.22),
       chromeMat,
     );
     rimG.position.set(0, -0.015, 0.015);
     rimG.rotation.set(0, 0, -Math.PI * 0.11);
     helmet.add(rimG);
     add(
-      new THREE.TorusGeometry(0.272, 0.012, 20, 180),
+      ring(0.272, 0.012, 20, 180),
       gold,
       0,
       -0.17,
@@ -847,13 +953,13 @@ const HQ = (() => {
       lamp.position.set(s * 0.245, 0.1, 0.07);
       lamp.rotation.z = s * -0.3;
       helmet.add(lamp);
-      lamp.add(new THREE.Mesh(roundBox(0.05, 0.04, 0.06, 0.012), chromeMat));
-      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.014, 32), lampMat);
+      lamp.add(new THREE.Mesh(rb(0.05, 0.04, 0.06, 0.012), chromeMat));
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.014, small(32, 8)), lampMat);
       lens.position.z = 0.037;
       lamp.add(lens);
     });
     const cam = add(
-      new THREE.CylinderGeometry(0.016, 0.016, 0.04, 32),
+      new THREE.CylinderGeometry(0.016, 0.016, 0.04, small(32, 8)),
       dark,
       -0.2,
       0.19,
@@ -865,7 +971,7 @@ const HQ = (() => {
     );
     cam.rotation.x = Math.PI / 2;
     add(
-      new THREE.CylinderGeometry(0.005, 0.005, 0.17, 12),
+      new THREE.CylinderGeometry(0.005, 0.005, 0.17, small(12)),
       chromeMat,
       0.14,
       0.27,
@@ -876,7 +982,7 @@ const HQ = (() => {
       helmet,
     ).rotation.z = -0.4;
     add(
-      sph(0.018, 24, 18),
+      sph(0.018, small(24, 6), small(18, 4)),
       new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 0.5, 0.9) }),
       0.177,
       0.345,
@@ -892,7 +998,7 @@ const HQ = (() => {
       hs.bezierCurveTo(-0.045, 0, -0.04, 0.04, 0, 0.02);
       hs.bezierCurveTo(0.04, 0.04, 0.045, 0, 0, -0.03);
       const sticker = new THREE.Mesh(
-        new THREE.ShapeGeometry(hs, 24),
+        new THREE.ShapeGeometry(hs, small(24, 6)),
         new THREE.MeshStandardMaterial({
           color: 0xff3d6e,
           emissive: 0x5a0018,
@@ -908,7 +1014,7 @@ const HQ = (() => {
     const webbing = pbr({ color: 0x2b2733, roughness: 0.82, metalness: 0.05 }, 0.7);
     [-1, 1].forEach((s) => {
       const sb = add(
-        new THREE.TorusGeometry(F ? 0.06 : 0.07, 0.012, 18, 72),
+        ring(F ? 0.06 : 0.07, 0.012, 18, 72),
         chromeMat,
         s * (shX + 0.035),
         0.29,
@@ -921,9 +1027,9 @@ const HQ = (() => {
         new THREE.Vector3(s * 0.13, 0.14, F ? 0.2 : 0.215),
         new THREE.Vector3(s * 0.11, wy + 0.04, F ? 0.135 : 0.17),
       ]);
-      body.add(new THREE.Mesh(new THREE.TubeGeometry(c, 48, 0.007, 10), webbing));
+      body.add(new THREE.Mesh(new THREE.TubeGeometry(c, n(48, 'tube', 10), 0.007, n(10, 'tube', 4)), webbing));
       const cb = add(
-        new THREE.TorusGeometry(0.014, 0.0035, 10, 32),
+        new THREE.TorusGeometry(0.014, 0.0035, small(10, 3), small(32, 8)),
         chromeMat,
         s * 0.155,
         wy - 0.035,
@@ -944,7 +1050,7 @@ const HQ = (() => {
       [1, 1],
     ].forEach(([sx, sy]) =>
       add(
-        sph(0.022, 24, 18),
+        sph(0.022, small(24, 6), small(18, 4)),
         webbing,
         sx * (PW / 2 - 0.01),
         0.07 + sy * (PH / 2 - 0.01),
@@ -952,7 +1058,7 @@ const HQ = (() => {
       ),
     );
     const handle = add(
-      new THREE.TorusGeometry(0.045, 0.008, 12, 40, Math.PI),
+      new THREE.TorusGeometry(0.045, 0.008, small(12, 4), small(40, 8), Math.PI),
       chromeMat,
       0,
       0.07 + PH / 2,
@@ -997,15 +1103,15 @@ const HQ = (() => {
           PZ,
         ).rotation.y = Math.PI / 2),
     );
-    const housing = new THREE.Mesh(new THREE.TorusGeometry(0.287, 0.019, 20, 160, Math.PI), white);
+    const housing = new THREE.Mesh(ring(0.287, 0.019, 20, 160, Math.PI), white);
     housing.rotation.x = 0.62;
     helmet.add(housing);
     [-1, 1].forEach((s) => {
-      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 40), white);
+      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, small(40, 8)), white);
       hinge.rotation.z = Math.PI / 2;
       hinge.position.set(s * 0.289, 0, 0);
       helmet.add(hinge);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.022, 32), chromeMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.022, small(32, 8)), chromeMat);
       cap.rotation.z = Math.PI / 2;
       cap.position.set(s * 0.29, 0, 0);
       helmet.add(cap);
@@ -1030,5 +1136,6 @@ const HQ = (() => {
     pbr,
     roundBox,
     sph,
+    resOf,
   };
 })();
