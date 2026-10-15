@@ -43,6 +43,12 @@ const Assets = (() => {
     'tex.d10rock.nrm': { type: 'tex', url: 'textures/d10_rock_nrm.jpg', repeat: true, data: true },
     'tex.d10snow.alb': { type: 'tex', url: 'textures/d10_snow_alb.webp', repeat: true },
     'tex.d10snow.nrm': { type: 'tex', url: 'textures/d10_snow_nrm.jpg', repeat: true, data: true },
+    // ♠ La Cour, the table of spades (js/world/cour_s.js binds them to its own materials only):
+    // Poly Haven floor tiles turned to cold slate, and painted metal turned to blackened iron
+    'tex.s_slate.alb': { type: 'tex', url: 'textures/s_slate_alb.webp', repeat: true },
+    'tex.s_slate.nrm': { type: 'tex', url: 'textures/s_slate_nrm.jpg', repeat: true, data: true },
+    'tex.s_iron.alb': { type: 'tex', url: 'textures/s_iron_alb.webp', repeat: true },
+    'tex.s_iron.nrm': { type: 'tex', url: 'textures/s_iron_nrm.jpg', repeat: true, data: true },
     // ♥10 Le Marché (js/world/tr_h10.js binds them to its own materials only): the harlequin
     // floor (Poly Haven floor tiles 08, recoloured as a checker) and ivory plaster
     'tex.h10.floor.alb': { type: 'tex', url: 'textures/h10_floor_alb.webp', repeat: true },
