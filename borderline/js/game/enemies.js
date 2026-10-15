@@ -186,6 +186,8 @@ const Enemies = (() => {
       }
       let k = 1;
       if (e.type === 'tour' && e.shield && e.stun <= 0) k = 0;
+      // the sword only breaks a Tour's shield (it stuns); the rifle brings it down
+      if (e.type === 'tour' && stun) k = 0;
       if (e.type === 'roi') k = Boss.mult(e, weak);
       if (DEF[e.type] && DEF[e.type].mult) k = DEF[e.type].mult(e, weak, stun);
       if (k <= 0) {

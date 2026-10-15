@@ -163,6 +163,8 @@
     hidden: (e) => Story.role === 'valet' && !(e.reveal > 0),
     sim(e, dt, players, targets) {
       e.reveal = Math.max(0, (e.reveal || 0) - dt);
+      // a blind sword swing does not freeze it either
+      if (!(e.reveal > 0)) e.stunImm = Math.max(e.stunImm || 0, 0.1);
       if (e.stun > 0) return;
       const [best, bd] = nearest(e, targets);
       if (!best) return;
@@ -179,10 +181,11 @@
         Combat.hurt(best.who, 10, e.pos);
       }
     },
+    // the rifle only lights a spectre up; the sword cuts it, once it is lit
     mult(e, weak, stun) {
-      if (stun > 0) return 2.2;
+      if (stun > 0) return e.reveal > 0 ? 2.2 : 0;
       e.reveal = 4;
-      return 0.4;
+      return 0;
     },
     render(e, m, dt, t) {
       const show = Story.role === 'dame' || e.reveal > 0;
@@ -203,11 +206,13 @@
       height: 4.6,
       boss: true,
       reach: 4.2,
-      stunP: 0,
+      // the sword's blow is told apart by its (tiny) stun; the engine never stuns him (stunImm)
+      stunP: 0.01,
       weakR: 0.8,
     },
     sim(e, dt, players, targets) {
       e.t = (e.t || 0) - dt;
+      e.stunImm = 99;
       e.sweep = e.sweep || 0;
       const ph = e.hp > e.max * 0.5 ? 1 : 2;
       if (ph !== e.phase) {
@@ -220,7 +225,7 @@
           }
         }
       }
-      e.vuln = e.stun > 0;
+      e.vuln = e.stun > 0 && !!e.open;
       if (e.stun > 0) {
         e.st = 4;
         return;
@@ -228,6 +233,7 @@
       if (e.st === 4) {
         e.st = 0;
         e.atk = 2;
+        e.open = false;
       }
       if (e.st === 1) {
         if (e.t <= 0) {
@@ -242,6 +248,7 @@
         const b = charge(e, dt, players, { speed: ph === 2 ? 22 : 19, r: 1.7, dmg: 32 });
         if (b && b.tag === 'pillar') {
           e.stun = 5.5;
+          e.open = false;
           e.st = 4;
           fx('stun', e.pos);
           return;
@@ -305,7 +312,19 @@
         fx('wind', e.pos);
       }
     },
-    mult: (e, weak) => (e.stun > 0 ? (weak ? 2.2 : 1) : 0.08),
+    // stunned against a pillar, a sword blow knocks his breastplate up; then only the rifle
+    // hurts him (the heart at 2.2x)
+    mult(e, weak, stun) {
+      if (stun) {
+        if (e.stun > 0 && !e.open) {
+          e.open = true;
+          e.vuln = true;
+          fx('open', e.pos);
+        }
+        return 0;
+      }
+      return e.stun > 0 && e.open ? (weak ? 2.2 : 1) : 0;
+    },
     render(e, m, dt, t) {
       const stun = e.stun > 0 || e.st === 4;
       m.body.rotation.x = damp(
@@ -314,10 +333,10 @@
         6,
         dt,
       );
-      m.plate.position.y = damp(m.plate.position.y, stun ? 3.8 : 2.7, 6, dt);
+      m.plate.position.y = damp(m.plate.position.y, e.vuln ? 3.8 : stun ? 2.95 : 2.7, 6, dt);
       m.heart.material.color
         .setRGB(1, 0.37, 0.54)
-        .multiplyScalar(stun ? 3 + Math.sin(t * 10) : 0.5);
+        .multiplyScalar(e.vuln ? 3 + Math.sin(t * 10) : stun ? 0.9 : 0.5);
       m.heart.rotation.y = t * 2;
       m.lance.rotation.x = damp(m.lance.rotation.x, e.st === 1 || e.st === 2 ? 0 : -0.5, 5, dt);
       m.crest.rotation.z = t;

@@ -95,7 +95,8 @@ const Donjon = (() => {
     torches.push({ flame, halo, ph: Math.random() * 10, cup });
   };
 
-  const gate = (id, x, z, w, h = 6) => {
+  // ch: collider height, up to the lintel when the doorway is taller than the bars
+  const gate = (id, x, z, w, h = 6, ch = h) => {
     const g = new THREE.Group();
     for (let i = 0; i <= Math.round(w / 0.5); i++) {
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, h, 6), iron);
@@ -115,7 +116,7 @@ const Donjon = (() => {
     g.add(glowBar);
     g.position.copy(P(x, 0, z));
     group.add(g);
-    const b = Phys.box(O.x + x, O.y + h / 2, O.z + z, w, h, 0.6, { dyn: true });
+    const b = Phys.box(O.x + x, O.y + ch / 2, O.z + z, w, ch, 0.6, { dyn: true });
     gates[id] = { g, b, y: 0, open: false, glowBar };
   };
 
@@ -276,7 +277,8 @@ const Donjon = (() => {
     group.add(card);
     gate('g1', 0, 11, 4.4);
     gate('g2', 0, 40, 4.4);
-    gate('g3', 0, 58, 4.4);
+    // the corridor's doorway is 9 m tall: from the Dame's 6 m ledge one could hop over the bars
+    gate('g3', 0, 58, 4.4, 6, 9);
     gate('g4', 0, 100, 4.4);
     gate('g5', 0, 130, 4.4);
     screen = makeScreen(16, 6, 1024);

@@ -38,6 +38,10 @@
       Cam.shake = 0.5;
       HUD.say(A.bossStun, T.master, 2000);
     }
+    if (k === 'open') {
+      Sound.play('shieldDown');
+      if (pos) Fx.burst(pos.clone().add(V3(0, 3.6, 0)), '#ff5f8a', 50, 5, 0.6, -6);
+    }
     if (k === 'phase2') {
       Sound.play('roar');
       HUD.say('Spectres ! Ne la laisse pas seule.', A.boss, 2200);
@@ -247,7 +251,7 @@
           boss.hp / boss.max,
           (boss.phase === 2 ? 'Phase 2' : 'Phase 1') +
             ' · ' +
-            (stun ? 'Sonné · vise le cœur' : 'Armure'),
+            (boss.vuln ? 'Cœur à nu · vise-le' : stun ? 'Sonné · frappe-le à l’épée' : 'Armure'),
         );
       }
       const prompt = Combat.update(dt);
