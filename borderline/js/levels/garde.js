@@ -168,7 +168,12 @@
       } else Enemies.netTick(dt);
     },
     action(c, who, d) {
-      if (d.a === 'hit') Enemies.damage(d.id, d.dmg, d.stun || 0, !!d.weak);
+      if (d.a === 'hit') {
+        // the Captain: before the crystal falls, the sword only stuns him; the rifle hurts him
+        const e = Enemies.list.get(d.id);
+        const sword = who === 'valet' && e && e.type === 'roi' && (e.phase || 1) < 3;
+        Enemies.damage(d.id, sword ? 0 : d.dmg, d.stun || 0, !!d.weak);
+      }
       if (d.a === 'revive') {
         const target = who === 'dame' ? 'valet' : 'dame';
         if (target === c.role) Combat.revived();

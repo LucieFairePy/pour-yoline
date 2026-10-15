@@ -14,7 +14,8 @@ const Boss = (() => {
     floor: (e) => ((e.phase || 1) === 1 ? e.max * 0.66 - 1 : e.phase === 2 ? e.max * 0.33 - 1 : 0),
     mult(e, weak) {
       if (e.phase === 1) return e.shieldDown > 0 ? (weak ? 1.4 : 0.8) : 0;
-      if (e.phase === 2) return e.stun > 0 ? (weak ? 2 : 1) : 0.12;
+      // phase 2: nothing gets through the armour until the sword has stunned him
+      if (e.phase === 2) return e.stun > 0 ? (weak ? 2 : 1) : 0;
       return e.crystalDown > 0 ? (weak ? 2.5 : 1) : 0;
     },
     switchPressed(e) {

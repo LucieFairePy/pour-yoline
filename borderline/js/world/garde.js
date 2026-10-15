@@ -93,6 +93,9 @@ const Garde = (() => {
     );
     solid(-11, 2.5, 48, 14, 5, 0.6, trim);
     solid(11, 2.5, 48, 14, 5, 0.6, trim);
+    // the gate wall runs on, unseen, past the hall's edges: a double jump around its end landed
+    // in the arena (enemies ignore 'nocam' boxes)
+    [-1, 1].forEach((s) => Phys.box(O.x + s * 25, O.y + 1, O.z + 48, 14, 22, 0.6, { tag: 'nocam' }));
     solid(0, -0.5, 51.5, 8, 1, 7);
     solid(0, -0.5, 80, 50, 1, 50);
     edges(0, 80, 50, 50, '#ffcf8a');
@@ -110,18 +113,20 @@ const Garde = (() => {
     // a step up to the throne dais (0.8 m was a jump-only ledge right where the fight happens)
     solid(0, 0.2, 91.5, 12, 0.4, 1, trim);
     solid(0, 0.2, 96.5, 12, 0.4, 1, trim);
-    solid(-6.3, 2, 100.5, 0.6, 4, 8, trim);
-    solid(6.3, 2, 100.5, 0.6, 4, 8, trim);
-    solid(0, 2, 104.8, 13.2, 4, 0.6, trim);
+    // the switch's alcove and its laser grid are 5.5 m / 5 m tall: from the dais a double jump
+    // cleared a 3.6 m grid without the Voile
+    solid(-6.3, 2.75, 100.5, 0.6, 5.5, 8, trim);
+    solid(6.3, 2.75, 100.5, 0.6, 5.5, 8, trim);
+    solid(0, 2.75, 104.8, 13.2, 5.5, 0.6, trim);
     lasers = new THREE.Group();
     for (let i = 0; i < 12; i++) {
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 3.6, 0.04), glow('#ff1a3a', 3));
-      l.position.copy(P(-5.5 + i, 1.8, 97));
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 5, 0.04), glow('#ff1a3a', 3));
+      l.position.copy(P(-5.5 + i, 2.5, 97));
       lasers.add(l);
     }
-    for (let j = 0; j < 4; j++) {
+    for (let j = 0; j < 5; j++) {
       const l = new THREE.Mesh(new THREE.BoxGeometry(12, 0.04, 0.04), glow('#ff1a3a', 3));
-      l.position.copy(P(0, 0.4 + j * 1, 97));
+      l.position.copy(P(0, 0.4 + j * 1.1, 97));
       lasers.add(l);
     }
     group.add(lasers);
@@ -197,7 +202,7 @@ const Garde = (() => {
     },
     towers: () => [P(-14, 0, 44), P(14, 0, 44)],
     atSwitch: (q) => Math.hypot(q.x, q.z - 102.5) < 1.9 && q.y > -0.5,
-    laserHit: (q) => Math.abs(q.z - 97) < 0.45 && Math.abs(q.x) < 6 && q.y < 3.8 && q.y > -0.5,
+    laserHit: (q) => Math.abs(q.z - 97) < 0.45 && Math.abs(q.x) < 6 && q.y < 5.2 && q.y > -0.5,
     update(dt, t, stage, phase3) {
       if (!built) return;
       screen.update(dt, t);
