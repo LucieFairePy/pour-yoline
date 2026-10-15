@@ -24,6 +24,7 @@
     s2isle: 'L’îlot : si {mate} tombe à l’eau, {il} repartira d’ici.',
     s2isleMe: 'L’îlot : si tu tombes à l’eau, tu repartiras d’ici.',
     splash: 'Plouf. Retour à la dernière rive.',
+    offPath: 'Pas par là : les hauteurs sont pour celui qui voit. Ton chemin est en bas.',
     s2done: 'L’autre rive. Il reste le bal.',
     s3: {
       blind: 'Le bal · Les yeux bandés. Fais tout en miroir de {mate} : quand {il} avance, tu avances ; à sa gauche, ta droite.',
@@ -491,6 +492,16 @@
         }
         if (!x.mid && H3.nearMid(q)) c.act({ a: 'mid', pos: [H3.maze.mid.x, 0, H3.maze.mid.z] });
       }
+      // the blind one's way is on the ground: the walkway, its stair, the lanterns and the boardwalk
+      // are the guide's (climbing there would skip the maze or the pond)
+      if (iAmBlind && (x.stage === 1 || x.stage === 2) && Player.body.grounded && q.y > 1.0) {
+        local.offT = (local.offT || 0) + dt;
+        if (local.offT > 0.25) {
+          local.offT = 0;
+          say(c, TXT.offPath, 2600);
+          c.spawn(sp(x.stage, r, x), 0);
+        }
+      } else local.offT = 0;
       // ---- section 2: the island, and the guide's markers
       if (x.stage !== 2 || iAmBlind || !(q.x > 6.5 && q.y > 1.6)) H3.hover(-1, t);
       if (x.stage === 2) {

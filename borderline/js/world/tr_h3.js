@@ -252,7 +252,12 @@ const H3 = (() => {
       }
       if (horiz) K.collider(x, HEDGE_H / 2, z, L, HEDGE_H, 0.95);
       else K.collider(x, HEDGE_H / 2, z, 0.95, HEDGE_H, L);
+      // nobody walks on the hedge tops (from a lantern or the walkway): an unseen wall above them
+      if (horiz) K.collider(x, HEDGE_H + 3.3, z, L, 6.6, 0.95, { tag: 'nocam' });
+      else K.collider(x, HEDGE_H + 3.3, z, 0.95, 6.6, L, { tag: 'nocam' });
     });
+    // the strips between the outer hedge and the wood are not a way round the maze
+    [-1, 1].forEach((s) => K.collider(s * 22, 1.9, MZ, 8, 5.9, 1, { tag: 'nocam' }));
     inst.instanceMatrix.needsUpdate = true;
     crown.instanceMatrix.needsUpdate = true;
     group.add(inst, crown);
