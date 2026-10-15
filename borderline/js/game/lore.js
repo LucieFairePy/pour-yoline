@@ -231,6 +231,10 @@ const Lore = (() => {
       ['Les portes de la Cour, enfin. Devant elles, le Joker tient marché : il vend des raccourcis.'],
       'La porte de la Cour s’ouvre. Mais derrière, la tempête tourne encore : la Cour se mérite.',
     ],
+    c10: [
+      ['Une tour plus haute que les nuages, au cœur de la tempête. Tout en haut, la Cour.'],
+      'Au sommet, l’orage se tait. Douze figures vous attendent, autour de quatre tables : la Cour.',
+    ],
   };
 
   // a few lines during the épreuves, each said once per visit (Lore.during(trial, key))
