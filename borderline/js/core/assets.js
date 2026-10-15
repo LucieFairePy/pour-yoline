@@ -28,6 +28,13 @@ const Assets = (() => {
     'tex.asphalt.nrm': { type: 'tex', url: 'textures/asphalt_nrm.jpg', repeat: true, data: true },
     'tex.wood.alb': { type: 'tex', url: 'textures/wood_alb.webp', repeat: true },
     'tex.wood.nrm': { type: 'tex', url: 'textures/wood_nrm.jpg', repeat: true, data: true },
+    // ♣10 La Tour de Babel (js/world/tr_c10.js binds them to its own materials only)
+    'tex.c10stone.alb': { type: 'tex', url: 'textures/c10_towerstone_alb.webp', repeat: true },
+    'tex.c10stone.nrm': { type: 'tex', url: 'textures/c10_towerstone_nrm.jpg', repeat: true, data: true },
+    'tex.c10brick.alb': { type: 'tex', url: 'textures/c10_brick_alb.webp', repeat: true },
+    'tex.c10brick.nrm': { type: 'tex', url: 'textures/c10_brick_nrm.jpg', repeat: true, data: true },
+    'tex.c10metal.alb': { type: 'tex', url: 'textures/c10_rustmetal_alb.webp', repeat: true },
+    'tex.c10metal.nrm': { type: 'tex', url: 'textures/c10_rustmetal_nrm.jpg', repeat: true, data: true },
     // street lamp light cone (Kenney Light Masks cone_d_blur, flipped, luminance)
     'fx.cone': { type: 'tex', url: 'fx/lamp_cone.png' },
     // sounds (Kenney RPG Audio / Impact Sounds / Sci-fi Sounds, CC0)

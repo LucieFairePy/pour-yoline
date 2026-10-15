@@ -67,6 +67,9 @@ set's `_SOURCE_ET_LICENCE.json` / `License.txt` was checked).
 | `textures/asphalt_alb.webp`, `asphalt_nrm.jpg` | "Asphalt 01", https://polyhaven.com/a/asphalt_01 | Poly Haven | CC0 | AO baked into the colour, desaturated, brightness matched to the game's asphalt; normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `textures/stone_alb.webp`, `stone_nrm.jpg` | "Castle Wall Varriation", https://polyhaven.com/a/castle_wall_varriation | Poly Haven (Rob Tuytel) | CC0 | Normal and cavity AO computed from its height map; desaturated 45 %; 2K colour, 1K data. |
 | `textures/wood_alb.webp`, `wood_nrm.jpg` | "Wooden Planks", https://polyhaven.com/a/wooden_planks | Poly Haven | CC0 | AO baked, colour matched to the game's wood; normal + roughness packed; 2K colour, 1K data. |
+| `textures/c10_towerstone_alb.webp`, `c10_towerstone_nrm.jpg` | "Stone Wall", https://polyhaven.com/a/stone_wall | Poly Haven | CC0 | AO baked (softened), 20 % desaturated, brightness normalised; normal (OpenGL) and roughness packed in one JPEG; 1K. |
+| `textures/c10_brick_alb.webp`, `c10_brick_nrm.jpg` | "Brick Wall 001", https://polyhaven.com/a/brick_wall_001 | Poly Haven | CC0 | idem; 1K. |
+| `textures/c10_rustmetal_alb.webp`, `c10_rustmetal_nrm.jpg` | "Green Metal Rust", https://polyhaven.com/a/green_metal_rust | Poly Haven | CC0 | idem (the green paint is kept: verdigris bronze once tinted); 1K. |
 | `fx/lamp_cone.png` | "Light Masks" (`cone_d_blur`), https://kenney.nl/assets/light-masks | Kenney | CC0 | Luminance only, flipped, 128×256. |
 
 ## Sounds (`sounds/kenney/`) — Look pass
