@@ -871,6 +871,14 @@
       H6.movers.forEach((m) => {
         if (m.on && Player.body.ground === m.box && Player.body.grounded) p.add(m.delta);
       });
+      // winter: the channels hold except over a floating floe (and for the grapple's flight)
+      local.hopT = Player.mode === 'grapple' ? 1.4 : Math.max(0, (local.hopT || 0) - dt);
+      Object.values(H6.buds).forEach((b) => {
+        if (!b.walls) return;
+        const on = x.stage === 8 && !local.hopT;
+        b.walls.side.forEach((w) => (w.on = on));
+        b.walls.plug.on = on && !b.cols[0].on;
+      });
       // the springboard flower
       const bl = H6.buds.bloom;
       if (bl.grown && Player.body.grounded && Player.body.ground === bl.bounce) {

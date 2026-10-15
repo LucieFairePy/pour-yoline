@@ -1544,6 +1544,13 @@ const H6 = (() => {
     const c = KZ.W.collider(x, -0.25, z, 3.7, 0.5, 3.7);
     c.on = false;
     b.cols = [c];
+    // a long double jump clears the channel: unseen walls across the water through the floe's
+    // middle, open only where the floe floats (they drop for the Dame's grapple, see the level)
+    const w = { tag: 'nocam', dyn: true };
+    b.walls = {
+      side: [KZ.W.collider((x - 1.85 - 15) / 2, 0.5, z, x - 1.85 + 15, 7, 0.3, w), KZ.W.collider((x + 1.85 + 15) / 2, 0.5, z, 15 - x - 1.85, 7, 0.3, w)],
+      plug: KZ.W.collider(x, 0.5, z, 3.7, 7, 0.3, w),
+    };
     b.floe = m;
     b.hp = 0;
     b.setGrow = (k) => {
