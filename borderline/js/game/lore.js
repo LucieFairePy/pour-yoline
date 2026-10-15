@@ -274,6 +274,19 @@ const Lore = (() => {
       ['La rotonde du Roi de Trèfle. Il ne se bat pas, il pèse.'],
       'Les trois figures de Trèfle ont posé leurs cartes. Une table de la Cour est à vous.',
     ],
+    // the ♥ table of the Cour (the Roi's trial id is hK)
+    hV: [
+      ['La table de Cœur, dans une serre de verre et de velours. Ici, on se croit sur parole.'],
+      'Le Valet s’incline. Derrière la serre, une salle de bal : la Dame vous attend.',
+    ],
+    hD: [
+      ['La salle de bal de la Dame de Cœur. Ses danseurs ne se montrent qu’à qui regarde d’en haut.'],
+      'La musique ralentit. Au bout du bal, un rideau rouge : le théâtre du Roi.',
+    ],
+    hK: [
+      ['Le théâtre du Roi de Cœur. Son rideau ne se lève que pour qui vise juste.'],
+      'Les trois figures de Cœur ont posé leurs cartes. Une table de la Cour est à vous.',
+    ],
   };
 
   // a few lines during the épreuves, each said once per visit (Lore.during(trial, key))
