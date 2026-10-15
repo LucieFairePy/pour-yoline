@@ -49,6 +49,10 @@ const Assets = (() => {
     'tex.h10.floor.nrm': { type: 'tex', url: 'textures/h10_floor_nrm.jpg', repeat: true, data: true },
     'tex.h10.plaster.alb': { type: 'tex', url: 'textures/h10_plaster_alb.webp', repeat: true },
     'tex.h10.plaster.nrm': { type: 'tex', url: 'textures/h10_plaster_nrm.jpg', repeat: true, data: true },
+    // ♣ La table de Trèfle (js/world/cour_c.js binds them to its own materials only): green marble
+    // mosaic, made from the Poly Haven marble tiles
+    'tex.ccmarble.alb': { type: 'tex', url: 'textures/cc_marble_alb.webp', repeat: true },
+    'tex.ccmarble.nrm': { type: 'tex', url: 'textures/cc_marble_nrm.jpg', repeat: true, data: true },
     // sounds (Kenney RPG Audio / Impact Sounds / Sci-fi Sounds, CC0)
     'snd.swing1': { type: 'sound', url: 'sounds/swing1.mp3' },
     'snd.swing2': { type: 'sound', url: 'sounds/swing2.mp3' },
