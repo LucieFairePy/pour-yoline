@@ -93,7 +93,8 @@
   };
 
   const W = () => TrD7;
-  const local = {
+  // per-run state, rebuilt on every enter()
+  const fresh = () => ({
     stage: 0,
     clk: 0,
     m: 540,
@@ -134,7 +135,8 @@
     brk: [0, 0, 0],
     t3: 0,
     env: null,
-  };
+  });
+  const local = fresh();
 
   // ---------- helpers ----------
   const rand = (n) => (Math.random() * n) | 0;
@@ -503,21 +505,14 @@
       },
     },
     async enter(c, first) {
+      // a replay or a resume starts clean (the held fast-forward, the clock, the attacks...)
+      for (const k in local) delete local[k];
+      Object.assign(local, fresh());
       if (!first) await fadeTo(true);
       TrD7.build();
       TrD7.wake();
       TrD7.au.init();
       const x = c.S.x;
-      local.stage = 0;
-      local.atk = [];
-      local.brk = [0, 0, 0];
-      local.t3 = 0;
-      local.endT = -1;
-      local.cp2 = 0;
-      local.cp3 = 0;
-      local.m = 540;
-      local.lastM = 540;
-      local.rec = null;
       local.endPhase = null;
       local.cardT = 0;
       local.roundWas = null;
@@ -527,11 +522,6 @@
       local.lockWas = null;
       local.atkFrom = null;
       local.hostBeat = null;
-      local.beat = 0;
-      local.fallT = 0;
-      local.bridge = 0;
-      local.slowT = 0;
-      local.slowCd = 0;
       local.cpV1 = false;
       c.spawn(x.stage === 1 ? spawnOf(1, c.role) : checkpoint(c), 0);
       Player.killY = TrD7.O.y - 12;
