@@ -1465,6 +1465,10 @@
       }
 
       // ---------- the gallery ----------
+      if (x.stage !== 4 && local.stuck) {
+        local.stuck = 0;
+        if (Player.mode === 'frozen') Player.mode = 'walk';
+      }
       if (x.stage === 4) {
         const half = x.half || 1;
         const myLane = laneOf(r);
@@ -1491,6 +1495,12 @@
             }
             local.standId = null;
           } else {
+            // a tile that gives way holds your feet until it drops: no running or hopping across
+            // the gallery without being shown the way
+            if (!local.stuck) {
+              local.stuck = 0.01;
+              if (Player.mode === 'walk') Player.mode = 'frozen';
+            }
             if (local.standId !== tl.id) {
               local.standId = tl.id;
               local.standT = 0;
@@ -1502,6 +1512,13 @@
             }
           }
         } else local.standId = null;
+        if (local.stuck) {
+          local.stuck += dt;
+          if (q.y < -3 || local.stuck > 2.5) {
+            local.stuck = 0;
+            if (Player.mode === 'frozen') Player.mode = 'walk';
+          }
+        }
         // pointing a tile out to the other (straight, or in a mirror)
         const cam = R.camera;
         const dir = tmp.set(0, 0, -1).applyQuaternion(cam.quaternion);

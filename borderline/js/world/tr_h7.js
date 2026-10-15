@@ -1385,6 +1385,13 @@ const H7 = (() => {
         }),
       ),
     );
+    // an unseen ceiling just over your head above the tiles: the gallery is walked, not jumped
+    // (one double jump used to skip most rows)
+    [1, 2].forEach((half) => {
+      const z0 = rowZ(half, 0) + 0.71;
+      const z1 = rowZ(half, ROWS - 1) - 0.71;
+      K.collider(0, 4.8, (z0 + z1) / 2, 2 * MIRX, 5.8, z0 - z1, { tag: 'nocam' });
+    });
     // markers (a heart laid on a tile by the guide), one per lane, also seen in the mirrors
     ['L', 'R'].forEach((lane) => {
       const mk = (x) => {
