@@ -3,6 +3,40 @@
 // rhythm can be tried. Loaded only by the lobby when the URL asks for it.
 (() => {
   const local = { t: 0 };
+  // targets of different stuff behind the pions' line, to see and hear what a bullet does to
+  // each (holes, chips, sparks, sounds): a steel plate, a wooden board, a glass pane, a sandbag
+  // mound; the floor and the pillars are concrete
+  let props = null;
+  const TARGETS = [
+    [-4.6, 1.1, 12, 1.1, 1.4, 0.06, 'metal', '#6a707a', 0.35, 0.4, 1],
+    [-1.6, 0.9, 13.5, 1.3, 1.8, 0.1, 'wood', '#7a5434', 0, 0.8, 1],
+    [1.6, 1.1, 13.5, 1.3, 1.6, 0.04, 'glass', '#9fd0ff', 0.2, 0.05, 0.28],
+    [4.6, 0.4, 12, 1.8, 0.8, 0.9, 'dirt', '#6b5a43', 0, 1, 1],
+  ];
+  const buildProps = () => {
+    const o = Garde.spawn(4, 'dame');
+    if (!props) {
+      props = { g: new THREE.Group(), boxes: [] };
+      TARGETS.forEach(([x, y, z, sx, sy, sz, surf, col, met, rough, op]) => {
+        const m = new THREE.Mesh(
+          new THREE.BoxGeometry(sx, sy, sz),
+          new THREE.MeshStandardMaterial({
+            color: col,
+            metalness: met,
+            roughness: rough,
+            transparent: op < 1,
+            opacity: op,
+          }),
+        );
+        m.position.set(o.x + x, o.y + y, o.z + z);
+        props.g.add(m);
+        props.boxes.push(Phys.box(o.x + x, o.y + y, o.z + z, sx, sy, sz, { surf }));
+      });
+      R.scene.add(props.g);
+    }
+    props.g.visible = true;
+    props.boxes.forEach((b) => (b.on = true));
+  };
 
   Story.register('stand', {
     init: () => ({}),
@@ -11,6 +45,7 @@
       Enemies.clear();
       local.t = 2;
       c.spawn(Garde.spawn(4, 'dame'), 0);
+      buildProps();
       Player.killY = Garde.O.y - 25;
       Player.checkpoint = () => Garde.spawn(4, 'dame');
       Player.targets = null;
@@ -23,6 +58,10 @@
     exit() {
       Combat.enable(false);
       Enemies.clear();
+      if (props) {
+        props.g.visible = false;
+        props.boxes.forEach((b) => (b.on = false));
+      }
     },
     host(c, dt) {
       const me = { who: 'dame', pos: Player.body.p, down: Combat.down, cloak: false };

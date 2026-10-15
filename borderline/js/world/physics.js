@@ -7,7 +7,16 @@ const Phys = (() => {
   const key = (x, z) => (x * 73856093) ^ (z * 19349663);
 
   const add = (min, max, opt = {}) => {
-    const b = { min: [...min], max: [...max], on: true, dyn: !!opt.dyn, tag: opt.tag || '', s: 0 };
+    const b = {
+      min: [...min],
+      max: [...max],
+      on: true,
+      dyn: !!opt.dyn,
+      tag: opt.tag || '',
+      // what a bullet hits (concrete, metal, wood, glass, dirt); '' = guessed from the tag
+      surf: opt.surf || '',
+      s: 0,
+    };
     if (b.dyn) dyn.push(b);
     else {
       const x0 = Math.floor(b.min[0] / CELL);
@@ -169,6 +178,64 @@ const Phys = (() => {
     return best;
   };
 
+  // A bullet through the world: the nearest box (moving ones included, invisible walls not) that
+  // the ray enters past tmin, with the face it enters by. Returns null or the shared hit object.
+  const rh = { t: 0, b: null, n: V3(), surf: '' };
+  const rayHit = (o, d, max, tmin = 0) => {
+    const ex = o.x + d.x * max;
+    const ez = o.z + d.z * max;
+    const list = query(Math.min(o.x, ex), Math.min(o.z, ez), Math.max(o.x, ex), Math.max(o.z, ez));
+    let best = max;
+    let bb = null;
+    let axis = 0;
+    const test = (b) => {
+      if (b.tag === 'nocam' || !b.on) return;
+      let t0 = -Infinity;
+      let t1 = best;
+      let ax = 0;
+      for (let i = 0; i < 3; i++) {
+        const oo = i === 0 ? o.x : i === 1 ? o.y : o.z;
+        const dd = i === 0 ? d.x : i === 1 ? d.y : d.z;
+        if (Math.abs(dd) < 1e-8) {
+          if (oo < b.min[i] || oo > b.max[i]) return;
+        } else {
+          let a = (b.min[i] - oo) / dd;
+          let c = (b.max[i] - oo) / dd;
+          if (a > c) [a, c] = [c, a];
+          if (a > t0) {
+            t0 = a;
+            ax = i;
+          }
+          t1 = Math.min(t1, c);
+          if (t0 > t1) return;
+        }
+      }
+      if (t0 >= tmin && t0 < best) {
+        best = t0;
+        bb = b;
+        axis = ax;
+      }
+    };
+    for (const b of list) test(b);
+    if (!bb) return null;
+    rh.t = best;
+    rh.b = bb;
+    const dd = axis === 0 ? d.x : axis === 1 ? d.y : d.z;
+    rh.n.set(0, 0, 0).setComponent(axis, dd > 0 ? -1 : 1);
+    rh.surf =
+      bb.surf ||
+      (bb.tag === 'glass'
+        ? 'glass'
+        : bb.tag === 'bench'
+          ? 'wood'
+          : bb.tag === 'ground'
+            ? 'dirt'
+            : bb.dyn
+              ? 'metal'
+              : 'concrete');
+    return rh;
+  };
+
   const groundAt = (x, y, z) => {
     let best = -Infinity;
     for (const b of query(x, z, x, z))
@@ -177,5 +244,5 @@ const Phys = (() => {
     return best;
   };
 
-  return { add, box, move, ray, query, groundAt };
+  return { add, box, move, ray, rayHit, query, groundAt };
 })();
