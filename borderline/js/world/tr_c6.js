@@ -99,6 +99,7 @@ const C6M = (() => {
     { U: [-2.5, 0, 221], L: [2.5, 0, 221], win: 1.4, gate: 225 },
   ];
   const ARENA_GATE = 268.6;
+  const LIDS = [];
 
   let built = false;
   const M = {};
@@ -1464,6 +1465,17 @@ const C6M = (() => {
       g.userData.spin = true;
       return g;
     });
+    // every chasm is a long double jump at most: an unseen wall across the middle of each one
+    // (ignored by the camera), open only over its bridge while the bridge is there. The day's
+    // chasm of section 3 has no bridge: its wall lifts for the grapple (see the level).
+    const wallOpt = { dyn: true, tag: 'nocam' };
+    Object.values(bridges).forEach((br) => {
+      const hw = BRIDGES[br.id][4];
+      const z = (br.z0 + br.z1) / 2;
+      LIDS.push(col(br.w, (-15 - hw) / 2, 1.4, z, 15 - hw, 6.2, 0.3, wallOpt), col(br.w, (15 + hw) / 2, 1.4, z, 15 - hw, 6.2, 0.3, wallOpt));
+      br.plug = col(br.w, 0, 1.4, z, hw * 2, 6.2, 0.3, wallOpt);
+    });
+    LIDS.push(col('U', 0, 1.4, 181, 30, 6.2, 0.3, wallOpt));
     plaque('U', 'C', 'Les Inversions', 'là où le ciel se retourne', 0, 3.1, 160.5, Math.PI, '#ffcf8a');
     plaque('L', 'C', 'Les Inversions', 'là où le ciel se retourne', 0, 3.1, 160.5, Math.PI, '#b07cff');
     decorU('C', 158, 248, 7);
@@ -2170,6 +2182,7 @@ const C6M = (() => {
     RING,
     TWIN,
     ARENA_GATE,
+    LIDS,
     other,
     worldOf,
     rel,

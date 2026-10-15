@@ -1286,6 +1286,10 @@
       const p = Player.body.p;
       const w = myW();
       const q = W.rel(p);
+      // the walls across the chasms: open over a bridge that is there, and for the grapple's flight
+      local.hopT = Player.mode === 'grapple' ? 1.4 : Math.max(0, (local.hopT || 0) - dt);
+      W.LIDS.forEach((b) => (b.on = !local.hopT));
+      Object.values(W.bridges).forEach((br) => br.plug && (br.plug.on = !local.hopT && !br.b.on));
       // my world: light, sound
       if (local.myWorld !== w) {
         local.myWorld = w;
