@@ -179,7 +179,7 @@ const CONFIG = {
         'Ton épée : clic gauche. Le Voile : clic droit. Les spectres, seul{pe} {mate} les voit.',
     },
     room1: 'L’Antichambre : nettoyez la salle.',
-    levers: 'Deux leviers, deux mains. Tenez-les en même temps (E).',
+    levers: 'Deux plaques, une chacun. Restez dessus en même temps.',
     room2: 'La Nef : les Cavaliers chargent en ligne droite. Esquivez sur le côté.',
     room3: {
       dame: 'L’Ossuaire : des spectres. Toi seul{e} les vois. Tire dessus pour les révéler, {mate} les achève.',
