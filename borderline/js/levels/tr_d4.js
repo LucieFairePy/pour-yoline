@@ -354,7 +354,8 @@
           c.send('d4say', [TXT.zapMate, 2200]);
         }
       }
-      if (d.a === 'key' && x.stage === 2 && local.L.kstate !== 'ok') {
+      // the Valet types the code, the Dame validates it from the catwalk
+      if (d.a === 'key' && x.stage === 2 && local.L.kstate !== 'ok' && who === 'valet') {
         const kp = x.kp.length >= 4 ? String(d.n) : x.kp + d.n;
         c.set((s) => (s.x.kp = kp));
         c.send('d4key', d.n);
@@ -367,7 +368,7 @@
           c.send('d4ks', '');
         }
       }
-      if (d.a === 'validate' && x.stage === 2 && local.L.kstate !== 'ok') {
+      if (d.a === 'validate' && x.stage === 2 && local.L.kstate !== 'ok' && who === 'dame') {
         local.L.lever = 1.2;
         c.send('d4lever', 1);
         const want = x.order.map((s) => x.digits[s]).join('');
@@ -516,6 +517,8 @@
         if (q.z > 75 && q.x > 3 && q.y < 1) once('kp', r === 'dame' ? TXT.keypadDame : TXT.keypad, 4200);
         if (r === 'dame' && q.y > 4.5 && q.z > 46) once('kpd', TXT.keypadDame, 4200);
         const k = D4.nearKey(q);
+        if (k && r !== 'valet') return ['E', 'Le clavier est pour l’autre · code : ' + ((x.kp || '') + '____').slice(0, 4)];
+        if (D4.nearLever(q) && r !== 'dame') return ['E', 'Le levier est pour l’autre (' + ((x.kp || '') + '____').slice(0, 4) + ')'];
         if (k) {
           if (Input.pressed('interact')) {
             k.press = 1;

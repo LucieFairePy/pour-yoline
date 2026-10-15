@@ -117,6 +117,8 @@ const D4 = (() => {
 
   // ---------- laser hall layout (shared with the level logic) ----------
   const ROWS = [52, 56, 60, 64, 68, 72];
+  // the laser sheets rise from the floor to 4.2 m: no jump (apex 3.2 m) clears them
+  const LASER_TOP = 4.2;
   const LANES = [-4, 0, 4];
   const ROW_SEED = [0, 2, 1, 0, 2, 1];
   const ROW_DIR = [1, -1, 1, -1, 1, -1];
@@ -723,14 +725,16 @@ const D4 = (() => {
       const ing = K.deco(bx(0.6, 0.3, 1.1), brass, 7.6, 3.36, z);
       ing.rotation.y = 0.3;
     }
-    // laser emitters and beams: one sheet per lane and row
-    const beamGeo = new THREE.PlaneGeometry(4, 2.3);
+    // laser emitters and beams: one sheet per lane and row, taller than any double jump (LASER_TOP)
+    const beamGeo = new THREE.PlaneGeometry(4, LASER_TOP);
     ROWS.forEach((z, ri) => {
       [-1, 1].forEach((sd) => {
-        const post = K.deco(bx(0.32, 2.6, 0.32), iron, sd * 6.05, 1.3, z);
+        const post = K.deco(bx(0.32, LASER_TOP + 0.3, 0.32), iron, sd * 6.05, (LASER_TOP + 0.3) / 2, z);
         post.castShadow = false;
-        const lens = K.deco(new THREE.SphereGeometry(0.11, 12, 8), glow('#ff2a3a', 1.4), sd * 5.86, 1.15, z);
-        emitters.push(lens);
+        [1.15, 3.35].forEach((ly) => {
+          const lens = K.deco(new THREE.SphereGeometry(0.11, 12, 8), glow('#ff2a3a', 1.4), sd * 5.86, ly, z);
+          emitters.push(lens);
+        });
       });
       LANES.forEach((x, li) => {
         const m = new THREE.Mesh(
@@ -745,11 +749,11 @@ const D4 = (() => {
             toneMapped: false,
           }),
         );
-        m.position.copy(P(x, 1.2, z));
+        m.position.copy(P(x, 0.05 + LASER_TOP / 2, z));
         group.add(m);
         // a few bright horizontal strands inside each sheet
         const strands = new THREE.Group();
-        for (let k = 0; k < 5; k++) {
+        for (let k = 0; k < 9; k++) {
           const st = new THREE.Mesh(
             bx(4, 0.025, 0.025),
             new THREE.MeshBasicMaterial({
@@ -759,7 +763,7 @@ const D4 = (() => {
               toneMapped: false,
             }),
           );
-          st.position.y = -0.9 + k * 0.48;
+          st.position.y = -LASER_TOP / 2 + 0.25 + k * 0.46;
           strands.add(st);
         }
         m.add(strands);
@@ -1592,9 +1596,9 @@ const D4 = (() => {
     onBalcony: (q) => q.x < -10.4 && q.z > 28.8 && q.z < 37.2 && q.y > 4.6,
     onLedge: (q) => q.x > 10.8 && q.z > 29.4 && q.z < 36.6 && q.y > 2.6,
     inRoom1: (q) => q.z > 10.3 && q.z < 43.7,
-    inLasers: (q) => q.z > 49.6 && q.z < 74.4 && Math.abs(q.x) < 6.1 && q.y < 2.4,
+    inLasers: (q) => q.z > 49.6 && q.z < 74.4 && Math.abs(q.x) < 6.1 && q.y < LASER_TOP,
     laserHit(q, step) {
-      if (q.y > 2.25 || Math.abs(q.x) > 6.1) return -1;
+      if (q.y > LASER_TOP - 0.1 || Math.abs(q.x) > 6.1) return -1;
       for (let r = 0; r < ROWS.length; r++) {
         if (Math.abs(q.z - ROWS[r]) > 0.38) continue;
         const lane = Math.max(0, Math.min(2, Math.round((q.x + 4) / 4)));
