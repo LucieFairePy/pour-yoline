@@ -346,10 +346,11 @@
     // The shield stops bullets. Sword blows crack its guard (4 in phase 1, 5 in phase 2, within
     // a few seconds); a broken guard stuns the Sentinelle, its chest opens and the heart takes the
     // rifle at 3x. The engine's own stun is kept off (stunImm) so only a broken guard stuns.
+    // The sword never wounds it (or the Valet could grind it down alone): only the rifle does.
     mult(e, weak, stun) {
       if (stun) {
-        if (e.stun > 0) return 1;
-        if (e.cool > 0) return 0.3;
+        if (e.stun > 0) return 0;
+        if (e.cool > 0) return 0;
         e.guard = (e.guard || 0) + 1;
         e.guardT = 4;
         if (e.guard >= (e.ph === 2 ? 5 : 4)) {
@@ -359,7 +360,7 @@
           e.st = 6;
           bfx('stun', e.pos);
         } else bfx('crack', e.pos);
-        return 0.3;
+        return 0;
       }
       if (e.stun > 0) {
         // one opening is worth at most 15% of its life: past that it shakes off the stun
