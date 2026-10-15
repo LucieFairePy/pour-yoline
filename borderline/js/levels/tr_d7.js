@@ -4,8 +4,8 @@
   const CARD = Cards.tagOf('d7');
   const T = CONFIG;
   const TITLE = 'Le Temps';
-  // the hour the dial shows when everything stops: the hour of their meeting (to adjust)
-  const MEET = { h: 20, m: 14 };
+  // the hour the dial shows when everything stops: 17:07, for the 17th of July they met
+  const MEET = { h: 17, m: 7 };
   const RATE = 5 / 0.9; // minutes per second at the crank (one hour mark every 0.9 s)
   const FAST = 4;
   const ECHO_LEN = 10;
@@ -80,7 +80,7 @@
     fastGear: 'Il tourne bien trop vite : il faut d’abord le frein.',
     spin: 'L’engrenage tourne encore trop vite : que {mate} tienne le frein un peu plus.',
     stop: 'Le temps s’arrête.',
-    meet: 'Le cadran s’est arrêté sur une heure : celle où tout a commencé pour vous deux.',
+    meet: 'Le cadran s’est arrêté sur 17 h 07. Le 17/07 : le jour où tout a commencé pour vous deux.',
     card: 'La carte ' + CARD + ' descend au centre. Allez-y ensemble.',
   };
   CONFIG.cards.d7 = {

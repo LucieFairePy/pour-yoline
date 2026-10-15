@@ -448,19 +448,9 @@ const CONFIG = {
       'Chaque épreuve était une phrase de ma lettre.',
       'La voici, en entier.',
     ],
-    letter: [
-      ['♥ 3', 'Je te fais confiance, même quand je ne vois rien.'],
-      ['♠ 3', 'Quand le monde nous regarde, je me mets devant toi.'],
-      ['♣ 2', 'Dans le noir, c’est ta voix que je suis.'],
-      ['♠ 5', 'Dans les couloirs les plus sombres, je ne lâche pas ta main.'],
-      ['♦ 2', 'Avec toi, même les casse-têtes ont un sens.'],
-      ['♥ 2', 'Mes endroits préférés, ce sont ceux où l’on marche à deux.'],
-      ['♠ 7', 'Je me battrai à tes côtés. Et parfois, c’est toi qui me protégeras.'],
-      ['♣ 7', 'Aucun monstre n’est assez grand pour nous deux.'],
-      ['♠ A', 'Je courrai toujours, tant que c’est vers toi.'],
-      ['♣ A', 'Et quand la peur arrive, je saute quand même.'],
-      ['♥ A', 'Tu es ma Dame de Cœur, Yoline.'],
-    ],
+    // PLACEHOLDER: the final letter is still to be written by its author (one line per card, the
+    // ♥ A line last). Until then the finale shows this single line.
+    letter: [['♥ A', '[ La lettre sera écrite ici. ]']],
     signature: '— Moi',
     visa: 'Visa : illimité.',
     missing: 'Il manque des cassettes… Le Maître du jeu avait encore des choses à dire.',
