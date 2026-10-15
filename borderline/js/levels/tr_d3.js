@@ -479,7 +479,9 @@
         both(c, 'clank', D3.blockPos(h.i).toArray());
       }
       if (d.a === 'take' && !h) {
-        // the last weight put on that pan / platform
+        // the last weight put on that pan / platform, in the current room only
+        const here = x.stage === 1 ? /^pan:[AB]:R$/.test(d.from) : x.stage === 2 && (d.from === 'pA' || d.from === 'pB');
+        if (!here) return;
         let i = -1;
         x.blocks.forEach((b, k) => b.at === d.from && (i = k));
         if (i < 0) return;
@@ -596,15 +598,17 @@
       } else local.pitT = 0;
 
       if (x.stage === 1 || x.stage === 2) {
-        // live readout: the Dame reads the numbers, the Valet only sees the needles
+        // live readout: the Dame sees which side is heavier (the sums are hers to work out from the
+        // numbers on the weights), the Valet only sees the needles
         if (x.stage === 1 && local.w1 && D3.inRoom1(q)) {
           const w = local.w1;
+          const lean = (s) => (s.L === s.R ? 'équilibrée' : s.L > s.R ? 'penche à gauche' : 'penche à droite');
           local.objT = (local.objT || 0) - dt;
           if (local.objT <= 0) {
             local.objT = 0.25;
             HUD.objective(
               r === 'dame'
-                ? `Balance A : ${w.A.L} à gauche · ${w.A.R} à droite. Balance B : ${w.B.L} à gauche · ${w.B.R} à droite.`
+                ? `Balance A : contrepoids ${w.A.L}, ${lean(w.A)}. Balance B : contrepoids ${w.B.L}, ${lean(w.B)}.`
                 : `Balance A ${w.A.L === w.A.R ? 'équilibrée' : 'penche'} · Balance B ${w.B.L === w.B.R ? 'équilibrée' : 'penche'}. Les chiffres, seul{pe} {mate} les lit.`,
             );
           }
