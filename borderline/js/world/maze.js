@@ -24,15 +24,17 @@ const Maze = (() => {
   let glass;
   let rim;
   const mats = () => {
-    stone = Tex.mat('cobble', { color: '#6a5a78', scale: 5, bump: 1.2 });
+    // dark weathered stone, a little darker than before (the walker must not see better)
+    stone = Tex.mat('cobble', { color: '#5e5a54', scale: 5, bump: 1.2 });
     wallMat = Tex.mat('stone', {
-      color: '#6a5878',
+      color: '#5c544c',
       scale: 4,
       bump: 0.7,
-      emissive: '#0c0814',
+      // same faint self-light as before (what the walker sees by), grey instead of violet
+      emissive: '#0b0a0a',
     });
-    metal = Tex.mat('metal', { color: '#9a8aa8', rough: 0.55, metal: 0.25, scale: 1.5 });
-    rim = Tex.mat('concrete', { color: '#5a4c68', scale: 2 });
+    metal = Tex.mat('metal', { color: '#8e8a84', rough: 0.55, metal: 0.25, scale: 1.5 });
+    rim = Tex.mat('concrete', { color: '#4e4c50', scale: 2 });
     glass = new THREE.MeshStandardMaterial({
       color: '#bfe8ff',
       roughness: 0.05,
@@ -46,6 +48,11 @@ const Maze = (() => {
     new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false });
   let built = false;
   let role = 'dame';
+  // set dressing for the guide's eyes: hidden whenever this player walks in the dark
+  const deco = new THREE.Group();
+  group.add(deco);
+  let capMat = null;
+  const amb = { haze: new THREE.Color('#0d1519'), sky: null, flies: null };
   const mazes = {};
   let lamp = null;
   let screen = null;
@@ -159,6 +166,14 @@ const Maze = (() => {
     });
     inst.frustumCulled = false;
     group.add(inst);
+    // bronze caps along the wall tops: the guide's view only (the decor is hidden in the dark)
+    const caps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), capMat, walls.length);
+    walls.forEach(([x, z, sx, sz], i) => {
+      m4.makeScale(sx + 0.12, 0.16, sz + 0.12).setPosition(O.x + x, O.y + WALL_H + 0.08, O.z + z);
+      caps.setMatrixAt(i, m4);
+    });
+    caps.frustumCulled = false;
+    deco.add(caps);
     solid(x0 + size / 2, -0.5, z0 + size / 2, size + 0.4, 1, size + 0.4);
     const trapMat = glow('#ff2a3a', 1.2);
     const trapCells = m.traps.map(([x, z]) => {
@@ -295,6 +310,7 @@ const Maze = (() => {
     role = myRole;
     group.visible = true;
     mats();
+    capMat = Tex.mat('metal', { color: '#b08a4a', metal: 0.85, rough: 0.6, scale: 1 });
     const r = rng(seed + 404);
     solid(0, -0.5, -6, 14, 1, 12);
     buildMaze(M1, 'm1', r, 'valet');
@@ -371,7 +387,121 @@ const Maze = (() => {
 
     lamp = new THREE.PointLight('#ffd9a8', 0, 11, 1.6);
     R.scene.add(lamp);
+    dress();
   };
+
+  // ---------- set dressing (no colliders; outside the mazes or above them) ----------
+  const dress = () => {
+    const box = (sx, sy, sz) => new THREE.BoxGeometry(sx, sy, sz);
+    const rock = Tex.mat('rock', { color: '#3a3c40', scale: 6 });
+    const bronze = capMat;
+    const R2 = rng(77);
+    // the slabs float: rough rock hanging under each of them
+    const under = LvKit.batch();
+    const cone = new THREE.ConeGeometry(1, 1, 7);
+    [
+      [0, -6, 14, 12],
+      [M1.x0 + (M1.n * CELL) / 2, M1.z0 + (M1.n * CELL) / 2, M1.n * CELL, M1.n * CELL],
+      [0, 38, 14, 12],
+      [M2.x0 + (M2.n * CELL) / 2, M2.z0 + (M2.n * CELL) / 2, M2.n * CELL, M2.n * CELL],
+      [0, 81, 14, 10],
+    ].forEach(([cx, cz, w, d]) => {
+      under.add(cone, P(cx, -1 - Math.min(w, d) * 0.45, cz), [Math.PI, 0, 0], [w * 0.62, Math.min(w, d) * 0.9, d * 0.62]);
+      for (let i = 0; i < 5; i++) {
+        const s = 1.5 + R2() * 2.5;
+        under.add(
+          cone,
+          P(cx + (R2() - 0.5) * w * 0.7, -1.2 - s * 1.2, cz + (R2() - 0.5) * d * 0.7),
+          [Math.PI, R2() * 3, 0],
+          [s, s * 2.6, s],
+        );
+      }
+    });
+    deco.add(under.mesh(rock));
+    // lantern posts on the slab corners outside the mazes, and round the bomb room
+    const iron = LvKit.batch();
+    const flame = LvKit.batch();
+    const post = (x, z) => {
+      iron.add(box(0.16, 2.6, 0.16), P(x, 1.3, z));
+      iron.add(box(0.5, 0.08, 0.5), P(x, 2.62, z));
+      iron.add(box(0.42, 0.06, 0.42), P(x, 3.12, z));
+      flame.add(box(0.2, 0.3, 0.2), P(x, 2.86, z));
+    };
+    [
+      [-6.6, -11.6], [6.6, -11.6], [-6.6, -0.6], [6.6, -0.6],
+      [-6.6, 32.4], [6.6, 32.4], [-6.6, 43.6], [6.6, 43.6],
+      [-6.6, 76.4], [6.6, 76.4],
+    ].forEach(([x, z]) => post(x, z));
+    // the bomb room: a lamp hanging over the device, its cables to the screen stand
+    iron.add(box(0.06, 0.06, 7), P(0, 0.03, 41.3));
+    iron.add(box(0.12, 2.1, 0.12), P(0, 1.05, 38.42));
+    iron.add(box(0.03, 30, 0.03), P(0, 21, 38));
+    const shade = new THREE.ConeGeometry(0.7, 0.6, 16, 1, true);
+    iron.add(shade, P(0, 5.8, 38));
+    flame.add(new THREE.SphereGeometry(0.18, 12, 8), P(0, 5.55, 38));
+    // the arch where the card waits
+    const arch = LvKit.batch();
+    [-6.2, 6.2].forEach((x) => {
+      arch.add(box(1.2, 6.5, 1.2), P(x, 3.25, 85.4));
+      arch.add(box(1.6, 0.4, 1.6), P(x, 0.2, 85.4));
+    });
+    arch.add(box(14, 1.1, 1.4), P(0, 7, 85.4));
+    deco.add(arch.mesh(rimMatDark()), iron.mesh(bronze), flame.mesh(LvKit.glow('#ffa040', 1.2)));
+    // a painted heart-target under the bomb, cracked paint
+    const tgt = LvKit.tex(512, 512, (g) => {
+      g.strokeStyle = 'rgba(200,40,70,0.7)';
+      g.lineWidth = 14;
+      g.beginPath();
+      g.arc(256, 256, 230, 0, TAU);
+      g.stroke();
+      g.setLineDash([30, 22]);
+      g.lineWidth = 6;
+      g.beginPath();
+      g.arc(256, 256, 180, 0, TAU);
+      g.stroke();
+      g.globalCompositeOperation = 'destination-out';
+      for (let i = 0; i < 3000; i++) g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+    });
+    const ring = new THREE.Mesh(
+      new THREE.PlaneGeometry(7, 7).rotateX(-Math.PI / 2),
+      new THREE.MeshStandardMaterial({
+        map: tgt,
+        transparent: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        roughness: 0.9,
+      }),
+    );
+    ring.position.copy(P(BOMB.x, 0.012, BOMB.z));
+    deco.add(ring);
+    // warm lights: the bomb lamp, the start and the arch (only for those who are not in the dark)
+    LvKit.light(deco, P(0, 5.2, 38), '#ffc27a', 2.2, 16);
+    LvKit.light(deco, P(0, 3.5, -6), '#ffb46a', 1.4, 14);
+    LvKit.light(deco, P(0, 4, 82), '#ffb46a', 1.6, 16);
+    LvKit.light(deco, P(0, 8, 14.4), '#9fd8ff', 0.8, 30);
+    amb.sky = LvKit.sky({
+      hor: '#0c1418',
+      zen: '#020305',
+      cloud: '#18242a',
+      cloudK: 0.3,
+      stars: 0.9,
+      glow: '#0c2a1e',
+      glowDir: V3(-0.4, 0, 1),
+    });
+    amb.flies = LvKit.motes({
+      n: 260,
+      size: 2.4,
+      colors: ['#d8ff9a', '#ffd27a'],
+      rise: [-0.15, 0.2],
+      sway: 1.4,
+      box: [44, 12],
+      alpha: 0.7,
+      below: 6,
+      seed: 12,
+    });
+  };
+  const rimMatDark = () => Tex.mat('stone', { color: '#3c3a40', scale: 2.5, bump: 0.8 });
 
   return {
     O,
@@ -428,6 +558,23 @@ const Maze = (() => {
       return best;
     },
     nearCard: (q) => Math.hypot(q.x - CARD.x, q.z - CARD.z) < 3,
+    // the guide's view: own sky, light and fireflies; nothing of it for whoever is in the dark
+    mood(on) {
+      LvKit.mood(null);
+      deco.visible = !!on;
+      if (!on || !built) return;
+      LvKit.mood({
+        sky: '#b4c4d0',
+        ground: '#1c1a18',
+        hemi: 0.42,
+        sun: '#d8e2f0',
+        sunI: 0.6,
+        exposure: 1.25,
+        haze: amb.haze,
+        extras: [amb.sky, amb.flies],
+      });
+    },
+    tick: (t) => LvKit.tick(t),
     lampAt(p, on) {
       if (!lamp) return;
       lamp.intensity = on ? 2.2 : 0;
