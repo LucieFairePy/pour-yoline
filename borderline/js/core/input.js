@@ -32,10 +32,17 @@ const Input = (() => {
     if (enabled && ['Space', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.code)) e.preventDefault();
   });
   addEventListener('keyup', (e) => keys.delete(e.code));
-  addEventListener('blur', () => {
+  // A key or button whose release the page never saw (focus or pointer lock changing at that
+  // moment) would stay held for ever and walk the player away on its own: forget everything held
+  // whenever focus, visibility or the pointer lock changes.
+  const release = () => {
     keys.clear();
     mouse.clear();
-  });
+  };
+  addEventListener('blur', release);
+  addEventListener('focus', release);
+  document.addEventListener('visibilitychange', release);
+  document.addEventListener('pointerlockchange', release);
   addEventListener('mousedown', (e) => {
     if (locked) mouse.add(e.button);
   });
