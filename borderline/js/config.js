@@ -529,9 +529,9 @@ const CONFIG = {
     },
   },
   clues: {
-    c4: 'Cassette 4 · « Ce toit, c’est là que je voulais lui montrer la vue. »',
-    c5: 'Cassette 5 · « Le Joker n’est pas de moi. Il est arrivé avec la peur. »',
-    c6: 'Cassette 6 · Un graffiti : « Y. » — la même signature que dans le voyage.',
+    c4: 'Cassette 1 · « Ce toit, c’est là que je voulais lui montrer la vue. »',
+    c5: 'Cassette 2 · « Le Joker n’est pas de moi. Il est arrivé avec le doute. »',
+    c6: 'Cassette 3 · Un graffiti : « Y. » — la même signature que dans le voyage.',
   },
   places: [
     {

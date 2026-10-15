@@ -108,7 +108,7 @@ const Story = (() => {
         s.done = Trials.fromChapter(ch);
       }
       s.chapter = s.done.length;
-      s.clues = p.clues || [];
+      s.clues = (p.clues || []).filter((id) => CONFIG.clues[id]);
       s.seen = p.seen || [];
       // one card per épreuve done, plus the story cards already won (before v5 the finale gave
       // ♦ R and ♥ D, now its aces; the old ids are épreuve cards and must not count as aces)
