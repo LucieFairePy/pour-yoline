@@ -50,7 +50,7 @@ const Trials = (() => {
     // the saucer, at the end of world 2), then the Cour itself (the twelve faces: the Veilleurs)
     [6, 'h8', 'h9', 'tr_h8', 'L’Averse', true],
     [6, 'c7', 'c9', 'tr_c7', 'Le Pilote', true],
-    [6, 'h10b', 'h10', 'tr_h10', 'Le Sacrifice', false],
+    [6, 'h10b', 'h10', 'tr_h10', 'Le Marché', false],
     [6, 'd10', 'd10', 'tr_d10', 'Le Lac gelé', true],
     [6, 'c10', 'c10', 'tr_c10', 'La Tour de Babel', false],
     [6, 'sV', 'sV', 'tr_sV', 'Le Valet de Pique', true],
