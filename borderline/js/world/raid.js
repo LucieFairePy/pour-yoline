@@ -260,6 +260,9 @@ const Raid = (() => {
     const d1 = vaultDoor(66.2);
     door = d1.d;
     doorB = d1.b;
+    // the door's walls run on, unseen, past the platform's edges (a double jump round their end
+    // reached the gallery with the door still shut)
+    [-1, 1].forEach((sd) => K.collider(sd * 17.5, FLOOR + 6, 66.5, 9, 30, 1.4, { tag: 'nocam' }));
     // ---- Galerie des Sceaux ----
     plat(0, FLOOR, 72, 14, 8);
     plat(0, FLOOR, 96, 14, 8);
