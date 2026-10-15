@@ -61,6 +61,11 @@
       enter: 'Entrez sur le grand toit.',
       fall: 'Le vide. Retour au début des toits.',
     },
+    notMine: {
+      valve: 'La vanne, c’est à {mate} de la tourner : guide-{le} jusqu’ici.',
+      lever: 'Ce levier-là, c’est à {mate} de le tirer.',
+    },
+    noCover: 'Sans le parapluie au-dessus de toi, la grêle t’empêche de tourner : {mate} doit te couvrir.',
     warnMe: 'Tu préviens {mate}.',
     warnMate: '{mate} : « Regarde ! »',
     s6: {
@@ -93,6 +98,9 @@
   const COLD_STAGES = [1, 6];
   const NEED = { valveA: 2.6, valveB: 2.6, lever4: 1.2, lever5: 1.2, rod0: 4, rod1: 4, rod2: 4, rod3: 4 };
   const RANGE = { crank: 1.7, valve: 1.8, lever: 1.7 };
+  // who works what: the walker turns the valve (the guide only sees), the climber pulls the lever
+  const ROLE_OF = { valveA: 'valet', valveB: 'dame', lever4: 'valet', lever5: 'dame' };
+  const mine = (id, role) => !ROLE_OF[id] || ROLE_OF[id] === role;
   const COVER_R = 1.3;
   const local = {
     stage: 0,
@@ -458,7 +466,10 @@
   const tickMech = (c, dt) => {
     const x = c.S.x;
     const A = local.aims;
-    const held = (id) => ROLES.some((r) => A[r] === id && !handsFull(x, id, r));
+    // a lightning rod only turns under the umbrella (the hail beats the bare-headed one back)
+    if (x.stage === 6) coverOf(c, cov);
+    const shielded = (id, r) => !id.startsWith('rod') || covered(c, r, cov);
+    const held = (id) => ROLES.some((r) => A[r] === id && !handsFull(x, id, r) && mine(id, r) && shielded(id, r));
     if (x.stage === 1) {
       if (held('crankO') || held('crankI')) {
         local.shut = Math.min(1, local.shut + dt * 0.6);
@@ -553,9 +564,11 @@
     }
     if (s.t <= 0) {
       local.strike = null;
-      W.bolt(s.a, s.b, { w: 0.5, life: 0.6, flash: s.amb ? 0.55 : 1.15, branches: 3 });
+      // the climber only reads the way in a flash if warned to look (else a glare, and nothing stays)
+      const blind = !s.amb && dark(x) && c.role === climberOf(x) && !(local.warned > 0);
+      W.bolt(s.a, s.b, { w: 0.5, life: 0.6, flash: s.amb ? 0.55 : blind ? 0.4 : 1.15, branches: 3 });
       W.AU.thunder(s.b, s.amb ? 0.7 : 1.1);
-      if (!s.amb) {
+      if (!s.amb && !blind) {
         if (x.stage === 4) local.afterA = 1;
         if (x.stage === 5) local.afterB = 1;
       }
@@ -766,6 +779,7 @@
       h8l: (c, d) => (local.mateLamp = d ? V3(d[0], d[1], d[2]) : null),
       h8s: (c, d) => !Net.isHost && onStrike(c, d),
       h8warn: () => {
+        local.warned = 3.5;
         lookCue(TXT.warnMate);
         Sound.play('chime');
       },
@@ -999,6 +1013,11 @@
       const q = W.rel(p);
       local.hitT = Math.max(0, local.hitT - dt);
       local.warnCd = Math.max(0, local.warnCd - dt);
+      local.warned = Math.max(0, (local.warned || 0) - dt);
+      // the wide gap of the dark roofs opens only to the grapple (and the hop that follows it)
+      if (Player.mode === 'grapple') local.grT = 1.6;
+      local.grT = Math.max(0, (local.grT || 0) - dt);
+      if (W.chasm) W.chasm.on = !(local.grT > 0);
       Object.keys(local.sayCd).forEach((k) => (local.sayCd[k] -= dt));
       for (let i = local.pend.length - 1; i >= 0; i--) {
         const e = local.pend[i];
@@ -1188,11 +1207,19 @@
         if (handsFull(x, m.id, r)) {
           prompt = ['E', Story.fmt(TXT.handsFull), false];
           if (Input.pressed('interact')) sayOnce('hands', TXT.handsFull, 4);
+        } else if (!mine(m.id, r)) {
+          const t2 = TXT.notMine[m.kind];
+          prompt = ['E', Story.fmt(t2), false];
+          if (Input.pressed('interact')) sayOnce('notMine', t2, 4);
         } else {
           const verb = m.kind === 'crank' ? (m.id.startsWith('rod') ? 'Ouvrir le paratonnerre' : 'Tourner la manivelle') : m.kind === 'valve' ? 'Tourner la vanne' : 'Tirer le levier';
           const pc = Math.round((local.prog[m.id] || 0) * 100);
           prompt = ['E', verb + (holding ? ' · ' + pc + ' %' : ' (maintenir)'), true];
           if (holding) want = m.id;
+          if (holding && m.id.startsWith('rod') && !meCovered) {
+            prompt = ['E', Story.fmt(TXT.noCover), true];
+            sayOnce('noCover', TXT.noCover, 6);
+          }
         }
       } else if (guiding) {
         prompt = ['E', 'Pointer ta lampe vers le chemin de ' + Story.name(mateRole(r)) + ' (maintenir)', true];

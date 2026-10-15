@@ -1558,6 +1558,7 @@ const H8 = (() => {
   const shutter = { k: 0 };
   let bridge = null;
   let gate5 = null;
+  let chasm = null;
   const rods = [];
   let boss = null;
   let rainbow = null;
@@ -1905,6 +1906,14 @@ const H8 = (() => {
     }
     bridge = { g: bg, k: 0, want: 0, b: KC.collider(0, 13.85, (BRIDGE.z0 + BRIDGE.z1) / 2, 14, 0.3, BRIDGE.z1 - BRIDGE.z0) };
     bridge.b.on = false;
+    // the lit way stays on its side of the street: no leap from the stair, the landing or the roof
+    // behind it onto the dark fire escape or the left roof (only the bridge, once it is out)
+    const nc = { tag: 'nocam' };
+    const lx = LS.x0 - 0.05;
+    KC.collider(lx, 10.5, (240.5 + BRIDGE.z0) / 2, 0.1, 21, BRIDGE.z0 - 240.5, nc);
+    KC.collider(lx, 10.5, (BRIDGE.z1 + 288) / 2, 0.1, 21, 288 - BRIDGE.z1, nc);
+    KC.collider(lx, 6.85, (BRIDGE.z0 + BRIDGE.z1) / 2, 0.1, 13.7, BRIDGE.z1 - BRIDGE.z0, nc);
+    bridge.wall = KC.collider(lx, 17.5, (BRIDGE.z0 + BRIDGE.z1) / 2, 0.1, 7, BRIDGE.z1 - BRIDGE.z0, nc);
     // dark rooftops (stage 5) and the grapple ring over the wide gap
     const dgB = [];
     DARK_B.forEach(([x0, x1, top, z0, z1], i) => {
@@ -1942,6 +1951,10 @@ const H8 = (() => {
     }
     instanced('C', new THREE.BoxGeometry(0.12, TN.h, 0.12), M.iron, fr);
     for (let z = TN.z0 + 8; z < TN.z1; z += 12) KC.solid((TN.x0 + TN.x1) / 2, (TN.y - 0.3) / 2, z, 0.6, TN.y - 0.3, 0.6, M.iron);
+    // nobody walks on the tunnel's glass roof (it would skip the dark roofs and the gate)
+    KC.collider((TN.x0 + TN.x1) / 2, 21, (TN.z0 + TN.z1) / 2, TN.x1 - TN.x0 + 0.4, 6.7, TN.z1 - TN.z0 + 0.4, nc);
+    // the wide gap of the dark roofs: only the grapple crosses it (the level opens this screen while it pulls)
+    chasm = KC.collider(-16.15, 17, RING_B.pos[2], 19.7, 12, 0.3, nc);
     for (let z = TN.z0 + 3; z < TN.z1; z += 6.5) {
       KC.deco(new THREE.SphereGeometry(0.14, 10, 8), M.bulb, (TN.x0 + TN.x1) / 2, TN.y + TN.h - 0.35, z);
       anchors.push({ p: P((TN.x0 + TN.x1) / 2, TN.y + TN.h - 0.6, z), c: '#ffbf70', i: 1.4, d: 7, z: 'C', lit: true });
@@ -1954,6 +1967,9 @@ const H8 = (() => {
     KD.solid((GATE5.x1 + ARENA.x1) / 2, 16.1, 336.3, ARENA.x1 - GATE5.x1, 4.2, 0.6, M.brick);
     KD.solid((GATE5.x0 + GATE5.x1) / 2, 17.8, 336.3, GATE5.x1 - GATE5.x0, 0.8, 0.6, M.brick);
     gate5 = barGate('D', GATE5.x0, GATE5.x1, 14, 3.4, 336.3);
+    // no leap over the front wall (from the lever, a chimney) or round its end: the gate is the way in
+    KD.collider(0, 21.2, 336.3, 52, 6, 0.6, { tag: 'nocam' });
+    KD.collider(-24, 17.1, 339, 4, 14.2, 6, { tag: 'nocam' });
     // parapets, with an iron railing on top (a bolt's blast can't throw anyone off the roof)
     KD.solid(ARENA.x0 + 0.2, 14.6, (336.6 + ARENA.z1) / 2, 0.4, 1.2, ARENA.z1 - 336.6, M.brick);
     KD.solid(ARENA.x1 - 0.2, 14.6, (336.6 + ARENA.z1) / 2, 0.4, 1.2, ARENA.z1 - 336.6, M.brick);
@@ -2343,6 +2359,21 @@ const H8 = (() => {
     const rp = [];
     for (let z = bz0; z <= bz1; z += 0.5) rp.push([rx, 5.55, z, 1, 0, 1]);
     instanced('B', new THREE.BoxGeometry(0.03, 1.0, 0.03), M.black, rp);
+    // the guide stays up there: no jumping over the rail, nor off the end before the stair unfolds
+    K.collider(rx, 7.4, (bz0 + bz1) / 2, 0.1, 4.6, bz1 - bz0, { tag: 'nocam' });
+    const endCap = K.collider(sx, 7.4, bz1 + 0.05, bx1 - bx0, 4.6, 0.1, { tag: 'nocam' });
+    // under the balcony, a grille down to the water: the walker can't hug the facade past the drains
+    const gw = bz1 - bz0;
+    const gx = s > 0 ? bx0 : bx1;
+    const grm = barsMat().clone();
+    grm.map = T.bars.clone();
+    grm.map.needsUpdate = true;
+    grm.map.repeat.set(gw / 1.6, 4.7 / 1.6);
+    const grille = new THREE.Mesh(new THREE.PlaneGeometry(gw, 4.7), grm);
+    grille.rotation.y = Math.PI / 2;
+    grille.position.copy(P(gx, 2.35, (bz0 + bz1) / 2));
+    zg.B.add(grille);
+    K.collider(gx, 2.35, (bz0 + bz1) / 2, 0.2, 4.7, gw);
     anchors.push({ p: P(sx, 7.2, (bz0 + bz1) / 2), c: '#ffc080', i: 1.2, d: 10, z: 'B' });
     KZ.B.deco(new THREE.SphereGeometry(0.16, 10, 8), M.bulb, sx + s * 0.6, 7.4, (bz0 + bz1) / 2);
     // the folding stair (down to the far side, once the valve is turned)
@@ -2360,7 +2391,7 @@ const H8 = (() => {
       b.on = false;
       fcols.push(b);
     }
-    stairs[k] = { g: fg, cols: fcols, k: 0, want: 0 };
+    stairs[k] = { g: fg, cols: fcols, k: 0, want: 0, endCap };
     // the floodgate wall and its two gates (the walkway and, under the balcony, the stair's way)
     const gz = Bs.gateZ;
     const wallPieces = s > 0 ? [[-7, -1.5], [1.5, bx0]] : [[bx1, -1.5], [1.5, 7]];
@@ -2368,6 +2399,8 @@ const H8 = (() => {
     const g1 = barGate('B', -1.5, 1.5, 0, 3.4, gz + 0.3);
     const g2 = barGate('B', bx0, bx1, 0, 3.4, gz + 0.3);
     gates[k] = [g1, g2];
+    // no leap over the floodgate wall (from the valve's wheel) while the valve is shut
+    gates[k].cap = K.collider(0, 5.7, gz + 0.3, 14, 4.6, 0.6, { tag: 'nocam' });
     valve('B', 'valve' + k, Bs.valve[0], Bs.valve[1]);
     // the drains on the floor (visible once the water is gone)
     const grates = PLATES[k].map(([x, z]) => [x, 0.015, z, 1.9, 1.9, Math.random() * 3, 0]);
@@ -3018,6 +3051,8 @@ const H8 = (() => {
       s.k = damp(s.k, ST.stairs[k], 2.2, dt);
       s.g.rotation.x = (-Math.PI / 2) * (1 - s.k);
       s.cols.forEach((b) => (b.on = s.k > 0.97));
+      s.endCap.on = !ST.stairs[k];
+      gates[k].cap.on = !ST.gates[k];
       const ov = overlays[k];
       ov.g.visible = ST.guide === k && lv > 0.05;
       if (ov.g.visible) {
@@ -3053,6 +3088,7 @@ const H8 = (() => {
     bridge.g.position.copy(P(-14 + 14 * bridge.k, 14, (BRIDGE.z0 + BRIDGE.z1) / 2));
     bridge.g.visible = bridge.k > 0.02;
     bridge.b.on = bridge.k > 0.97;
+    bridge.wall.on = !bridge.b.on;
     gate5.k = damp(gate5.k, ST.gate5, 2, dt);
     gate5.m.position.y = O.y + 14 + 1.7 - gate5.k * 3.6;
     gate5.bottom.position.y = O.y + 14.07 - gate5.k * 3.6;
@@ -3269,6 +3305,9 @@ const H8 = (() => {
     },
     get boss() {
       return boss;
+    },
+    get chasm() {
+      return chasm;
     },
     get screen() {
       return screen;
