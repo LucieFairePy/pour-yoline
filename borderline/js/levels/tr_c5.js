@@ -41,7 +41,7 @@
     apart: 'Pas ensemble. Les deux clés, au même battement.',
     wrongBeat: 'Mauvais battement.',
     strike: 'Erreur. Un cœur se brise.',
-    boom: 'BOUM. Des cœurs partout. La bombe se remonte : tous ses modules recommencent.',
+    boom: 'BOUM. Des cœurs partout. La bombe se remonte : les modules encore armés recommencent.',
     solved: 'Module désamorcé.',
     allDone: 'La bombe se tait. Les cœurs retombent en pluie.',
     card: 'La carte ' + CARD + ' sort de la bombe. Prenez-la ensemble.',
@@ -191,11 +191,12 @@
     c.set((s) => {
       s.x.strikes = 0;
       if (st <= 2) {
-        // the whole face starts over, solved modules too: with only three strikes per bomb, the one
-        // holding it cannot guess the modules one by one across explosions without the manual
+        // the modules still armed start over (new wires, symbols, sequence…), the defused ones stay
+        // defused: a blast costs the time and the progress on the live modules, not the whole face
         const f = st - 1;
         const mods = s.x.mods.map((a) => a.slice());
-        mods[f] = genFace(st);
+        const fresh = genFace(st);
+        mods[f] = mods[f].map((m, k) => (m.solved ? m : fresh[k]));
         s.x.mods = mods;
       } else s.x.fin = { round: 0, dig: { dame: 1 + ((Math.random() * 4) | 0), valet: 1 + ((Math.random() * 4) | 0) } };
     });
