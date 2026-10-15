@@ -411,6 +411,7 @@
     };
     // the murmur of a masked crowd: two breathing bands of noise
     let mur = null;
+    let murSrc = [];
     const murmur = (v) => {
       if (!ac) return;
       if (!mur) {
@@ -437,15 +438,39 @@
           n.connect(bp).connect(ag).connect(g);
           n.start();
           lfo.start();
+          murSrc.push(n, lfo);
         });
         mur = g;
       }
       const vol = (typeof SETTINGS !== 'undefined' ? SETTINGS.vol : 0.8) * 0.09 * v;
       mur.gain.setTargetAtTime(vol, ac.currentTime, 0.6);
     };
+    // leaving the ball: the crowd's loops stop, and the context sleeps once the last notes rang out
+    let idleT = 0;
+    const stop = () => {
+      if (!ac) return;
+      lastH = -1;
+      gain = 0;
+      if (mur) {
+        const g = mur;
+        const src = murSrc;
+        mur = null;
+        murSrc = [];
+        g.gain.setTargetAtTime(0, ac.currentTime, 0.3);
+        setTimeout(() => {
+          src.forEach((n) => n.stop());
+          g.disconnect();
+        }, 1500);
+      }
+      clearTimeout(idleT);
+      idleT = setTimeout(() => {
+        if (ac && !gain) ac.suspend().catch(() => {});
+      }, 4000);
+    };
     return {
       tick: tick16,
       murmur,
+      stop,
       chord(t0) {
         // the final chord of the ball
         if (!init()) return;
@@ -1121,6 +1146,7 @@
       H7.build();
       local.stage = 0;
       local.beat = 0;
+      local.ducked = false;
       local.marks = { L: null, R: null };
       local.presses = { dame: -9, valet: -9 };
       local.lastBar = -1;
@@ -1187,8 +1213,9 @@
         beatEl.remove();
         beatEl = null;
       }
-      Bal.tick(local.beat, local.bpm, null, 0);
-      Bal.murmur(0);
+      Bal.stop();
+      if (local.ducked) Sound.duck(false);
+      local.ducked = false;
       HUD.boss(null);
       H7.hide();
     },
@@ -1376,6 +1403,11 @@
       local.style = style;
       Bal.tick(local.beat, local.bpm, style, x.stage === 4 ? 0.8 : 1);
       Bal.murmur(x.stage === 3 ? (x.mask === 1 ? 1 : x.mask === 0 ? 0.35 : 0.15) : 0);
+      // the game's own music steps back while the ball plays
+      if (Sound.ready && !!style !== local.ducked) {
+        local.ducked = !!style;
+        Sound.duck(local.ducked);
+      }
 
       // ---------- the waltz ----------
       let beatOn = false;
