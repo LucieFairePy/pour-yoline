@@ -26,6 +26,8 @@ const HUD = (() => {
   };
   const queue = [];
   let typing = null;
+  // bumped by hush(): the line being typed stops at once
+  let gen = 0;
   let lastObj = '';
   let lastPrompt = '';
   let lastClues = '';
@@ -73,12 +75,14 @@ const HUD = (() => {
       el.sub.hidden = false;
       put(el.subWho, who || '');
       el.subText.textContent = '';
+      const g = gen;
       const chars = Array.from(text);
-      for (let i = 1; i <= chars.length; i++) {
+      for (let i = 1; i <= chars.length && g === gen; i++) {
         put(el.subText, chars.slice(0, i).join(''));
         await sleep(chars[i - 1] === ' ' ? 18 : 28);
       }
-      await sleep(hold || 1600 + text.length * 35);
+      const end = performance.now() + (hold || 1600 + text.length * 35);
+      while (g === gen && performance.now() < end) await sleep(100);
     }
     el.sub.hidden = true;
     typing = null;
@@ -104,6 +108,12 @@ const HUD = (() => {
     say(text, who = CONFIG.master, hold) {
       queue.push({ who: F(who), text: F(text), hold });
       runQueue();
+    },
+    // drop the lines still waiting (a new phase starts)
+    hush() {
+      queue.length = 0;
+      gen++;
+      el.sub.hidden = true;
     },
     pause(ms) {
       queue.push({ wait: ms });

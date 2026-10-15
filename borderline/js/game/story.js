@@ -219,6 +219,8 @@ const Story = (() => {
   const enter = (ph, first) => {
     const prev = local.phase;
     if (prev && PH[prev] && PH[prev].exit) PH[prev].exit(ctx, ph);
+    // the last lines of a level don't spill into the next one (the reward keeps its win line)
+    if (prev && ph !== 'reward') HUD.hush();
     // a phase never inherits held hands or a seat from the one before
     Player.handPose = false;
     Remote.handPose = false;
