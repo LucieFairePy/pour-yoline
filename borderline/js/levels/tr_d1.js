@@ -48,7 +48,9 @@
   const ROUNDS = [3, 4, 5];
   const STEP = [12, 10, 9];
   const SIDE_OF = { L: 'dame', R: 'valet' };
-  const local = { stage: 0, gAng: 0, gTarget: 0, slam: 0, hand: 0, gT: 0, pulled: {}, msgCd: 0 };
+  // per-run state, rebuilt on every enter()
+  const fresh = () => ({ stage: 0, gAng: 0, gTarget: 0, slam: 0, hand: 0, gT: 0, pulled: {}, msgCd: 0 });
+  const local = fresh();
 
   const neighbors = (i) => {
     const r = Math.floor(i / 3);
@@ -159,9 +161,12 @@
       d1say: (c, d) => HUD.say(d[0], T.master, 2400),
     },
     async enter(c, first) {
+      for (const k in local) delete local[k];
+      Object.assign(local, fresh());
+      // levers already down when we arrive are not news
+      local.pulled = { ...(c.S.x.pulled || {}) };
       if (!first) await fadeTo(true);
       D1.build();
-      local.stage = 0;
       c.spawn(D1.spawn(c.S.x.stage, c.role), 0);
       Player.killY = D1.O.y - 20;
       Player.checkpoint = () => D1.spawn(Story.S.x.stage, c.role);
@@ -381,7 +386,8 @@
           local.back = { t: 1.3 };
         }
       }
-      if (d.a === 'pull' && x.stage === 3) {
+      // each lever answers only to the one whose platform it stands on (♥ ♦ Dame, ♠ ♣ Valet)
+      if (d.a === 'pull' && x.stage === 3 && D1.switches[d.k] && D1.switches[d.k].who === who) {
         const n = ((x.pulled && x.pulled[d.k]) || 0) + 1;
         c.set((s) => (s.x.pulled = { ...s.x.pulled, [d.k]: n }));
         if (x.r3 !== 'run') return;
@@ -479,7 +485,8 @@
             Sound.play('tile');
           }
         }
-        const sw = D1.nearSwitch(q);
+        const sw0 = D1.nearSwitch(q);
+        const sw = sw0 && sw0.who === r ? sw0 : null;
         if (sw) {
           if (Input.pressed('interact')) {
             c.act({ a: 'pull', k: sw.k });

@@ -52,6 +52,8 @@ const D1 = (() => {
   let heart = null;
   const gears = [];
   const beams = [];
+  // room 3: how far the automaton's light reaches along a heading, up to the inner face of the walls
+  const beamReach = (a) => Math.min(18.7 / Math.max(1e-3, Math.abs(Math.sin(a))), 20.7 / Math.max(1e-3, Math.abs(Math.cos(a))));
 
   // ---------- helpers ----------
   const wall = (x, y, z, sx, sy, sz, mat = plaster) => K.solid(x, y, z, sx, sy, sz, mat);
@@ -624,7 +626,7 @@ const D1 = (() => {
         side: THREE.DoubleSide,
       }),
     );
-    fan.rotation.x = Math.PI;
+    // (flat after rotateX, it already points along +z, the way the lantern arm and inBeam look)
     fan.position.y = -2.45;
     spin.add(fan);
     g.add(base, body, chest, spin);
@@ -744,6 +746,8 @@ const D1 = (() => {
     });
     if (guard) {
       guard.spin.rotation.y = gAng;
+      // the 16 m fan stretched to the wall it points at
+      guard.fan.scale.setScalar(beamReach(gAng) / 16);
       guard.fan.material.opacity = x.r3 === 'run' ? 0.22 + 0.06 * Math.sin(t * 6) : 0.06;
       guard.fan.material.color.set(slam > 0 ? '#ff2040' : '#ff7a3a');
       guard.eye.material.color.set(slam > 0 ? '#ff2040' : x.r3 === 'run' ? '#ff6a3a' : '#7a5040').multiplyScalar(1.6);
@@ -818,14 +822,14 @@ const D1 = (() => {
         (sw) => Math.hypot(q.x - sw.x, q.z - sw.z) < 2.7 && Math.abs(q.y - sw.h) < 0.6,
       );
     },
-    // the automaton's light: on the floor only, platforms are safe
+    // the automaton's light: on the floor only, wall to wall; platforms are safe
     inBeam(q, ang) {
       if (q.y > 1.2) return false;
       const dx = q.x;
       const dz = q.z - 99;
       const d = Math.hypot(dx, dz);
-      if (d > 16 || d < 1.2) return false;
       const a = Math.atan2(dx, dz);
+      if (d > beamReach(a) + 0.5 || d < 1.2) return false;
       let da = Math.abs(a - ang) % (Math.PI * 2);
       if (da > Math.PI) da = Math.PI * 2 - da;
       return da < 0.2 + 0.6 / d;
