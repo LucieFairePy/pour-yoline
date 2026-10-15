@@ -94,9 +94,9 @@ const C6M = (() => {
   const HOLD2 = [2.5, 190.2]; // U: its twin on the far side (whoever went first can still hold it)
   const RING = { pos: [0, 6.6, 181], land: [0, 0, 189.5] }; // U: grapple ring over the gap
   const TWIN = [
-    { U: [-2.5, 0, 193], L: [2.5, 0, 193], win: 5, gate: 197.5 },
-    { U: [2.5, 1.1, 205], L: [-2.5, 1.1, 205], win: 3, gate: 211 },
-    { U: [-2.5, 0, 221], L: [2.5, 0, 221], win: 1.4, gate: 225 },
+    { U: [-2.5, 0, 193], L: [2.5, 0, 193], win: 4.5, gate: 197.5 },
+    { U: [2.5, 1.1, 205], L: [-2.5, 1.1, 205], win: 2.6, gate: 211 },
+    { U: [-2.5, 0, 221], L: [2.5, 0, 221], win: 1.2, gate: 225 },
   ];
   const ARENA_GATE = 268.6;
   const LIDS = [];

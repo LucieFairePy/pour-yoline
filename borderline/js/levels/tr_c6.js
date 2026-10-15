@@ -703,7 +703,7 @@
       if (B.t >= B.dur) {
         B.st = 2;
         B.t = 0;
-        B.exp = ph === 3 ? 2.4 : ph === 2 ? 2.7 : 3.0;
+        B.exp = ph === 3 ? 2.1 : ph === 2 ? 2.4 : 2.7;
       }
     } else if (B.st === 2) {
       if (B.t >= B.exp) {
