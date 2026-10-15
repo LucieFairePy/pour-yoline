@@ -407,7 +407,13 @@ const CONFIG = {
   },
   act4: {
     lines: ['Quelle jolie vue.', 'Ce monde était trop parfait.', 'Prouvez qu’il mérite d’exister.'],
-    after: 'Visa : 0 jour.',
+    // a few more words from the Joker, in his voice (doubt, the game, never cruel)
+    doubt: 'Un tout petit doute. Rien de plus.',
+    rule: 'Nouvelle règle : chacun son monde. Pour un temps.',
+    // the visa drops hard, but never to nothing
+    after: 'Visa : 3 heures.',
+    visa: 'Visa · 3 h',
+    end: 'On verra bien.',
   },
   act5: {
     title: 'Deux mondes',
