@@ -1049,6 +1049,7 @@
           hg: R.hemi.groundColor.getHex(),
           mi: R.moon.intensity,
           mc: R.moon.color.getHex(),
+          fog: R.scene.fog.density,
         };
       R.hemi.color.set('#6a5a90');
       R.hemi.groundColor.set('#1c1018');
@@ -1076,6 +1077,7 @@
         R.hemi.groundColor.setHex(local.env.hg);
         R.moon.intensity = local.env.mi;
         R.moon.color.setHex(local.env.mc);
+        R.scene.fog.density = local.env.fog;
         local.env = null;
       }
       if (Player.mode === 'frozen') Player.mode = 'walk';
@@ -1085,6 +1087,8 @@
       HUD.status('');
       showPanel(null);
       Box.stop();
+      if (local.ducked) Sound.duck(false);
+      local.ducked = false;
       W.sleep();
     },
     apply(c) {
@@ -1204,6 +1208,11 @@
     },
     update(c, dt, t) {
       if (!W.built) return null;
+      // the game's own music steps back while the music box plays (once the sound is up)
+      if (!local.ducked && Sound.ready) {
+        local.ducked = true;
+        Sound.duck(true);
+      }
       const x = c.S.x;
       const st = x.stage;
       const r = c.role;
