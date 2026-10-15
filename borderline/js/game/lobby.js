@@ -197,6 +197,21 @@ const Lobby = (() => {
       onStart = cb;
       const r = q.get('r');
       const lc = q.get('local');
+      // ?stand: the solo firing range (js/levels/stand.js), no partner, no lobby
+      if (q.has('stand')) {
+        role = 'yoline';
+        Net.local('stand' + Math.random().toString(36).slice(2, 7), true);
+        const s = document.createElement('script');
+        s.src = 'js/levels/stand.js';
+        s.onload = () => {
+          $('lobby').hidden = true;
+          Sound.init();
+          onStart(role, null);
+          setTimeout(() => Story.goto('stand'), 600);
+        };
+        document.head.appendChild(s);
+        return;
+      }
       if (lc) {
         role = ident(q.get('role') || (q.get('host') ? 'yoline' : 'william'));
         Net.local(lc, !!q.get('host'));
