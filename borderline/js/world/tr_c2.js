@@ -1083,9 +1083,9 @@ const TrC2 = (() => {
   };
 
   const build = () => {
+    group.visible = true;
     if (built) return;
     built = true;
-    group.visible = true;
     mats();
     hall();
     valves();
@@ -1153,6 +1153,9 @@ const TrC2 = (() => {
     build,
     get built() {
       return built;
+    },
+    hide() {
+      group.visible = false;
     },
     rel: (p, out = V3()) => out.set(p.x - O.x, p.y - O.y, p.z - O.z),
     spawn(round, who) {
