@@ -762,6 +762,10 @@ const TrS2 = (() => {
       group.add(leverArm);
       K.collider(PLANK_LEVER.x, PLANK_LEVER.y + 0.5, PLANK_LEVER.z, 0.5, 1, 0.5);
     }
+    // the gap r3 -> r4 (12 m, and r3b stands 4.5 m above it) is only crossed on the plank: an
+    // unseen block fills the air over the gap, high above the plank (walkers pass under it),
+    // so neither a long double jump nor a leap from r3b or the tower clears it
+    K.collider(0, 9.15, 78, 28, 13.7, 11.2, { tag: 'nocam' });
     ring1 = K.deco(new THREE.TorusGeometry(0.6, 0.08, 12, 40), glow('#ff5f8a', 2.2), RING1.x, RING1.y, RING1.z);
     ac(-5, 0, 58, 0.4);
     skylight(-4.5, 0, 66, 2.4, 1.6);
@@ -1169,7 +1173,9 @@ const TrS2 = (() => {
     // billboard: slides to the bridge while a lever is held, back when released
     const held = (x.hold || []).length > 0;
     const prevX = boardX;
-    boardX = held ? Math.max(BB.x1, boardX - dt * 5) : Math.min(BB.x0, boardX + dt * 1.6);
+    // released, it snaps back fast and slips from under whoever stands on it: nobody lets go
+    // of the lever and then runs across alone
+    boardX = held ? Math.max(BB.x1, boardX - dt * 5) : Math.min(BB.x0, boardX + dt * 6);
     if ((boardX !== prevX) !== st.boardMoving) {
       st.boardMoving = boardX !== prevX;
       if (st.boardMoving) Sound.play('lift');

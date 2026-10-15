@@ -1,12 +1,15 @@
 // ♠ 4 · Les Toits qui tombent (épreuve d'adresse, kits normaux).
-// ---------- the Joker's drones (♠ 4): searchlights; the rifle shoots them, the sword knocks
-// them down when they dive low, and the Voile hides you from their beams ----------
+// ---------- the Joker's drones (♠ 4): searchlights flying too high for the sword, so the rifle
+// shoots them, and the Voile hides you from their beams; on the roof itself, the Joker's
+// shield guards: the rifle glances off their shields, the sword breaks the guard ----------
 (() => {
   const TILT = 0.95;
   const HALF = 0.3;
   const LEN = 17;
   Enemies.define('drone', {
     stats: { hp: 45, speed: 0, radius: 0.9, height: 0.4, hitR: 1.1, reach: 3.4, stunP: 3, dieColor: '#ff2a3a' },
+    // out of reach up there: a sword blow (it carries a stun) does nothing, bullets do
+    mult: (e, weak, stun) => (stun ? 0 : 1),
     // host: patrol back and forth along the roof, the beam sweeping left and right
     sim(e, dt) {
       e.t = (e.t || Math.random() * 6) + dt;
@@ -97,6 +100,105 @@
       };
     },
   });
+  // the roof guards: a squat armoured figure behind a big round shield
+  const GM = {};
+  Enemies.define('gardeToit', {
+    stats: { hp: 40, speed: 3, radius: 0.7, hitR: 0.95, height: 2, reach: 3.2, stunP: 2.6, dieColor: '#ff5f8a' },
+    // the shield turns bullets; a sword blow breaks the guard (stun), then everything hurts
+    mult(e, weak, stun) {
+      if (e.fall) return 1;
+      if (stun) return 1;
+      return e.stun > 0 ? 1.2 : 0;
+    },
+    sim(e, dt, players, targets) {
+      // its strip fell: it falls too
+      const gy = Phys.groundAt(e.pos.x, e.pos.y + 0.6, e.pos.z);
+      if (e.fall || gy < e.pos.y - 0.4) {
+        e.fall = true;
+        e.vy = (e.vy || 0) - 26 * dt;
+        e.pos.y += e.vy * dt;
+        if (e.pos.y < e.home.y - 12) Enemies.damage(e.id, 999, 0, false);
+        return;
+      }
+      e.shield = true;
+      if (e.stun > 0) return;
+      let best = null;
+      let bd = 9;
+      targets.forEach((p) => {
+        const d = Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z);
+        if (d < bd && Math.abs(p.pos.y - e.pos.y) < 2) {
+          bd = d;
+          best = p;
+        }
+      });
+      const goal = best ? best.pos : e.home;
+      const dx = goal.x - e.pos.x;
+      const dz = goal.z - e.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (best) e.yaw = Math.atan2(dx, dz);
+      if (d > (best ? 1.4 : 0.3)) {
+        const sp = (best ? 3 : 1.6) * dt;
+        const nx = e.pos.x + (dx / d) * sp;
+        const nz = e.pos.z + (dz / d) * sp;
+        // never steps off its roof, nor wanders far from its post
+        const ng = Phys.groundAt(nx, e.pos.y + 0.6, nz);
+        if (ng > e.pos.y - 0.4 && Math.hypot(nx - e.home.x, nz - e.home.z) < 7) {
+          e.pos.x = nx;
+          e.pos.z = nz;
+          if (!best) e.yaw = Math.atan2(dx, dz);
+        }
+      } else if (best && e.atk <= 0) {
+        e.atk = 1.25;
+        Combat.hurt(best.who, 12, e.pos);
+      }
+    },
+    model: () => {
+      if (!GM.armor) {
+        GM.armor = new THREE.MeshStandardMaterial({ color: '#2c2236', metalness: 0.45, roughness: 0.38, emissive: '#12070f' });
+        GM.trim = new THREE.MeshStandardMaterial({ color: '#c9a24a', metalness: 0.8, roughness: 0.3 });
+        GM.shield = new THREE.MeshStandardMaterial({ color: '#3a1830', metalness: 0.6, roughness: 0.25, emissive: '#ff2a5a', emissiveIntensity: 0.08 });
+        GM.rim = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff5f8a').multiplyScalar(2), toneMapped: false });
+      }
+      const g = new THREE.Group();
+      const body = new THREE.Group();
+      g.add(body);
+      const add = (geo, mat, x, y, z) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        body.add(m);
+        return m;
+      };
+      add(new THREE.CylinderGeometry(0.42, 0.5, 0.9, 16), GM.armor, 0, 0.45, 0);
+      add(new THREE.CylinderGeometry(0.55, 0.42, 0.8, 16), GM.armor, 0, 1.25, 0);
+      add(new THREE.TorusGeometry(0.5, 0.05, 8, 24).rotateX(Math.PI / 2), GM.trim, 0, 0.95, 0);
+      add(new THREE.SphereGeometry(0.62, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), GM.armor, 0, 1.62, 0).scale.set(1, 0.45, 1);
+      add(new THREE.SphereGeometry(0.3, 16, 12), GM.armor, 0, 1.95, 0);
+      const maskTex = LvKit.tex(256, 128, (gg, w, h) => {
+        gg.clearRect(0, 0, w, h);
+        gg.fillStyle = '#ffd6e2';
+        Icons.draw(gg, 'venetian-mask', w / 2, h / 2, 110);
+      });
+      add(new THREE.PlaneGeometry(0.42, 0.21), new THREE.MeshBasicMaterial({ map: maskTex, transparent: true, toneMapped: false }), 0, 1.98, 0.29);
+      const eye = add(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff2a3a', toneMapped: false }), 0, 1.86, 0.3);
+      // the shield: held in front, it drops aside while the guard is stunned
+      const shield = new THREE.Group();
+      shield.position.set(0, 1.15, 0.62);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 32).rotateX(Math.PI / 2), GM.shield);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.04, 8, 40), GM.rim);
+      shield.add(disc, rim);
+      body.add(shield);
+      return {
+        g,
+        body,
+        eye,
+        shield,
+        anim(e, dt, t) {
+          body.position.y = e.stun > 0 ? 0 : Math.abs(Math.sin(t * 6 + e.id)) * 0.05;
+          body.rotation.x = e.stun > 0 ? 0.25 : 0;
+        },
+      };
+    },
+  });
   // the beam of a drone as seen on this screen: apex, axis
   TrS2.beam = (e, outA, outD) => {
     outA.set(e.pos.x + Math.sin(e.yaw) * 0.4, e.pos.y - 0.22, e.pos.z + Math.cos(e.yaw) * 0.4);
@@ -129,9 +231,9 @@
     board: 'Le panneau ne glisse que si quelqu’un tient un levier (E maintenu). L’un tient, l’autre traverse. Puis on inverse.',
     boardFar: 'Tiens le levier de ce côté (E maintenu) pour ramener le panneau à {mate}.',
     drones: {
-      dame: 'Les drones du Joker. Leur projecteur te repère : cache-toi derrière les blocs, abats-les au fusil. Le toit s’effondre derrière vous : avancez !',
+      dame: 'Les drones du Joker volent : abats-les au fusil, cache-toi de leurs projecteurs. Les gardes au bouclier, ton fusil rebondit dessus : laisse {mate} les sonner à l’épée, puis tire. Le toit s’effondre derrière vous : avancez !',
       valet:
-        'Les drones du Joker. Leur projecteur te repère : cache-toi, frappe-les à l’épée quand ils passent bas, deviens invisible avec le Voile (F). Le toit s’effondre derrière vous : avancez !',
+        'Les drones volent trop haut pour ton épée : c’est {mate} qui les abat. Toi, brise le bouclier des gardes à l’épée (son fusil n’y peut rien), et deviens invisible avec le Voile (F). Le toit s’effondre derrière vous : avancez !',
     },
     leap: {
       dame: 'Le dernier vide. Vise l’anneau (F) pour passer, puis sur le cœur, tends la main à {mate} (E maintenu).',
@@ -220,8 +322,17 @@
     { home: [-1, 7.2, 333], span: 5, spanZ: 4, spd: 0.55, sweep: 0.9 },
     { home: [1, 8.4, 362], span: 5.5, spanZ: 4, spd: 0.48, sweep: 1.0 },
   ];
+  // the shield guards on the strips, in the way of the run
+  const GUARDS = [
+    [2, 0, 301],
+    [-2.5, 0, 313],
+    [0.5, 0, 336],
+    [-2, 1.2, 358],
+    [2.5, 1.2, 373],
+  ];
   const spawnDrones = () => {
     Enemies.clear();
+    GUARDS.forEach((p) => Enemies.spawn('gardeToit', W.P(...p), { shield: true, yaw: Math.PI }));
     DRONES.forEach((d) =>
       Enemies.spawn('drone', W.P(...d.home), {
         span: d.span,
@@ -546,7 +657,7 @@
       }
       // riding the crane hook and the sliding billboard
       if (b.ground === W.craneBox) b.p.add(W.craneDelta);
-      if (b.ground === W.boardBox) b.p.x += st.boardDX;
+      if (b.ground === W.boardBox && st.boardDX < 0) b.p.x += st.boardDX;
 
       // the catch: hands meet in the air (both screens)
       if (local.hpose > 0) {
