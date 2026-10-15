@@ -68,8 +68,15 @@
   };
 
   const DEG = [30, 90, 150, 210, 270, 330];
-  const local = { stage: 0, phase: 0, rep: 0, last: {}, seen: {}, hit: 0, said: {}, prevAge: {} };
-  const tm = { lit: 0, hint: 0, atk: 0, wave: 0, scr: 0, gapT: 0, acc: 0, rest: 0 };
+  // per-run state, rebuilt on every enter()
+  const freshLocal = () => ({ stage: 0, phase: 0, rep: 0, last: {}, seen: {}, hit: 0, said: {}, prevAge: {} });
+  const freshTm = () => ({ lit: 0, hint: 0, atk: 0, wave: 0, scr: 0, gapT: 0, acc: 0, rest: 0 });
+  const local = freshLocal();
+  const tm = freshTm();
+  const reset = (o, f) => {
+    for (const k in o) delete o[k];
+    Object.assign(o, f());
+  };
   const fwd = V3();
   const hostNow = () => performance.now() / 1000;
 
@@ -166,10 +173,10 @@
       },
     },
     async enter(c, first) {
+      reset(local, freshLocal);
+      reset(tm, freshTm);
       if (!first) await fadeTo(true);
       W.build();
-      local.stage = 0;
-      local.phase = 0;
       c.spawn(W.spawn(c.S.x.stage, c.role), 0);
       Player.killY = W.O.y - 20;
       Player.checkpoint = () => W.spawn(Story.S.x.stage, c.role);
