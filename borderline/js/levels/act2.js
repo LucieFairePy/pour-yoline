@@ -148,8 +148,9 @@
         if (x.bomb.t > 45) {
           c.send('boom');
           onBoom(c);
+          // a boom sends the bomb back to its first module: guessing wires blind never adds up
           c.set((s) => {
-            s.x.bomb = { round: s.x.bomb.round, ...combo() };
+            s.x.bomb = { round: 0, ...combo() };
             s.x.booms++;
           });
         }
@@ -174,8 +175,9 @@
         } else {
           c.send('boom');
           onBoom(c);
+          // a boom sends the bomb back to its first module: guessing wires blind never adds up
           c.set((s) => {
-            s.x.bomb = { round: s.x.bomb.round, ...combo() };
+            s.x.bomb = { round: 0, ...combo() };
             s.x.booms++;
           });
         }

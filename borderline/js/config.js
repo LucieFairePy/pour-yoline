@@ -355,7 +355,7 @@ const CONFIG = {
       valet:
         'Une bombe à cœurs. Décris-lui l’écran : {mate} a le manuel. Coupe le bon fil. 3 modules.',
       ok: 'Module désamorcé.',
-      boom: 'Boum. Des cœurs partout. On recommence ce module.',
+      boom: 'Boum. Des cœurs partout. La bombe repart du premier module.',
       done: 'Bombe désamorcée.',
     },
     swap: {
