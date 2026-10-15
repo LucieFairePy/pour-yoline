@@ -37,6 +37,12 @@ const Assets = (() => {
     'tex.c10metal.nrm': { type: 'tex', url: 'textures/c10_rustmetal_nrm.jpg', repeat: true, data: true },
     // street lamp light cone (Kenney Light Masks cone_d_blur, flipped, luminance)
     'fx.cone': { type: 'tex', url: 'fx/lamp_cone.png' },
+    // ♥10 Le Marché (js/world/tr_h10.js binds them to its own materials only): the harlequin
+    // floor (Poly Haven floor tiles 08, recoloured as a checker) and ivory plaster
+    'tex.h10.floor.alb': { type: 'tex', url: 'textures/h10_floor_alb.webp', repeat: true },
+    'tex.h10.floor.nrm': { type: 'tex', url: 'textures/h10_floor_nrm.jpg', repeat: true, data: true },
+    'tex.h10.plaster.alb': { type: 'tex', url: 'textures/h10_plaster_alb.webp', repeat: true },
+    'tex.h10.plaster.nrm': { type: 'tex', url: 'textures/h10_plaster_nrm.jpg', repeat: true, data: true },
     // sounds (Kenney RPG Audio / Impact Sounds / Sci-fi Sounds, CC0)
     'snd.swing1': { type: 'sound', url: 'sounds/swing1.mp3' },
     'snd.swing2': { type: 'sound', url: 'sounds/swing2.mp3' },
