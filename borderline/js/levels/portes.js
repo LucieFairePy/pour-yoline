@@ -60,7 +60,7 @@
       : n
           .clone()
           .multiplyScalar(speed * 0.93)
-          .add(V3(0, speed * 0.4, 0));
+          .add(V3(0, speed * 0.55, 0));
     const pos = to.pos.clone().addScaledVector(n, vert ? 0.2 : 0.75);
     if (!vert) pos.y -= 0.9;
     else if (n.y < 0) pos.y -= 1.9;
@@ -170,7 +170,8 @@
       }
       const pa = Portes.portalData('a', x.portals.a);
       const pb = Portes.portalData('b', x.portals.b);
-      if (pa && pb && local.cd <= 0 && Player.mode === 'walk') {
+      // the portals carry the other one only: the one who shoots them stays on this side
+      if (pa && pb && local.cd <= 0 && Player.mode === 'walk' && c.role !== 'dame') {
         if (teleport(pa, pb) || teleport(pb, pa)) local.cd = 0.45;
       }
       return null;

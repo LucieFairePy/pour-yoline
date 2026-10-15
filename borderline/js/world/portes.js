@@ -31,6 +31,7 @@ const Portes = (() => {
   const buttons = {};
   const doors = {};
   let bridge = null;
+  let bridgeStep = null;
   let card = null;
   let screen = null;
   const portals = {};
@@ -178,6 +179,9 @@ const Portes = (() => {
       const top = land + RISE * (j + 1);
       solid(-5.7, top / 2, 37.2 - j * TREAD - TREAD / 2, 2.8, top, TREAD, steel);
     }
+    // glass guard round the landing: nobody leaps from halfway up the stairs over the void
+    glassWall(-7.1, land + 2, 40.25, 5.6, 4, 0.1);
+    glassWall(-4.25, land + 2, 38.7, 0.1, 4, 3);
     const ledge = land + RISE * 11;
     solid(-1.15, ledge - 0.3, 29.3, 6.3, 0.6, 3.4, floor);
     // railings at the back and on the far side; the front edge is where you drop
@@ -187,13 +191,17 @@ const Portes = (() => {
     panel('p4', -0.5, 0.02, 34, [0, 1, 0], 6, 5);
     solid(2, 3, 38.5, 3.4, 6, 1.6);
     panel('p3', 2, 3.2, 39.32, [0, 0, 1], 3.2, 3.6);
-    solid(6, 0.9, 41.6, 3, 0.6, 1.2, wall);
-    bridge = solid(6, 1.7, 44.5, 3, 0.6, 5, glow('#ffcf8a', 0.9), { dyn: true });
+    // the void is 10 m wide: too far to jump, only the portal flight crosses it. The bridge (and
+    // its first step) light up once the button on the far side is pressed.
+    bridge = solid(6, 1.7, 47.1, 3, 0.6, 9.8, glow('#ffcf8a', 0.9), { dyn: true });
     bridge.b.on = false;
     bridge.m.visible = false;
-    solid(0, 1.5, 59, 16, 1, 24, floor);
-    solid(-8.15, 2.6, 59, 0.3, 1.2, 24, steel);
-    solid(8.15, 2.6, 59, 0.3, 1.2, 24, steel);
+    bridgeStep = solid(6, 0.9, 41.6, 3, 0.6, 1.2, glow('#ffcf8a', 0.7), { dyn: true });
+    bridgeStep.b.on = false;
+    bridgeStep.m.visible = false;
+    solid(0, 1.5, 61.5, 16, 1, 19, floor);
+    solid(-8.15, 2.6, 61.5, 0.3, 1.2, 19, steel);
+    solid(8.15, 2.6, 61.5, 0.3, 1.2, 19, steel);
     button('b2', -4, 2, 58);
     solid(0, 1.5, 88, 30, 1, 34, floor);
     glassWall(-9, 4.5, 88, 0.3, 5, 6);
@@ -324,6 +332,7 @@ const Portes = (() => {
         d.b.on = !open;
       });
       bridge.m.visible = bridge.b.on = !!x.bridge;
+      bridgeStep.m.visible = bridgeStep.b.on = !!x.bridge;
       ['a', 'b'].forEach((k) => {
         const m = portals[k];
         m.U.uTime.value = t;

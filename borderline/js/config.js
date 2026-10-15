@@ -69,12 +69,12 @@ const CONFIG = {
     title: 'Les Portes',
     intro: 'Épreuve de logique. Les Veilleurs adorent les portes qui mènent ailleurs.',
     hint: {
-      dame: 'Clic gauche : portail bleu. Clic droit (ou F) : portail orange. Seulement sur les panneaux blancs.',
+      dame: 'Clic gauche : portail bleu. Clic droit (ou F) : portail orange. Seulement sur les panneaux blancs. Tes portails ne laissent passer que {mate}.',
       valet:
-        '{Il} pose les portails. Toi, tu passes. Et plus tu entres vite, plus tu ressors vite.',
+        '{Il} pose les portails. Toi seul{e} peux les traverser. Et plus tu entres vite, plus tu ressors vite.',
     },
     s1: {
-      dame: 'Un bouton derrière la vitre. Pose un portail sur le panneau près de vous, l’autre sur celui de la pièce.',
+      dame: 'Un bouton derrière la vitre. Pose un portail sur le panneau près de vous, l’autre sur celui de la pièce, pour que {mate} passe.',
       valet: 'Le bouton est derrière la vitre. Passe par ses portails et appuie dessus.',
     },
     s2: {
@@ -83,8 +83,8 @@ const CONFIG = {
         'Monte l’escalier jusqu’à la corniche et laisse-toi tomber dans le portail au sol. Plus tu tombes de haut, plus tu ressors vite.',
     },
     s3: {
-      dame: 'Ton bouton est dans la cage de verre : utilise tes portails. Le sien est tout en haut.',
-      valet: 'Grimpe jusqu’au bouton du haut. Tenez vos deux boutons ensemble.',
+      dame: 'Le bouton de {mate} est dans la cage de verre : ouvre-lui la route avec tes portails. Le tien est tout en haut.',
+      valet: 'Ton bouton est dans la cage de verre : passe par ses portails. Tenez vos deux boutons ensemble.',
     },
     card: 'La carte {card} est apparue. Ensemble.',
   },
