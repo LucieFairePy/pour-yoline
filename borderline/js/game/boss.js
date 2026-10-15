@@ -20,7 +20,7 @@ const Boss = (() => {
     },
     switchPressed(e) {
       if (e && e.phase === 1 && !(e.shieldDown > 0)) {
-        e.shieldDown = 12;
+        e.shieldDown = 10;
         Net.send('bossfx', 'shield');
         Sound.play('shieldDown');
         HUD.say(CONFIG.garde.shieldDown, CONFIG.garde.boss, 2200);
@@ -64,7 +64,7 @@ const Boss = (() => {
       if (e.stun > 0) return;
       st.volley -= dt;
       if (st.volley <= 0 && tgt) {
-        st.volley = e.phase === 3 ? 3 : 4.5;
+        st.volley = e.phase === 3 ? 2.6 : 3.6;
         const from = e.pos.clone().add(V3(0, 4.2, 0));
         [-0.25, 0, 0.25].forEach((a) => {
           const to = tgt.pos.clone().add(V3(Math.sin(a) * 6, 1, Math.cos(a) * 0));
@@ -72,18 +72,17 @@ const Boss = (() => {
           Enemies.fire(from, to, 12, 12);
         });
       }
-      if (e.phase === 1) {
-        st.summon -= dt;
-        if (st.summon <= 0) {
-          st.summon = 8;
-          if (Enemies.alive('pion') < 5)
-            [-1, 1].forEach((s) => Enemies.spawn('pion', e.pos.clone().add(V3(s * 6, 0, -4))));
-        }
+      // his guard keeps coming: a pair every 7 s in phase 1, every 12 s after (fewer at once)
+      st.summon -= dt;
+      if (st.summon <= 0) {
+        st.summon = e.phase === 1 ? 7 : 12;
+        if (Enemies.alive('pion') < (e.phase === 1 ? 6 : 3))
+          [-1, 1].forEach((s) => Enemies.spawn('pion', e.pos.clone().add(V3(s * 6, 0, -4))));
       }
       if (e.phase >= 2) {
         st.cycle -= dt;
         if (st.cycle <= 0 && tgt && st.slamAt < 0) {
-          st.cycle = e.phase === 3 ? 9 : 7;
+          st.cycle = e.phase === 3 ? 8 : 6;
           st.slamPos = tgt.pos.clone();
           st.slamAt = 1.6;
           Enemies.telegraph(st.slamPos, 4.5, 1.6);

@@ -101,7 +101,8 @@
       Player.checkpoint = () => Garde.spawn(Story.S.x.stage, c.role);
       Player.targets = null;
       City.mood({});
-      c.fog(0.009);
+      c.fog(0.011);
+      Garde.mood(true);
       Combat.enable(true);
       HUD.visa(CARD + ' · ' + G.title);
       if (!first) {
@@ -112,6 +113,7 @@
       this.apply(c);
     },
     exit() {
+      Garde.mood(false);
       Combat.enable(false);
       Enemies.clear();
       HUD.boss(null);
