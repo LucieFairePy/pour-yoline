@@ -230,7 +230,9 @@
       let exposed = false;
       let shield = false;
       if (x.stage === 1 && inField && local.cd <= 0) {
-        const watched = d.ph === 'watch' && el > 0.3;
+        // past zone 1 there is no time to react to the turn: you must already be still, and
+        // only the eyes (seen by the dame kit) tell when she will really turn
+        const watched = (d.ph === 'watch' && (el > 0.3 || zone > 0)) || (d.ph === 'turn' && zone > 0 && el > 0.08);
         const always = dame && zone === 2;
         exposed = watched || always;
         if (dame && exposed) shield = Remote.has && shielded(p, Remote.pos);

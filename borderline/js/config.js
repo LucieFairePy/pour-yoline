@@ -138,7 +138,7 @@ const CONFIG = {
     zone2: {
       dame: 'Zone 2 · La Poupée fait semblant. Seuls ses yeux disent la vérité : dis à {mate} si c’est un vrai regard.',
       valet:
-        'Zone 2 · La Poupée fait semblant de se retourner. Demande à {mate} si c’est pour de vrai.',
+        'Zone 2 · Ici, elle te voit dès qu’elle se retourne : arrête-toi avant. {mate} voit ses yeux s’allumer, écoute-{le}.',
     },
     zone3: {
       dame: 'Zone 3 · La Poupée ne regarde plus que toi. Cache-toi derrière {mate} et avance dans son ombre.',
