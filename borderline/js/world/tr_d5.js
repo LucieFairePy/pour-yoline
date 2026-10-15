@@ -912,6 +912,9 @@ const D5 = (() => {
     wall(-2.4, 6.2, 127.5, 0.4, 4.4, 7.2, plaster);
     wall(2.4, 6.2, 127.5, 0.4, 4.4, 7.2, plaster);
     wall(0, 8.6, 127.5, 5.2, 0.4, 7.2, darkMarble);
+    // an invisible lid over the first stream's 10 m gap (2.2 m up, over the riders' heads): a late
+    // double jump reaches 11-12 m, so without it you could jump across without anyone on a stone
+    K.collider(-2, 2.4, 95, 26, 0.4, 9.2, { tag: 'nocam' });
     // islands hang on brass cones over the void
     [
       [103, 0],
