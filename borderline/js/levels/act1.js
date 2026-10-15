@@ -3,12 +3,13 @@
   const A = T.act1;
   // this épreuve's card, from the plan (js/game/trials.js)
   const CARD = Cards.tagOf('h10');
-  const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0, hp: V3(), fell: {}, crank: false };
+  const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0, hp: V3(), fell: {}, crank: false, hd: { t: 0 }, kt: 0, kSeen: null, kRef: null };
   // reused every frame
   const qd = V3();
   const qv = V3();
   const q = V3();
-  const tm = { release: 0, inside: 0, cab: 0, h: 0, sync: 0 };
+  // ht / run: the host's own winch progress and cabin clock, committed to the shared state by c.set
+  const tm = { release: 0, inside: 0, cab: 0, h: 0, sync: 0, ht: 0, hRef: null, run: 0 };
   const showLeft = (n) => {
     const sub = A.cabins.countdown + ' ' + n + ' s';
     Arena.screen.show('Un seul sortira', sub, '#ff2a3a');
@@ -95,15 +96,16 @@
     voice: () => 1,
     net: {
       left: (c, n) => !Net.isHost && Arena.built && showLeft(n),
-      h: (c, h) => {
-        if (!Net.isHost && c.S.x) c.S.x.h = h;
-      },
     },
     async enter(c, first) {
       if (!first) await fadeTo(true);
       Arena.build(c.role, c.S.seed);
       local.stage = 0;
       local.cab = null;
+      local.hd.t = c.S.x.h.t;
+      local.kSeen = null;
+      local.kRef = null;
+      tm.hRef = null;
       const sp = Arena.spawn(c.S.x.stage, c.role);
       c.spawn(sp, 0);
       Player.killY = Arena.O.y - 25;
@@ -164,27 +166,32 @@
           if (qq.y > -1) local.fell[w] = false;
         });
       if (x.stage === 2) {
+        if (tm.hRef !== x.h) {
+          tm.hRef = x.h;
+          tm.ht = x.h.t;
+        }
         if (x.att) {
           if (x.hold && Arena.nearWinch(qd)) {
-            x.h.t = Math.min(1, x.h.t + dt * 0.105);
+            tm.ht = Math.min(1, tm.ht + dt * 0.105);
             tm.release = 0;
           } else {
             tm.release += dt;
-            if (tm.release > 2.5) x.h.t = Math.max(0, x.h.t - dt * 0.035);
+            if (tm.release > 2.5) tm.ht = Math.max(0, tm.ht - dt * 0.035);
           }
-          if (x.h.t >= 1)
+          if (tm.ht >= 1)
             c.set((s) => {
+              s.x.h.t = 1;
               s.x.att = false;
               s.x.hold = false;
               s.x.stage = 3;
             });
         }
-        // stream the harness position only while it moves (15 Hz)
+        // commit the harness position to the shared state only while it moves (5 Hz)
         tm.h += dt;
-        if (tm.h > 1 / 15 && x.h.t !== local.sentH) {
+        if (tm.h > 0.2 && tm.ht !== x.h.t) {
           tm.h = 0;
-          local.sentH = x.h.t;
-          c.send('h', x.h);
+          const v = tm.ht;
+          c.set((s) => (s.x.h.t = v));
         }
       }
       if (x.stage === 3 && Arena.onC(qd)) c.set((s) => (s.x.stage = 4));
@@ -200,8 +207,13 @@
               });
           } else tm.inside = 0;
         } else if (k.phase === 'run') {
-          k.t += dt;
-          const left = Math.ceil(20 - k.t);
+          // the host's clock for this run; the shared state gets it twice a second
+          if (local.kRef !== k) {
+            local.kRef = k;
+            tm.run = k.t;
+          }
+          tm.run += dt;
+          const left = Math.ceil(20 - tm.run);
           if (left > 0 && left !== local.left) {
             local.left = left;
             c.send('left', left);
@@ -210,9 +222,10 @@
           tm.sync += dt;
           if (tm.sync > 0.5) {
             tm.sync = 0;
-            c.touch();
+            const v = tm.run;
+            c.set((s) => (s.x.cab.t = v));
           }
-          if (k.t >= 22.5) c.set((s) => (s.x.cab = { phase: 'win', t: 0, who: null, y: 0 }));
+          if (tm.run >= 22.5) c.set((s) => (s.x.cab = { phase: 'win', t: 0, who: null, y: 0 }));
         } else if (k.phase === 'fail') {
           tm.cab += dt;
           if (tm.cab > 4.5)
@@ -254,7 +267,10 @@
     update(c, dt, t) {
       if (!Arena.built) return null;
       const x = c.S.x;
-      Arena.update(dt, t, { a: x, h: x.h });
+      // the harness eases toward the shared value (the host shows its own, unthrottled)
+      if (Net.isHost && tm.hRef === x.h && x.stage === 2) local.hd.t = tm.ht;
+      else local.hd.t += (x.h.t - local.hd.t) * Math.min(1, dt * 6);
+      Arena.update(dt, t, { a: x, h: local.hd });
       Arena.rel(Player.body.p, q);
       const r = c.role;
       let prompt = null;
@@ -276,7 +292,7 @@
           if (Input.pressed('interact')) c.act({ a: 'attach' });
         }
         if (r === 'valet' && x.att) {
-          const hp = Arena.harnessPos(x.h.t, local.hp);
+          const hp = Arena.harnessPos(local.hd.t, local.hp);
           Player.mode = 'hang';
           if (!Player.hangPos) Player.hangPos = V3();
           Player.hangPos.set(hp.x + Math.sin(t * 1.3) * 0.15, hp.y - 2.45, hp.z);
@@ -305,7 +321,12 @@
             prompt = ['E', 'Me sauver'];
             if (Input.pressed('interact')) c.act({ a: 'button' });
           }
-          const kk = clamp(k.t / 20, 0, 1);
+          // the guest runs the shared clock on locally between two updates
+          if (k.t !== local.kSeen) {
+            local.kSeen = k.t;
+            local.kt = k.t;
+          } else local.kt += dt;
+          const kk = clamp((Net.isHost ? tm.run : local.kt) / 20, 0, 1);
           HUD.danger(0.2 + kk * 0.6);
           Cam.shake = Math.max(Cam.shake, 0.02 + kk * 0.05);
           local.heart -= dt;
@@ -314,7 +335,6 @@
             Sound.play('heart', 0.6 + kk * 0.6);
             if (Math.random() < 0.5) Sound.play('rumble', 0.5 + kk);
           }
-          if (!Net.isHost) k.t += dt;
         }
       }
       return prompt;
