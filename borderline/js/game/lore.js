@@ -223,6 +223,10 @@ const Lore = (() => {
       ['La soucoupe des Veilleurs s’enfuit vers leur Cour, par une faille qui se referme. Rattrapez-la.'],
       'Posés au milieu du cœur, devant les portes de la Cour des Veilleurs. C’est là qu’ils gardent le vrai.',
     ],
+    d10: [
+      ['Derrière la porte, encore la tempête : un lac a gelé dans son œil. Les Veilleurs ont caché le passage sous la glace.'],
+      'Sur l’autre rive, la tempête s’enroule autour d’une tour. Elle monte plus haut que les nuages.',
+    ],
     h10b: [
       ['Les portes de la Cour, enfin. Devant elles, le Joker tient marché : il vend des raccourcis.'],
       'La porte de la Cour s’ouvre. Mais derrière, la tempête tourne encore : la Cour se mérite.',
