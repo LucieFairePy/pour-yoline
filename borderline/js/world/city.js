@@ -775,7 +775,34 @@ const City = (() => {
         }`,
     });
 
-  const makeDoor = (pos, rotY, txt, sub, color, entry) => {
+  // A door always stands with its back to a building: it is pushed back against the facade right
+  // behind it. Only real buildings count (a memory place is hidden until its memory comes back, so
+  // the café is no wall in the first worlds); with none behind, the door gets a stone wall of its
+  // own, so it never stands alone in a square with an empty back.
+  const facadeBehind = (pos, back) => {
+    for (let d = 0; d <= 3; d += 0.1) {
+      const x = pos.x + back.x * d;
+      const z = pos.z + back.z * d;
+      if (
+        buildings.some(
+          (b) => b.h > 4 && Math.abs(x - b.x) <= b.sx / 2 && Math.abs(z - b.z) <= b.sz / 2,
+        )
+      )
+        return d;
+    }
+    return -1;
+  };
+  const backWall = (pos, rotY) => {
+    const back = V3(Math.cos(rotY), 0, -Math.sin(rotY));
+    const d = facadeBehind(pos, back);
+    if (d < 0) return { pos, rotY, wall: true };
+    return { pos: pos.clone().addScaledVector(back, Math.max(0, d - 0.1)), rotY, wall: false };
+  };
+
+  const makeDoor = (pos0, rotY0, txt, sub, color) => {
+    const { pos, rotY, wall } = backWall(pos0, rotY0);
+    // where the players stand to go through: on the street, in front of the arch
+    const entry = V3(pos.x - Math.cos(rotY) * 1.4, 0, pos.z + Math.sin(rotY) * 1.4);
     const g = new THREE.Group();
     // thin neon trim inside the arch: it pulses in the card's colour when the door is lit
     const frame = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), toneMapped: false });
@@ -846,7 +873,20 @@ const City = (() => {
     [-2.15, 2.15].forEach((lz) =>
       Phys.box(pos.x + lz * Math.sin(rotY), 2.15, pos.z + lz * Math.cos(rotY), 0.62, 4.3, 0.62),
     );
-    return { frame, fill, sign, leaves, color: new THREE.Color(color), on: 0, target: 0, entry };
+    if (wall) {
+      // no facade behind: a stone wall with a cornice, as wide as the arch and a bit taller
+      const wm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6.4, 7.2), doorStone);
+      wm.position.set(0.55, 3.2, 0);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.3, 7.6), doorStone);
+      cap.position.set(0.55, 6.5, 0);
+      wm.castShadow = wm.receiveShadow = cap.castShadow = true;
+      g.add(wm, cap);
+      const along = Math.abs(Math.sin(rotY)) > 0.5;
+      const wx = pos.x + Math.cos(rotY) * 0.55;
+      const wz = pos.z - Math.sin(rotY) * 0.55;
+      Phys.box(wx, 3.2, wz, along ? 7.2 : 0.8, 6.4, along ? 0.8 : 7.2);
+    }
+    return { frame, fill, sign, leaves, color: new THREE.Color(color), on: 0, target: 0, entry, wall };
   };
 
   const doors = {
@@ -877,9 +917,10 @@ const City = (() => {
     V3(0, 0, -(LOT - HALF) + 1.5),
   );
 
+  // facing the plaza, its back to the café's lot
   doors.d9 = makeDoor(
     V3(-LOT + HALF + 0.6, 0, -9),
-    0,
+    Math.PI,
     '♦ 2',
     'LES PORTES',
     '#ff9a3a',
