@@ -357,10 +357,10 @@ const Worlds = (() => {
       const g = new THREE.Group();
       seq.forEach((k, i) => {
         const s = sprite(SYMS[k], 1.4, SYM_COL[k]);
-        s.position.set(-2.1 + i * 1.4, 0, 0);
+        s.position.set((i - (seq.length - 1) / 2) * 1.4, 0, 0);
         g.add(s);
         const n = sprite(String(i + 1), 0.6, '#e8bd84', 'bold 64px monospace');
-        n.position.set(-2.1 + i * 1.4, -1, 0);
+        n.position.set((i - (seq.length - 1) / 2) * 1.4, -1, 0);
         g.add(n);
       });
       g.position.set(OV.x - 2, OV.y + 3, OV.z + 95.5);
@@ -451,7 +451,7 @@ const Worlds = (() => {
       }
       V.wall.visible = seg >= 0;
       if (seg >= 0) {
-        V.wallZ += dt * 1.4;
+        V.wallZ += dt * 2;
         V.wall.position.set(OV.x, OV.y, OV.z + V.wallZ);
         if (V.wallZ > q.z - 0.4) {
           V.seg = -1;
