@@ -35,7 +35,7 @@
       'Un opérateur fantôme vous raccroche au nez. On recommence cet appel.',
       'La sonnerie hurle. Les valves clignotent. Cet appel recommence.',
     ],
-    wrongPlug: 'Mauvaise ligne : la fiche saute et revient à sa place.',
+    wrongPlug: 'Mauvaise ligne : toutes les fiches sautent, et le tableau de l’opératrice change.',
     timeout: 'Trop lent : la ligne a coupé. Nouvel appel.',
     early: '{mate} n’a pas appuyé en même temps. Recomptez ensemble.',
     win2: 'Toutes les lignes sont branchées.',
@@ -542,7 +542,13 @@
         const l = r2.hold.l;
         const good = r2.pairs.some(([a, b]) => a === l && b === d.r);
         if (!good) {
-          c.set((s) => (s.x.r2.hold = null));
+          // every plug springs back and the operator's list is drawn again: no plugging
+          // your way through by trial and error without the one on the gallery
+          c.set((s) => {
+            s.x.r2.hold = null;
+            s.x.r2.conn = {};
+            s.x.r2.pairs = pairs();
+          });
           alarm(c, TX.wrongPlug);
           return;
         }
