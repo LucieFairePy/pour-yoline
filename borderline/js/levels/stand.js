@@ -39,6 +39,16 @@
         }
       }
       Enemies.simulate(dt, [me, me]);
+      // they stop 7 m away: targets, not a crowd to get stuck in
+      for (const e of Enemies.list.values()) {
+        const dx = e.pos.x - me.pos.x;
+        const dz = e.pos.z - me.pos.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 7 && d > 1e-3) {
+          e.pos.x = me.pos.x + (dx / d) * 7;
+          e.pos.z = me.pos.z + (dz / d) * 7;
+        }
+      }
       // the range does not hurt: the pions only walk up to be shot
       Combat.hp = Combat.max;
       if (Combat.down) Combat.revived();

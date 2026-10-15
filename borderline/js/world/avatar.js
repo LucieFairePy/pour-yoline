@@ -429,26 +429,35 @@ const Avatar = (() => {
       const a = gunAim;
       // body space: -x is the right side. Aiming, the stock sits in the right shoulder pocket and
       // the barrel runs straight ahead; at rest it is held low, muzzle down and across to the left.
+      // running, the rifle bobs with the stride; sprinting, the left hand lets go and swings
+      const run = clamp(((s.speed || 0) - 5.6) / 2.4, 0, 1) * (1 - a);
+      const bob = Math.sin(A.ph) * 0.018 * clamp((s.speed || 0) / 5, 0, 1) * (1 - a);
       gunMount.position.set(
-        lerp(-0.14, -0.17, a),
-        lerp(0.0, 0.31, a),
-        lerp(0.25, 0.26, a) - 0.05 * gunKick,
+        lerp(-0.12, -0.23, a),
+        lerp(-0.1, 0.3, a) + bob,
+        lerp(0.3, 0.27, a) - 0.05 * gunKick,
       );
-      gunE.set(lerp(0.55, s.pitch || 0, a) - 0.14 * gunKick, lerp(0.5, 0.03, a), lerp(-0.2, 0, a));
+      gunE.set(
+        lerp(0.75 + run * 0.25, s.pitch || 0, a) - 0.14 * gunKick,
+        lerp(0.35 - run * 0.2, 0.03, a),
+        lerp(-0.15, 0, a),
+      );
       gunMount.quaternion.setFromEuler(gunE);
       gunMount.scale.setScalar(GUN_S);
       [
-        [1, 0, -0.02, 0, 0.9],
-        [0, 0, 0, 0.14, 0.85],
-      ].forEach(([arm, x, y, z, g]) => {
+        [1, 0, -0.02, 0, 0.9, 1],
+        [0, 0, 0, 0.14, 0.85, 1 - run],
+      ].forEach(([arm, x, y, z, g, w]) => {
+        const k = gunK * w;
+        if (k < 0.01) return;
         ikT.set(x, y, z).multiplyScalar(GUN_S).applyQuaternion(gunMount.quaternion);
         ikT.add(gunMount.position);
         rig.reach(arm, ikT, ik);
         const P = pose.arms[arm];
-        P.p = lerp(P.p, ik.p, gunK);
-        P.a = lerp(P.a, ik.a, gunK);
-        P.e = lerp(P.e, Math.max(0.05, ik.e), gunK);
-        P.g = lerp(P.g, g, gunK);
+        P.p = lerp(P.p, ik.p, k);
+        P.a = lerp(P.a, ik.a, k);
+        P.e = lerp(P.e, Math.max(0.05, ik.e), k);
+        P.g = lerp(P.g, g, k);
       });
     };
     // Seated on a bench. William leans back, both arms along the backrest; Yoline sits with her
