@@ -13,6 +13,41 @@ const Combat = (() => {
     aim: 0,
     // rifle pitch while aiming (radians, positive = down), sent to the other player
     pitch: 0,
+    // AKM: a 30-round magazine, 600 rounds a minute, a 2.4 s reload (reload = its progress, 0..1)
+    mag: 30,
+    reloadT: 0,
+    reload: 0,
+    // hip-fire spread that grows during a burst and settles back
+    bloom: 0,
+  };
+  const MAG = 30;
+  const RELOAD = 2.4;
+  // ammo counter, bottom right, only while a rifle is in hand
+  let ammoEl = null;
+  const ammo = (show) => {
+    if (!ammoEl) {
+      ammoEl = document.createElement('div');
+      ammoEl.style.cssText =
+        'position:absolute;right:2.2rem;bottom:2rem;font-family:var(--f-mono,monospace);' +
+        'color:#fbefe6;text-shadow:0 1px 6px rgba(0,0,0,.9);letter-spacing:.12em;' +
+        'text-align:right;pointer-events:none;transition:opacity .3s;opacity:0;z-index:5';
+      document.body.appendChild(ammoEl);
+    }
+    ammoEl.style.opacity = show ? 1 : 0;
+    if (!show) return;
+    const low = C.mag <= 8;
+    const html =
+      (C.reloadT > 0
+        ? '<span style="font-size:.7rem;opacity:.8">RECHARGEMENT</span>'
+        : '<span style="font-size:2rem;' + (low ? 'color:#ff8fa0' : '') + '">' + C.mag + '</span>' +
+          '<span style="font-size:.85rem;opacity:.6"> / 30</span>') +
+      '<div style="font-size:.6rem;opacity:.55;margin-top:.15rem">R · RECHARGER</div>';
+    if (ammoEl.innerHTML !== html) ammoEl.innerHTML = html;
+  };
+  const startReload = () => {
+    if (C.reloadT > 0 || C.mag >= MAG) return;
+    C.reloadT = RELOAD;
+    Sound.play('reload');
   };
   // bullet tracers: pooled glowing beams (a 1 px line was invisible from the other player)
   const TRACER_T = 0.14;
@@ -82,12 +117,12 @@ const Combat = (() => {
     const cam = R.camera;
     fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
     // from the hip the shots scatter a little; down the sights they go where the dot is
-    if (!C.ads) {
-      fwd.x += (Math.random() - 0.5) * 0.045;
-      fwd.y += (Math.random() - 0.5) * 0.045;
-      fwd.z += (Math.random() - 0.5) * 0.045;
-      fwd.normalize();
-    }
+    const spread = (C.ads ? 0.004 : 0.03) + C.bloom * (C.ads ? 0.35 : 1);
+    fwd.x += (Math.random() - 0.5) * spread;
+    fwd.y += (Math.random() - 0.5) * spread;
+    fwd.z += (Math.random() - 0.5) * spread;
+    fwd.normalize();
+    C.bloom = Math.min(0.05, C.bloom + 0.008);
     const hit = Enemies.raycast(cam.position, fwd, 80);
     const from = Player.weapon.muzzle(handV).clone();
     const to = hit
@@ -218,7 +253,20 @@ const Combat = (() => {
       C.punch = Math.max(0, C.punch - dt);
       C.aim = Math.max(0, C.aim - dt);
       // right mouse held: rifle to the shoulder, camera over the shoulder, body turns with the view
-      C.ads = gun && !C.down && Input.held('aim') && Player.mode === 'walk';
+      // magazine and reload (R, or automatically on an empty magazine)
+      C.bloom = Math.max(0, C.bloom - dt * 0.09);
+      if (gun && !C.down && Input.pressed('reload')) startReload();
+      if (gun && C.mag <= 0) startReload();
+      if (C.reloadT > 0) {
+        C.reloadT -= dt;
+        if (C.reloadT <= 0) {
+          C.reloadT = 0;
+          C.mag = MAG;
+        }
+      }
+      C.reload = C.reloadT > 0 ? 1 - C.reloadT / RELOAD : 0;
+      ammo(gun);
+      C.ads = gun && !C.down && !C.reloadT && Input.held('aim') && Player.mode === 'walk';
       if (C.ads) {
         C.aim = Math.max(C.aim, 0.12);
         Player.yaw = Cam.yaw;
@@ -237,8 +285,11 @@ const Combat = (() => {
         if (C.regen <= 0) C.hp = Math.min(C.max, C.hp + dt * 9);
         const role = Story.role;
         if (role === 'dame' && Input.held('attack') && C.atkCd <= 0 && Player.mode !== 'grapple') {
-          C.atkCd = 0.2;
-          shoot();
+          if (C.mag > 0 && C.reloadT <= 0) {
+            C.atkCd = 0.1;
+            C.mag--;
+            shoot();
+          }
         }
         if (role === 'valet' && Input.pressed('attack') && C.atkCd <= 0) {
           C.atkCd = 0.55;

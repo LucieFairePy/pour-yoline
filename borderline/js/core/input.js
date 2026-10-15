@@ -19,6 +19,7 @@ const Input = (() => {
     pause: { k: ['Escape'], b: [9] },
     deck: { k: ['KeyP', 'Tab'], b: [8] },
     ping: { k: ['KeyG'], b: [12] },
+    reload: { k: ['KeyR'], b: [1] },
     // aim down the sights: right mouse / left trigger, only while a rifle is in hand (gunHand)
     aim: { k: [], m: [2], b: [6] },
   };

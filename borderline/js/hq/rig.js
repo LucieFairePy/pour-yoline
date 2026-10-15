@@ -76,8 +76,14 @@ const HQRig = (() => {
         const a = P.arms[i];
         const S = V3(s * shX, 0.3, 0);
         const [d1, d2, qa1, ax1] = limbDir(s, a.p, a.a, a.e, -1);
-        const E = S.clone().addScaledVector(d1, ARM);
-        const H = E.clone().addScaledVector(d2, ARM);
+        let E = S.clone().addScaledVector(d1, ARM);
+        let H = E.clone().addScaledVector(d2, ARM);
+        // explicit elbow and hand (body space), e.g. both hands on a rifle with the elbows let out
+        if (a.E && a.H) {
+          E = a.E;
+          H = a.H;
+          d2.subVectors(H, E).normalize();
+        }
         HQ.limb(arm.up, S, E, arm.r1);
         HQ.limb(arm.lo, E, H, arm.r2);
         if (arm.brg) {
@@ -86,7 +92,9 @@ const HQRig = (() => {
         }
         arm.elbow.position.copy(E);
         arm.hand.position.copy(H);
-        const palm = V3(-s, 0, 0.18).normalize().applyQuaternion(qa1).applyAxisAngle(ax1, -a.e);
+        const palm = a.palm
+          ? a.palm.clone()
+          : V3(-s, 0, 0.18).normalize().applyQuaternion(qa1).applyAxisAngle(ax1, -a.e);
         palm.addScaledVector(d2, -palm.dot(d2)).normalize();
         const side = tmp.crossVectors(d2, palm);
         handM.makeBasis(side, d2, palm);
@@ -158,6 +166,8 @@ const HQRig = (() => {
         if (!keepY) A.g.position.y += groundY - min;
         return min;
       },
+      ARM,
+      shoulder: (i) => V3(arms[i].s * shX, 0.3, 0),
       handWorld(i, out = V3()) {
         return world(live.hands[i], out);
       },

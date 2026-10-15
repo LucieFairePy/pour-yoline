@@ -330,9 +330,23 @@ const Sound = (() => {
     shoot(pos) {
       const out = pos ? spatial(pos) : sfx;
       const t = ctx.currentTime;
-      noise(t, 0.09, 900, 0.8, 0.22, 'lowpass', out);
-      noise(t, 0.05, 5000, 1, 0.06, 'highpass', out);
-      sweep(t, 220, 60, 0.1, 0.12, 'square', out);
+      // 7.62 crack: a sharp transient, a deep body and a short tail
+      noise(t, 0.04, 6500, 1.2, 0.12, 'highpass', out);
+      noise(t, 0.16, 700, 0.9, 0.3, 'lowpass', out);
+      noise(t + 0.03, 0.35, 260, 0.6, 0.1, 'lowpass', out);
+      sweep(t, 160, 45, 0.12, 0.16, 'square', out);
+    },
+    // AK reload, timed on the hands (2.4 s): magazine out, magazine in, bolt racked
+    reload(pos) {
+      const out = pos ? spatial(pos) : sfx;
+      const t = ctx.currentTime;
+      noise(t + 0.3, 0.05, 3000, 3, 0.12, 'bandpass', out);
+      sweep(t + 0.32, 900, 500, 0.05, 0.05, 'square', out);
+      noise(t + 1.62, 0.06, 2200, 3, 0.18, 'bandpass', out);
+      sweep(t + 1.63, 400, 180, 0.07, 0.08, 'square', out);
+      noise(t + 1.88, 0.07, 4000, 2, 0.12, 'bandpass', out);
+      noise(t + 2.05, 0.08, 2600, 2, 0.16, 'bandpass', out);
+      sweep(t + 2.06, 600, 250, 0.06, 0.07, 'square', out);
     },
     punch(pos) {
       const out = pos ? spatial(pos) : sfx;

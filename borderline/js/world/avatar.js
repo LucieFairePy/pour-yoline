@@ -421,44 +421,105 @@ const Avatar = (() => {
     let gunAim = 0;
     // recoil of the last shot (1 = just fired), set by kick()
     let gunKick = 0;
+    // points on the rifle (rifle space, see js/game/weapons.js): pistol grip, under the handguard,
+    // the magazine, the magazine pulled out, the charging handle forward and back
+    const GRIP = V3(0, -0.035, 0);
+    const FORE = V3(0, -0.03, 0.27);
+    const MAG = V3(0, -0.13, 0.1);
+    const MAGOUT = V3(0.02, -0.3, 0.14);
+    const BOLT = V3(-0.035, 0.025, 0.13);
+    const BOLTBACK = V3(-0.04, 0.025, 0.04);
+    const BELT = V3(0.17, -0.3, 0.08);
+    // the reload, as keyframes of the left hand: [progress, point, in rifle space?]
+    const RELOAD = [
+      [0, FORE, true],
+      [0.12, MAG, true],
+      [0.28, MAGOUT, true],
+      [0.4, BELT, false],
+      [0.55, MAGOUT, true],
+      [0.68, MAG, true],
+      [0.78, BOLT, true],
+      [0.86, BOLTBACK, true],
+      [1, FORE, true],
+    ];
+    const kp = V3();
+    const kq = V3();
+    const toBody = (v, out) =>
+      out.copy(v).multiplyScalar(GUN_S).applyQuaternion(gunMount.quaternion).add(gunMount.position);
+    const reloadHand = (t, out) => {
+      let i = 0;
+      while (i < RELOAD.length - 2 && t > RELOAD[i + 1][0]) i++;
+      const [t0, p0, g0] = RELOAD[i];
+      const [t1, p1, g1] = RELOAD[i + 1];
+      const k = clamp((t - t0) / (t1 - t0), 0, 1);
+      const e = k * k * (3 - 2 * k);
+      g0 ? toBody(p0, kp) : kp.copy(p0);
+      g1 ? toBody(p1, kq) : kq.copy(p1);
+      return out.copy(kp).lerp(kq, e);
+    };
+    // Two-bone arm with the elbow let out: the elbow sits on its circle around the shoulder-hand
+    // line, turned toward a hint (out and down), so the arms are relaxed, not tucked into the ribs.
+    const armTo = (i, H, hint, palm, g, k) => {
+      const P = pose.arms[i];
+      if (k < 0.5) {
+        P.E = P.H = P.palm = null;
+        return;
+      }
+      const S = rig.shoulder(i);
+      const L = rig.ARM;
+      const u = kp.subVectors(H, S);
+      let d = u.length();
+      u.normalize();
+      const Hc = H.clone();
+      if (d > L * 1.98) {
+        d = L * 1.98;
+        Hc.copy(S).addScaledVector(u, d);
+      }
+      const r = Math.sqrt(Math.max(0, L * L - (d * d) / 4));
+      const v = kq.copy(hint).addScaledVector(u, -hint.dot(u)).normalize();
+      P.E = S.clone().addScaledVector(u, d / 2).addScaledVector(v, r);
+      P.H = Hc;
+      P.palm = palm;
+      P.g = g;
+    };
+    const HINT_R = V3(-1, -0.85, -0.2).normalize();
+    const HINT_L = V3(0.75, -1, -0.1).normalize();
     const holdGun = (dt, s) => {
       gunK = damp(gunK, s.gun && s.mode !== 'sit' ? 1 : 0, 10, dt);
-      gunAim = damp(gunAim, s.gun && s.aim ? 1 : 0, 14, dt);
+      const rl = s.gun ? s.reload || 0 : 0;
+      gunAim = damp(gunAim, s.gun && s.aim && !rl ? 1 : 0, 14, dt);
       gunKick = Math.max(0, gunKick - dt * 9);
-      if (gunK < 0.01) return;
+      if (gunK < 0.01) {
+        pose.arms.forEach((P) => (P.E = P.H = P.palm = null));
+        return;
+      }
       const a = gunAim;
       // body space: -x is the right side. Aiming, the stock sits in the right shoulder pocket and
-      // the barrel runs straight ahead; at rest it is held low, muzzle down and across to the left.
-      // running, the rifle bobs with the stride; sprinting, the left hand lets go and swings
-      const run = clamp(((s.speed || 0) - 5.6) / 2.4, 0, 1) * (1 - a);
+      // the barrel runs straight ahead; at rest it is held low and forward, muzzle down and across
+      // to the left, elbows loose. Running, it bobs with the stride; sprinting, the left hand lets
+      // go and swings. Reloading, the rifle cants over and the left hand does the work.
+      const run = clamp(((s.speed || 0) - 5.6) / 2.4, 0, 1) * (1 - a) * (rl ? 0 : 1);
       const bob = Math.sin(A.ph) * 0.018 * clamp((s.speed || 0) / 5, 0, 1) * (1 - a);
+      const tilt = rl ? Math.sin(Math.min(1, rl * 1.15) * Math.PI) : 0;
       gunMount.position.set(
-        lerp(-0.12, -0.23, a),
-        lerp(-0.1, 0.3, a) + bob,
-        lerp(0.3, 0.27, a) - 0.05 * gunKick,
+        lerp(-0.1, -0.21, a) + tilt * 0.05,
+        lerp(0.02, 0.3, a) + bob - tilt * 0.02,
+        lerp(0.38, 0.3, a) - 0.05 * gunKick,
       );
       gunE.set(
-        lerp(0.75 + run * 0.25, s.pitch || 0, a) - 0.14 * gunKick,
-        lerp(0.35 - run * 0.2, 0.03, a),
-        lerp(-0.15, 0, a),
+        lerp(0.42 + run * 0.35, s.pitch || 0, a) - 0.12 * gunKick - tilt * 0.25,
+        lerp(0.42 - run * 0.2, 0.02, a) + tilt * 0.15,
+        lerp(-0.12, 0, a) + tilt * 0.55,
       );
       gunMount.quaternion.setFromEuler(gunE);
       gunMount.scale.setScalar(GUN_S);
-      [
-        [1, 0, -0.02, 0, 0.9, 1],
-        [0, 0, 0, 0.14, 0.85, 1 - run],
-      ].forEach(([arm, x, y, z, g, w]) => {
-        const k = gunK * w;
-        if (k < 0.01) return;
-        ikT.set(x, y, z).multiplyScalar(GUN_S).applyQuaternion(gunMount.quaternion);
-        ikT.add(gunMount.position);
-        rig.reach(arm, ikT, ik);
-        const P = pose.arms[arm];
-        P.p = lerp(P.p, ik.p, k);
-        P.a = lerp(P.a, ik.a, k);
-        P.e = lerp(P.e, Math.max(0.05, ik.e), k);
-        P.g = lerp(P.g, g, k);
-      });
+      // right hand on the pistol grip, palm toward the rifle's left side
+      const right = V3(1, 0, 0).applyQuaternion(gunMount.quaternion);
+      const up = V3(0, 1, 0).applyQuaternion(gunMount.quaternion);
+      armTo(1, toBody(GRIP, V3()), HINT_R, right, 0.9, gunK);
+      // left hand: under the handguard (palm up), on the reload's path, or free when sprinting
+      if (rl > 0) armTo(0, reloadHand(rl, V3()), HINT_L, up, 0.8, gunK);
+      else armTo(0, toBody(FORE, V3()), HINT_L, up, 0.85, gunK * (1 - run));
     };
     // Seated on a bench. William leans back, both arms along the backrest; Yoline sits with her
     // hands in her lap and, when he is beside her, leans in with her head on his arm by his

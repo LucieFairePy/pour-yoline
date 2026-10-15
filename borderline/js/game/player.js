@@ -232,6 +232,7 @@ const Player = (() => {
         flip: P.flip,
         punch: P.punch || 0,
         gun: Combat.on && P.role === 'dame',
+        reload: Combat.on && P.role === 'dame' ? Combat.reload : 0,
         aim: Combat.on && P.role === 'dame' && Combat.aim > 0,
         pitch: Combat.pitch || 0,
       },
@@ -244,6 +245,7 @@ const Player = (() => {
       P.punch || 0,
       Combat.aim > 0,
       Combat.pitch || 0,
+      Combat.reload || 0,
     );
     const tg = P.mode === 'grapple' && P.targets && P.targets()[P.target];
     P.rope.update(dt, a.hand(handV), !!tg, tg || null);
@@ -273,6 +275,10 @@ const Player = (() => {
     +(Combat.punch || 0).toFixed(2),
     Combat.aim > 0 ? 1 : 0,
     +(Combat.pitch || 0).toFixed(2),
+    // 19 and 20 are the clock and the teleport counter (set in main.js), 21 the reload progress
+    0,
+    0,
+    +(Combat.reload || 0).toFixed(2),
   ];
 
   return P;

@@ -211,6 +211,7 @@ const Remote = (() => {
         punch: s[16] || 0,
         aim: !!s[17],
         pitch: s[18] || 0,
+        reload: s[21] || 0,
       };
       if (s[9]) tgt.set(s[10], s[11], s[12]);
       avatar.ghost(state.cloak ? 1 : 0);
@@ -226,6 +227,7 @@ const Remote = (() => {
         state.punch || 0,
         state.aim,
         state.pitch || 0,
+        gun ? state.reload : 0,
       );
       const on = state.mode === 'grapple' && !!s[9];
       line.update(dt, avatar.hand(handV), on, on ? tgt : null);
