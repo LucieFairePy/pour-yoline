@@ -31,10 +31,13 @@
     pit: 'Le fond du puits. On remonte.',
     up: 'Vous êtes en haut tous les deux. La grande balance vous attend.',
     r3: {
-      dame: 'Salle 3 · Neuf orbes, une seule est plus lourde. Trois pesées. Tu lis les numéros, {mate} ne les voit pas.',
-      valet: 'Salle 3 · Neuf orbes, une seule est plus lourde. Trois pesées. Seul{pe} {mate} lit les numéros.',
+      dame: 'Salle 3 · Neuf orbes, une seule est plus lourde. Trois pesées. Tu lis les numéros et tu tires le levier « Peser » ; {mate} porte les orbes.',
+      valet: 'Salle 3 · Neuf orbes, une seule est plus lourde. Trois pesées. Tu portes les orbes ; seul{pe} {mate} lit les numéros et tire le levier « Peser ».',
     },
-    rule3: 'Posez des orbes sur les plateaux, puis tirez le levier « Peser ». L’orbe la plus lourde se pose sur le cœur.',
+    rule3: 'Posez des orbes sur les plateaux, puis tirez le levier « Peser ». Après deux pesées au moins, l’orbe la plus lourde se pose sur le cœur.',
+    orbHeavy: 'Les orbes sont trop lourdes pour toi. {mate} les porte.',
+    weighMate: 'Le levier « Peser » ne répond qu’à {mate}.',
+    weighFirst: 'Le cœur reste fermé : pesez au moins deux fois.',
     ceilStart: 'Le plafond se met en marche. Prenez votre temps… mais pas trop.',
     ceilWarn: {
       60: 'Plus qu’une minute. Les engrenages descendent.',
@@ -106,7 +109,8 @@
     return out;
   };
   // a layout that needs both of you whatever way you solve it: at least one light weight (the
-  // Dame's grapple or the Valet's jump) and at least one astronaut standing on a pan
+  // Dame's grapple or the Valet's jump), at least one heavy one (the Valet) and both astronauts
+  // standing on the pans (so the Valet cannot balance it alone by watching the needles)
   const newPuzzle = () => {
     for (let tries = 0; tries < 2000; tries++) {
       const h = shuffle([3, 4, 5, 6, 7]).slice(0, 3);
@@ -117,7 +121,7 @@
       const sols = solutions(vals, fA, fB);
       if (!sols.length || sols.length > 24) continue;
       if (!sols.every((so) => so.asg.slice(3).some(Boolean))) continue;
-      if (!sols.every((so) => so.players > 0)) continue;
+      if (!sols.every((so) => so.players === 2)) continue;
       if (!sols.every((so) => so.asg.slice(0, 3).some(Boolean))) continue;
       return {
         blocks: [
@@ -130,7 +134,7 @@
         fB,
       };
     }
-    // fallback (checked with solutions()): A 5, B 5
+    // fallback (checked with solutions()): A 12, B 13, both astronauts on the pans
     return {
       blocks: [
         { kind: 'heavy', v: 5, at: 'H0' },
@@ -142,8 +146,8 @@
         { kind: 'heavy', v: 3, at: 'W0', open: true },
         { kind: 'heavy', v: 3, at: 'W1', open: true },
       ],
-      fA: 5,
-      fB: 5,
+      fA: 12,
+      fB: 13,
     };
   };
   // the orbs stand on shuffled pedestals: orb n is rarely on pedestal n
@@ -486,7 +490,8 @@
       // room 3
       const r3 = x.r3;
       if (x.stage === 3 && r3.state !== 'fail') {
-        if (d.a === 'otake' && !h) {
+        // the orbs are the Valet's to carry, the weighing lever the Dame's to pull
+        if (d.a === 'otake' && !h && who === 'valet') {
           const at = r3.orbs[d.i];
           if (at == null || (typeof at !== 'number' && at !== 'L' && at !== 'R')) return;
           c.set((s) => (s.x.r3.orbs[d.i] = 'carry:' + who));
@@ -496,7 +501,7 @@
           c.set((s) => (s.x.r3.orbs[h.i] = d.to === 'S' ? d.k : d.to));
           Sound.play('tile');
         }
-        if (d.a === 'weigh') {
+        if (d.a === 'weigh' && who === 'dame') {
           if (r3.weighs >= 3) {
             HUD.say(TXT.noWeigh, T.master, 2000);
             return c.send('d3say', [TXT.noWeigh]);
@@ -521,6 +526,10 @@
           if (r3.state === 'idle') c.set((s) => (s.x.r3.state = 'run'));
         }
         if (d.a === 'altar' && h && h.type === 'orb') {
+          if (r3.weighs < 2) {
+            const say = (w) => (w === c.role ? HUD.say(TXT.weighFirst, T.master, 2200) : c.send('d3say', [TXT.weighFirst]));
+            return say(who);
+          }
           if (h.i === r3.heavy) {
             c.set((s) => {
               s.x.r3.orbs[h.i] = 'A';
@@ -712,10 +721,18 @@
           const oi = D3.nearOrb(q, free);
           local.focus = oi;
           if (oi >= 0 && !D3.nearLever(q, 'weigh')) {
+            if (r === 'dame') {
+              if (Input.pressed('interact')) HUD.say(TXT.orbHeavy, T.master, 1800);
+              return ['E', 'Orbe ' + (oi + 1) + ' · trop lourde'];
+            }
             if (Input.pressed('interact')) c.act({ a: 'otake', i: oi });
-            return ['E', r === 'dame' ? 'Prendre l’orbe ' + (oi + 1) : 'Prendre cette orbe'];
+            return ['E', 'Prendre cette orbe'];
           }
           if (D3.nearLever(q, 'weigh')) {
+            if (r !== 'dame') {
+              if (Input.pressed('interact')) HUD.say(TXT.weighMate, T.master, 1800);
+              return ['E', 'Peser · pas ton levier'];
+            }
             if (Input.pressed('interact')) c.act({ a: 'weigh' });
             return ['E', r3.weighs >= 3 ? 'Plus de pesée' : `Peser (${3 - r3.weighs} restante${r3.weighs < 2 ? 's' : ''})`];
           }
