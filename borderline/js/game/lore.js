@@ -223,6 +223,10 @@ const Lore = (() => {
       ['La soucoupe des Veilleurs s’enfuit vers leur Cour, par une faille qui se referme. Rattrapez-la.'],
       'Posés au milieu du cœur, devant les portes de la Cour des Veilleurs. C’est là qu’ils gardent le vrai.',
     ],
+    h10b: [
+      ['Les portes de la Cour, enfin. Devant elles, le Joker tient marché : il vend des raccourcis.'],
+      'La porte de la Cour s’ouvre. Mais derrière, la tempête tourne encore : la Cour se mérite.',
+    ],
   };
 
   // a few lines during the épreuves, each said once per visit (Lore.during(trial, key))
