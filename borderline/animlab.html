@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BORDERLINE anim lab</title>
+<meta name="robots" content="noindex">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1626; color: #eee; font: 12px/1.35 system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; left: 8px; top: 8px; width: 360px; max-height: calc(100% - 16px); overflow: auto;
+    background: rgba(12, 10, 20, 0.78); border: 1px solid #3c3552; border-radius: 6px; padding: 8px 10px; }
+  #hud .t { font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px; }
+  #hud .dim { color: #9a93ad; font-weight: 400; }
+  #hud .kv { margin: 2px 0; }
+  #hud b { color: #c8b8ff; font-weight: 600; }
+  #hud table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 11px; }
+  #hud th { text-align: left; color: #9a93ad; font-weight: 500; }
+  #hud td { padding: 1px 2px; white-space: nowrap; }
+  #hud td:first-child { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+  .bar { display: inline-block; width: 46px; height: 6px; background: #2b2540; vertical-align: middle; border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: #8fd6a4; }
+  .toggles { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .toggles button { background: #2b2540; color: #eee; border: 1px solid #4a4166; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; }
+  #help { position: fixed; right: 8px; bottom: 8px; max-width: 420px; background: rgba(12, 10, 20, 0.7); border-radius: 6px; padding: 6px 10px; color: #cfc8e0; font-size: 11px; }
+  #status { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); font-size: 16px; color: #cfc8e0; }
+  #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.7); pointer-events: none; }
+  @media (max-width: 700px) { #hud { width: calc(100% - 32px); max-height: 45%; } #help { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="cross"></div>
+<div id="hud"></div>
+<div id="status">loading three.js...</div>
+<div id="help">
+  click: capture mouse &middot; WASD move &middot; Shift sprint &middot; V walk toggle &middot; Space jump (twice: flip) &middot;
+  Q roll &middot; C slide (while sprinting) &middot; F rifle on/off &middot; RMB aim &middot; LMB fire (aiming) &middot;
+  H skeleton &middot; B retarget bench
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="js/animlab/util.js"></script>
+<script src="js/animlab/world.js"></script>
+<script src="js/animlab/character.js"></script>
+<script src="js/animlab/retarget.js"></script>
+<script src="js/animlab/main.js"></script>
+</body>
+</html>
