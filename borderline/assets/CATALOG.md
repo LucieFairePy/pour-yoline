@@ -17,7 +17,7 @@ Test page: `lab.html?lab=sword|grapple|veil|stone` (see "Lab" below).
 | `fx.slash` | VFX sprite | sword blow (crescent) | https://kenney.nl/assets/particle-pack (`slash_02`) | Kenney | CC0 (License.txt in the pack, page says CC0) | `fx/slash.png` | 7 KB | 256² L8 | yes | timed fade in assetfx | clearly better than the flat ring | **on** |
 | `fx.twirl` | VFX texture | Valet veil shimmer | https://kenney.nl/assets/particle-pack (`twirl_02`) | Kenney | CC0 | `fx/twirl.png` | 13 KB | 256² L8 | yes | scrolled in shader | clearly better (glass outline instead of milky copy) | **on** |
 | `tex.rope` / `tex.ropeN` | PBR texture | Dame grapple rope (albedo + normal GL) | https://ambientcg.com/view?id=Rope001 | ambientCG (Lennart Demes) | CC0 (https://docs.ambientcg.com/license/) | `textures/rope_col.jpg`, `rope_nrm.jpg` | 29 + 56 KB | 512×256 | yes | braid pitch per instance length (shader) | better up close, equal at 12 m (kit pink kept as glow) | **on** |
-| `tex.stone.alb` / `.dat` | PBR texture | every `Tex.mat('stone')` (arena, maze, crypt, balade masonry, city, doors, finale) | https://polyhaven.com/a/castle_wall_varriation | Poly Haven (Rob Tuytel) | CC0 (https://polyhaven.com/license) | `textures/stone_alb.webp` (2048², desaturated 45 %, mean 0.47 so level tints still work), `stone_dat.webp` (1024², R = height, G = roughness) | 710 + 210 KB | 2048 / 1024 | yes (WebP) | – | clearly better (photo-scanned wall, tints kept) | **on** (not loaded on quality=low) |
+| `tex.stone.alb` / `.nrm` | PBR texture | every `Tex.mat('stone')` **of world 1** (Terre 39: city doors, fountain, cornice caps, pillars of ♠2, arena of ♥3 La Balance …), see section 7 | https://polyhaven.com/a/castle_wall_varriation | Poly Haven (Rob Tuytel) | CC0 (https://polyhaven.com/license) | `textures/stone_alb.webp` (2048², AO from the height baked in, 45 % desaturated, mean matched to the recipe), `stone_nrm.jpg` (1024², R,G = normal from the height map, B = roughness) | 949 + 237 KB | 2048 / 1024 | yes | – | clearly better (photo-scanned wall, tints kept) | **on** (world 1, lazy) |
 | `sword.estoc` | model | Valet sword (opt-in) | https://polyhaven.com/a/antique_estoc | James Ray Cock, Ulan Cabanilla (Poly Haven) | CC0 | `models/sword_estoc.glb` (1K glTF repacked: 512 px JPEG textures, one GLB) | 383 KB | 8 246 tris, 3 maps 512² | yes (GLTFLoader r128, lazy) | uses the game's swing | more detailed up close, thinner than the stylised blade at play distance | opt-in `?ext=all` |
 | `snd.swing1/2` | sound | sword swing (opt-in) | https://opengameart.org/content/swishes-sound-pack (`swish-7`, `swish-9`) | artisticdude | CC0 (page) | `sounds/swing1.mp3`, `swing2.mp3` | 3 KB each | mono 96 kb/s, loudnorm −16 LUFS | yes | – | not judged by ear yet | opt-in |
 | `snd.swing3` | sound | sword swing (opt-in) | https://opengameart.org/content/rpg-sound-pack (`battle/swing.wav`) | artisticdude | CC0 (page) | `sounds/swing3.mp3` | 4 KB | idem | yes | – | idem | opt-in |
@@ -133,3 +133,78 @@ Co-op (two pages, Yoline host + William): the partner sees the estoc in the Vale
 textured slash of a remote blow (21 frames observed) and the veil shimmer (188 meshes swapped)
 on the remote avatar; act1, act2, donjon, garde, balade and final entered on both roles with no
 console error.
+
+## 7. Look pass: Terre 39 prototype (semi-realistic, branch `assets-lab`)
+
+Art direction (user, 2026-10-15): **option 1**, keep the scenery geometry; realistic PBR textures,
+sounds, VFX and skies from the local CC0 library (`BORDERLINE_ASSETS_LIBRARY`, 55 packs, not in git);
+semi-realistic, immersive, coherent, one identity per world, never low-poly cartoon. Kenney 3D
+models only for secondary props, only after a visual check. Built first on Terre 39 (city hub,
+♠2 « Premiers pas », ♠4 « Les Toits qui tombent »), then **stop for validation** before the other worlds.
+
+Code: `js/world/look.js` (flags, scan registry, night environment, street-lamp lighting chunk,
+per-scene light balance, camera-near point lights), `Tex.register / Tex.rescope` in
+`js/world/textures.js` (lazy scanned sets with normal maps, per world), the street and facade
+shaders in `js/world/city.js`, the Kenney sound rules in `js/game/assetfx.js`.
+The lab's stone room (`lab.html?lab=stone`) stands in the Garde arena (world 5), so it shows the
+procedural stone unless `&tex=all` is added.
+Flags: `?look=0` (or `?noassets`) = the game exactly as before; `?look=tex,ground,lamps,env,grade,sound`
+= only those parts; `&tex=all` = the scans in every world.
+
+### Integrated
+
+| id / file | what | source (library path) | author | licence | processing | size | where | default |
+|-----------|------|-----------------------|--------|---------|------------|------|-------|---------|
+| `tex.asphalt.alb` / `.nrm` = `textures/asphalt_alb.webp`, `asphalt_nrm.jpg` | asphalt scan | `03_TEXTURES_PBR/asphalte/asphalt_01` = https://polyhaven.com/a/asphalt_01 | Poly Haven | CC0 | AO baked, 85 % desaturated, mean matched to the recipe (0.205); nrm = normal XY + roughness, JPEG 4:4:4 | 125 + 414 KB (1024², 1024²) | city streets (street shader), roofs of ♠4, every world-1 `Tex.mat('asphalt')` | on |
+| `tex.stone.*` | castle wall scan (row above, now with a normal map) | https://polyhaven.com/a/castle_wall_varriation (from the asset lab) | Poly Haven | CC0 | normal + cavity AO computed from its height map | 949 + 237 KB | world-1 stone | on |
+| `tex.wood.alb` / `.nrm` = `textures/wood_*` | wooden planks scan | `03_TEXTURES_PBR/bois/wooden_planks` = https://polyhaven.com/a/wooden_planks | Poly Haven | CC0 | AO baked, per-channel mean matched to the recipe (0.52, 0.32, 0.18) so the level tints keep their colour | 374 + 213 KB (2048², 1024²) | benches, doors, crates, water towers of ♠4 … (world 1) | on |
+| `fx.cone` = `fx/lamp_cone.png` | soft light cone under the 676 street lamps | `05_UI_ET_VFX/Kenney_light-masks/Default/cone_d_blur.png` | Kenney | CC0 | luminance, flipped, 128×256 | 3 KB | city (one instanced draw call) | on |
+| `sounds/kenney/card_slide_1..3`, `card_place_1..3` | card won: slid out and laid down, under the chime | `04_SONS/04_CARTES/Kenney_casino-audio` | Kenney | CC0 | trimmed, RMS −20 dBFS, peak ≤ −3 dBFS, mono MP3 80 kb/s | 6–9 KB each | `Sound.play('card')` (layered) | on |
+| `sounds/kenney/card_fan_1..2`, `card_shove_1..3` | deck menu opened / closed (P / Tab) | idem | Kenney | CC0 | idem (−22 / −24 dBFS) | 7–13 KB | deck menu | on |
+| `sounds/kenney/ui_click_1..3` | menu clicks | `04_SONS/03_INTERFACES/Kenney_interface-sounds` (`click_001`, `select_001/002`) | Kenney | CC0 | idem | 0–1 KB | `Sound.play('ui')` (replaces the synth) | on |
+| `sounds/kenney/step_concrete_0..4`, `step_wood_0..4` | footsteps by surface (wood on benches / wooden boxes, concrete elsewhere) | `04_SONS/01_IMPACTS_ET_COMBAT/Kenney_impact-sounds` | Kenney | CC0 | −26 dBFS, played at 0.3–0.65 gain, never the same twice, ±7 % pitch | 1–3 KB | `Sound.play('step')` (replaces the noise tick) | on |
+| `sounds/kenney/land_0..2` | landing | idem (`impactSoft_heavy`) | Kenney | CC0 | −22 dBFS | 5–6 KB | `Sound.play('land')` | on |
+| `sounds/kenney/switch_latch`, `switch_click` | levers | `Kenney_rpg-audio` (`metalLatch`, `metalClick`) | Kenney | CC0 | −20 dBFS | 3–5 KB | `Sound.play('switch')` (layered under the bell) | on |
+| `sounds/kenney/creak_1..3` | wood creaks (winch, bridges) | `Kenney_rpg-audio` | Kenney | CC0 | −24 dBFS | 3–8 KB | `Sound.play('creak')` (replaces the square-wave creak) | on |
+| `sounds/kenney/glass_0..2` | glass breaking | `Kenney_impact-sounds` (`impactGlass_heavy`) | Kenney | CC0 | −20 dBFS | 3–4 KB | `Sound.play('shatter')` (layered) | on |
+
+Not an asset but part of the pass (code only): the city street lit by its real lamps (inverse-square
+pools with a downward lantern distribution, GGX glints on the scanned asphalt normal and roughness,
+puddles in low spots and a wet strip along the kerbs that mirror the facades and the shop windows,
+shopfront spill on the pavements, contact darkening where the facades meet the ground), lamp light
+on the lower floors of the facades, the plaza lit by its fountain and the big screen, 3 real point
+lights following the lamps nearest to the view + the fountain (props and avatars), a night
+environment reflected by metal / varnish / wet stone (lamp posts and benches were black
+silhouettes), light balance per scene (moonlight vs sodium lamps; a low moon sheen on the roofs of
+♠4; a cool key over the void of ♠2), and anti-aliased procedural relief (brushed metal no longer
+streaks under the lamps).
+
+### Rejected (or kept for later)
+
+| asset | why |
+|-------|-----|
+| `03_TEXTURES_PBR/pierre/stone_wall` (Poly Haven rubble wall) | compared in the lab with the castle wall under the same tints: a rough rubble wall, reads "dungeon / countryside", not city masonry. **Candidate for Profondeurs (W5) / caves.** Packed and ready (`stonewall_*`, not in the repo). |
+| Kenney 3D props for Terre 39 (retro-urban kit: dumpster, bench, pallet, barrier, street light; suburban planter) | placed in the plaza under the new lighting: flat-coloured toy proportions, near-white atlases under the game's linear output, and the GLBs use `KHR_texture_transform` UV sets that three r128 does not support. They do not blend with the scanned materials. Not integrated. |
+| Kenney city kits (commercial / suburban / industrial buildings) | low-poly whole buildings: replacing the city geometry is out of scope (option 1) and off style. |
+| Kenney skyboxes (`03_TEXTURES_SUPPLEMENTAIRES/Kenney_skyboxes`, day / dusk / night / pink) | painted, cartoon-soft clouds; the city sky is narrative (the heart-galaxy, the Oui, fills card by card) and better. Night clouds might suit Céleste (W2) as a far layer: to judge there. |
+| Kenney splat pack | cartoon paint splats: the puddles and grime are shaped procedurally in the street shader instead (softer, no tiling). |
+| Kenney footsteps on grass / snow / carpet, casino chips / dice | no matching surface or event in the prototype scenes (grass: La Rivière, to add with world 1 generalisation). |
+| Kenney doorOpen / doorClose (RPG audio) | wooden house doors; the game's `door` sound serves stone rift doors and metal cabins: would not match. Kept for wooden doors of world 4 (Conte). |
+| Ambience loops | none in the 55 packs (Kenney sci-fi has engine hums only). The synth city ambience stays. |
+| Interface clicks `click_002..005` | 10 ms clicks, too short to read; `select_001/002` used instead. |
+
+### Measured (headless Chrome, D3D11 on the RX 7900 GRE, 1280×720, one full frame with `gl.finish`)
+
+| scene (view) | draw calls before → after | GPU ms before → after | fps before → after |
+|--------------|---------------------------|-----------------------|--------------------|
+| city street (v1) | 909 → 910 | 9.1 → 8.9–9.7 | 158 → 146–159 |
+| city plaza (v2) | 697 → 698 | 6.9 → 7.5 | 172 → 168 |
+| ♠4 rooftops | 1247 → 1246 | 15.5 → 15.3–15.7 | 119 → 115 |
+| ♠2 void stage | 538 → 538 | 2.2 → 2.3 | 180 → 180 (cap) |
+
+GPU texture memory after visiting the city, ♠4 and ♠2: **833 MB → 769–785 MB** (the three scans
+at 2048/1024 replace three pairs of 2048² procedural maps). Downloads: +2.3 MB of scans, +3 KB cone,
++170 KB of sounds (after the first click), each scan fetched only when a world-1 level first uses
+its kind. City ready (page start → all maps final): 5.44 s → 5.47 s (the scans arrive while the
+procedural maps are being made). Shader programs: +16 (point lights in the city phases, the night
+environment variant) — compiled once, on the first visit.

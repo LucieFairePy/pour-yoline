@@ -90,6 +90,13 @@ Assets externes : déclarés une fois dans `js/core/assets.js` (chargement uniqu
 arrière-plan), branchés sur les systèmes existants par `js/game/assetfx.js` sans en changer la
 logique. `?noassets` revient partout à la version faite main.
 
+Passe « Look » (prototype Terre 39, `js/world/look.js`) : scans Poly Haven (asphalte, pierre, bois :
+albedo + normale + rugosité) chargés seulement quand un niveau du monde 1 les utilise, rue éclairée
+par ses vrais lampadaires (flaques, reflets, vitrines), cônes de lumière, reflets de nuit sur le
+métal et le bois verni, réglage de lumière par scène, sons Kenney (cartes, interface, pas, leviers).
+`?look=0` (ou `?noassets`) = rendu d'avant ; `?look=tex,ground,lamps,env,grade,sound` = au choix ;
+`&tex=all` = les scans dans tous les mondes (aperçu de la généralisation).
+
 L'hôte fait autorité sur l'état de la partie, chaque joueur simule son propre personnage.
 
 ## Icônes

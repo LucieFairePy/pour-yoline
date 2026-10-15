@@ -424,7 +424,22 @@ const Tex = (() => {
     out.uAlb = { value: out.albedo };
     out.uDat = { value: out.data };
     out.uMul = { value: 1 };
+    // 0 = procedural layout (R height, G roughness), 1 = scanned (R,G normal XY, B roughness)
+    out.uNrm = { value: 0 };
     cache.set(kind, out);
+    // a scanned set registered for this kind: fetched now (first use = the level being built),
+    // the small preview stands in meanwhile, and the full procedural map is only made if it fails
+    const e = EXT.get(kind);
+    if (e && e.allowed()) {
+      fetchExt(kind);
+      return out;
+    }
+    full_(kind);
+    return out;
+  };
+  const full_ = (kind) => {
+    const out = cache.get(kind);
+    if (out.size >= full() || jobs.has(kind) || slowQ.includes(kind)) return out;
     const ws = workers();
     if (ws.length) {
       const w = ws.reduce((a, b) => (b.busy < a.busy ? b : a));
@@ -436,6 +451,55 @@ const Tex = (() => {
       if (slowQ.length === 1) setTimeout(slow, 60);
     }
     return out;
+  };
+  // ---------- scanned sets (lazy) ----------
+  // kind -> { load: () => Promise<{ albedo, data }>, mul, state }
+  const EXT = new Map();
+  const fetchExt = (kind) => {
+    const e = EXT.get(kind);
+    if (!e || e.state) return;
+    e.state = 'loading';
+    e.load()
+      .then(({ albedo, data }) => {
+        e.state = 'on';
+        e.tex = { albedo, data };
+        if (e.allowed()) external(kind, albedo, data, e.mul, 1);
+        else full_(kind);
+      })
+      .catch(() => {
+        e.state = 'failed';
+        full_(kind);
+      });
+  };
+  /**
+   * register a scanned set for a kind (js/world/look.js). Nothing is downloaded until a level
+   * actually asks for that kind (Tex.build / Tex.mat), so a world only loads its own materials.
+   * allowed(): whether the scan is used right now (per world); else the procedural maps.
+   */
+  const register = (kind, load, mul = 1, allowed = () => true) => {
+    if (!hq() || EXT.has(kind)) return;
+    EXT.set(kind, { load, mul, allowed, state: null, tex: null });
+    if (cache.has(kind) && allowed()) fetchExt(kind);
+  };
+  /** re-check every registered kind (called when the phase, so the world, changes) */
+  const rescope = () => {
+    EXT.forEach((e, kind) => {
+      const T = cache.get(kind);
+      if (!T) return;
+      if (e.allowed()) {
+        if (e.tex) {
+          if (T.uAlb.value !== e.tex.albedo) external(kind, e.tex.albedo, e.tex.data, e.mul, 1);
+        } else fetchExt(kind);
+      } else if (T.external) {
+        T.uAlb.value = T.albedo;
+        T.uDat.value = T.data;
+        T.uMul.value = 1;
+        T.uNrm.value = 0;
+        T.external = false;
+        T.size = T.albedo.image.width;
+        full_(kind);
+      }
+    });
   };
   const R_ANISO = () => {
     try {
@@ -477,8 +541,21 @@ const Tex = (() => {
       sh.uniforms.tAlb = T.uAlb;
       sh.uniforms.tDat = T.uDat;
       sh.uniforms.triMul = T.uMul;
+      sh.uniforms.triNrm = T.uNrm;
       sh.uniforms.triScale = { value: scale };
       sh.uniforms.triBump = { value: bump * 0.05 };
+      // night environment of the Look pass (js/world/look.js), 0 = off
+      const LK = typeof Look !== 'undefined' ? Look.ENV : null;
+      if (LK) {
+        sh.uniforms.uLookEnv = LK.k;
+        sh.uniforms.uLookSky = LK.sky;
+        sh.uniforms.uLookGnd = LK.gnd;
+        sh.uniforms.uLookKey = LK.key;
+        sh.uniforms.uLookDir = LK.dir;
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', '#define TRI_LOOK\n#include <common>\n' + Look.ENV_GLSL)
+          .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + Look.ENV_APPLY);
+      }
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vTriP;\nvarying vec3 vTriN;')
         .replace(
@@ -503,6 +580,7 @@ const Tex = (() => {
           uniform sampler2D tDat;
           uniform float triScale;
           uniform float triMul;
+          uniform float triNrm;
           uniform float triBump;
           vec3 triW() {
             vec3 w = pow(abs(normalize(vTriN)), vec3(4.0));
@@ -521,15 +599,32 @@ const Tex = (() => {
         // floor the roughness: glossy veins under a lamp made a burning-white highlight
         .replace(
           '#include <roughnessmap_fragment>',
-          'float roughnessFactor = max(roughness * triD.g, min(roughness, 0.38));',
+          'float roughnessFactor = max(roughness * (triNrm > 0.5 ? triD.b : triD.g), min(roughness, 0.38));',
         )
         .replace(
           '#include <normal_fragment_maps>',
           `#include <normal_fragment_maps>
-          {
+          if (triNrm > 0.5) {
+            // scanned normal map, triplanar: each projection's tangent XY tilts the geometric
+            // normal along that projection's world axes (u, v of p.zy, p.xz, p.xy)
+            vec3 tN = normalize(vTriN);
+            vec3 tw = triW();
+            vec3 tp = vTriP * triScale * triMul;
+            float ts = triBump * 20.0;
+            vec2 nx = (texture2D(tDat, tp.zy).rg * 2.0 - 1.0) * ts;
+            vec2 ny = (texture2D(tDat, tp.xz).rg * 2.0 - 1.0) * ts;
+            vec2 nz = (texture2D(tDat, tp.xy).rg * 2.0 - 1.0) * ts;
+            vec3 nW = tN + vec3(0.0, nx.y, nx.x) * tw.x + vec3(ny.x, 0.0, ny.y) * tw.y + vec3(nz.x, nz.y, 0.0) * tw.z;
+            normal = normalize((viewMatrix * vec4(normalize(nW), 0.0)).xyz);
+          } else {
             // bump from the height channel through screen-space derivatives
             // fade the relief with distance: avoids sparkling at grazing angles far away
             float h = triD.r * triBump * clamp(1.6 - length(vViewPosition) / 40.0, 0.0, 1.0);
+            #ifdef TRI_LOOK
+              // Look pass: relief finer than a pixel (brushed metal, grain) fades instead of
+              // aliasing into bright streaks under the lamps
+              if (uLookEnv > 0.0) h *= clamp(1.4 - fwidth(triD.r) * 16.0, 0.0, 1.0);
+            #endif
             vec3 dpx = dFdx(-vViewPosition);
             vec3 dpy = dFdy(-vViewPosition);
             float dhx = dFdx(h);
@@ -544,7 +639,7 @@ const Tex = (() => {
           }`,
         );
     };
-    m.customProgramCacheKey = () => 'tri';
+    m.customProgramCacheKey = () => (typeof Look !== 'undefined' ? 'tri|look' : 'tri');
     matCache.set(key, m);
     return m;
   };
@@ -1022,8 +1117,8 @@ const Tex = (() => {
    * albedo, and data (R = height, G = roughness). mul scales the tiling (external maps cover a
    * real-world size that differs from the recipe's). Every material of the kind follows at once.
    */
-  const external = (kind, albedo, data, mul = 1) => {
-    const T = build(kind);
+  const external = (kind, albedo, data, mul = 1, nrm = 0) => {
+    const T = cache.get(kind) || build(kind);
     [albedo, data].forEach((t) => {
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.anisotropy = R_ANISO();
@@ -1032,9 +1127,10 @@ const Tex = (() => {
     T.uAlb.value = albedo;
     T.uDat.value = data;
     T.uMul.value = mul;
+    T.uNrm.value = nrm;
     T.size = Infinity;
     T.external = true;
   };
 
-  return { mat, build, card, isRed, ready, external, kinds: Object.keys(RC), RED, BLACK };
+  return { mat, build, card, isRed, ready, external, register, rescope, ext: EXT, kinds: Object.keys(RC), RED, BLACK };
 })();

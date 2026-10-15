@@ -6,7 +6,7 @@
 //  - slash: a textured crescent (Kenney Particle Pack) instead of the flat ring
 //  - grapple: a braided rope (ambientCG Rope001) with the kit colour kept as a glow
 //  - veil (Valet cloak): a fresnel shimmer instead of a flat transparent copy
-//  - stone: Tex.mat('stone') gets the photo-scanned castle wall maps (Poly Haven)
+//  - scanned stone / asphalt / wood: moved to js/world/look.js (lazy, per world)
 // The play logic (damage, hit boxes, grapple physics, cloak timing, co-op messages) is untouched.
 // On by default: only what the lab comparison found clearly better (slash, veil, stone, grapple).
 // The estoc and the recorded sounds are ready but opt-in until they are judged in game (by eye
@@ -87,6 +87,86 @@ const AssetFx = (() => {
       Assets.preload([].concat(...Object.values(SAMPLES)));
     };
     setTimeout(warm, 500);
+  }
+
+  // ---------- Kenney sounds (Look pass, js/world/look.js `sound`) ----------
+  // Recorded sounds through the game's own sample player (Sound.load / Sound.sample: variants,
+  // pitch and gain spread, room send). Each rule says whether the recording replaces the synth
+  // sound (true) or is layered under it (false: the synth carries a musical cue, e.g. the card
+  // chime or the lever's bell). Until a bank is decoded the synth plays alone.
+  const kOn = typeof Look !== 'undefined' && Look.on('sound') && typeof Sound !== 'undefined' && !!Sound.sample;
+  const kCards = { open: false };
+  if (kOn) {
+    const KB = 'assets/sounds/kenney/';
+    const set = (name, ids) => ids.map((i) => KB + name + '_' + i + '.mp3');
+    const BANK = {
+      kCardSlide: set('card_slide', [1, 2, 3]),
+      kCardPlace: set('card_place', [1, 2, 3]),
+      kCardFan: set('card_fan', [1, 2]),
+      kCardShove: set('card_shove', [1, 2, 3]),
+      kUi: set('ui_click', [1, 2, 3]),
+      kStepConcrete: set('step_concrete', [0, 1, 2, 3, 4]),
+      kStepWood: set('step_wood', [0, 1, 2, 3, 4]),
+      kLand: set('land', [0, 1, 2]),
+      kLatch: [KB + 'switch_latch.mp3', KB + 'switch_click.mp3'],
+      kCreak: set('creak', [1, 2, 3]),
+      kGlass: set('glass', [0, 1, 2]),
+    };
+    let loaded = false;
+    // fetched once the audio context exists (after the first click), never before
+    const ensure = () => {
+      if (loaded || !Sound.ready) return;
+      loaded = true;
+      Sound.load(BANK);
+    };
+    const down = V3(0, -1, 0);
+    const from = V3();
+    const surf = () => {
+      if (typeof Player === 'undefined' || typeof Phys === 'undefined' || !Phys.rayHit) return 'concrete';
+      const p = Player.body.p;
+      const h = Phys.rayHit(from.set(p.x, p.y + 0.3, p.z), down, 1.2);
+      return h && h.surf === 'wood' ? 'wood' : 'concrete';
+    };
+    const S = (k, o) => Sound.sample(k, null, o);
+    const RULE = {
+      // card won: a card slid out and laid down, under the chime
+      card: () => {
+        S('kCardSlide', { gain: 0.75, spread: 0.04 });
+        S('kCardPlace', { gain: 0.85, spread: 0.04, delay: 0.17 });
+        return false;
+      },
+      ui: () => S('kUi', { gain: 0.6, spread: 0.03 }),
+      // footsteps: concrete by default, wood on wooden boxes (benches, decks); quiet, varied
+      step: (v = 0.5) =>
+        S(surf() === 'wood' ? 'kStepWood' : 'kStepConcrete', { gain: 0.3 + 0.35 * v, spread: 0.07, cap: 3 }),
+      land: (v = 0.5) => S('kLand', { gain: 0.35 + 0.6 * v, spread: 0.06, cap: 2 }),
+      switch: () => {
+        S('kLatch', { gain: 0.7, spread: 0.05, wet: 0.15 });
+        return false;
+      },
+      creak: () => S('kCreak', { gain: 0.55, spread: 0.08, cap: 2 }),
+      shatter: () => {
+        S('kGlass', { gain: 0.8, spread: 0.06, wet: 0.2 });
+        return false;
+      },
+    };
+    const prevPlay = Sound.play;
+    Sound.play = function (name, ...a) {
+      ensure();
+      const r = RULE[name];
+      if (r && Sound.ready && r(...a)) return;
+      return prevPlay.call(this, name, ...a);
+    };
+    // the deck (P / Tab): fanned open, pushed back together
+    kCards.tick = () => {
+      if (typeof Cards === 'undefined' || !Sound.ready) return;
+      ensure();
+      const o = !!Cards.open;
+      if (o === kCards.open) return;
+      kCards.open = o;
+      if (o) S('kCardFan', { gain: 0.7, spread: 0.04 });
+      else S('kCardShove', { gain: 0.5, spread: 0.05 });
+    };
   }
 
   // ---------- sword: the estoc on the same mount ----------
@@ -336,22 +416,6 @@ const AssetFx = (() => {
     };
   }
 
-  // ---------- stone: photo-scanned castle wall into Tex.mat('stone') ----------
-  const stoneReady = () => {
-    const a = Assets.ready('tex.stone.alb');
-    const d = Assets.ready('tex.stone.dat');
-    return a && d ? { a, d } : null;
-  };
-  const lowQ = typeof SETTINGS !== 'undefined' && SETTINGS.quality === 'low';
-  if (on('stone') && !lowQ && typeof Tex !== 'undefined' && Tex.external) {
-    Promise.all([Assets.get('tex.stone.alb'), Assets.get('tex.stone.dat')])
-      .then(() => {
-        const s = stoneReady();
-        Tex.external('stone', s.a, s.d, 0.5);
-      })
-      .catch(() => {});
-  }
-
   // own small frame tick (no change to the game loop): veil shimmer, slash fade
   let t = 0;
   let last = 0;
@@ -361,6 +425,7 @@ const AssetFx = (() => {
     last = now;
     t += dt;
     tickVeil(t);
+    if (kCards.tick) kCards.tick();
     for (const s of slashes) {
       if (s.t <= 0) continue;
       s.t -= dt;
@@ -370,7 +435,7 @@ const AssetFx = (() => {
       if (s.t <= 0) s.m.visible = false;
     }
   };
-  if (ON.size) requestAnimationFrame(tick);
+  if (ON.size || kOn) requestAnimationFrame(tick);
 
   return { on, ON, slashFx, slashes };
 })();

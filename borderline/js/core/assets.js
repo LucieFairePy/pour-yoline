@@ -19,9 +19,17 @@ const Assets = (() => {
     // grapple rope (ambientCG Rope001)
     'tex.rope': { type: 'tex', url: 'textures/rope_col.jpg', repeat: true },
     'tex.ropeN': { type: 'tex', url: 'textures/rope_nrm.jpg', repeat: true },
-    // decor: castle wall stone (Poly Haven castle_wall_varriation) packed for Tex.mat('stone')
+    // decor: Poly Haven scans packed for Tex.mat(kind) (js/world/look.js registers them, a level
+    // downloads a set only when it uses that kind): albedo (AO baked, mean matched to the recipe)
+    // + nrm (R,G = normal XY, B = roughness), see assets/CATALOG.md
     'tex.stone.alb': { type: 'tex', url: 'textures/stone_alb.webp', repeat: true },
-    'tex.stone.dat': { type: 'tex', url: 'textures/stone_dat.webp', repeat: true },
+    'tex.stone.nrm': { type: 'tex', url: 'textures/stone_nrm.jpg', repeat: true, data: true },
+    'tex.asphalt.alb': { type: 'tex', url: 'textures/asphalt_alb.webp', repeat: true },
+    'tex.asphalt.nrm': { type: 'tex', url: 'textures/asphalt_nrm.jpg', repeat: true, data: true },
+    'tex.wood.alb': { type: 'tex', url: 'textures/wood_alb.webp', repeat: true },
+    'tex.wood.nrm': { type: 'tex', url: 'textures/wood_nrm.jpg', repeat: true, data: true },
+    // street lamp light cone (Kenney Light Masks cone_d_blur, flipped, luminance)
+    'fx.cone': { type: 'tex', url: 'fx/lamp_cone.png' },
     // sounds (Kenney RPG Audio / Impact Sounds / Sci-fi Sounds, CC0)
     'snd.swing1': { type: 'sound', url: 'sounds/swing1.mp3' },
     'snd.swing2': { type: 'sound', url: 'sounds/swing2.mp3' },
@@ -109,8 +117,12 @@ const Assets = (() => {
           const blob = new Blob([b]);
           // decoded off the main thread when the browser can (flipped there: WebGL ignores
           // flipY for ImageBitmaps), else a plain <img>
+          // data maps (normals, roughness) must reach the GPU untouched: no colour management
+          const o = e.data
+            ? { imageOrientation: 'flipY', colorSpaceConversion: 'none', premultiplyAlpha: 'none' }
+            : { imageOrientation: 'flipY' };
           return typeof createImageBitmap === 'function'
-            ? createImageBitmap(blob, { imageOrientation: 'flipY' }).catch(() => blobImage(blob))
+            ? createImageBitmap(blob, o).catch(() => blobImage(blob))
             : blobImage(blob);
         })
         .then((img) => {

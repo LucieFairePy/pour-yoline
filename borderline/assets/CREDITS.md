@@ -56,3 +56,24 @@ transient), faded out and peak-normalised.
   - From OpenGameArt: "AK-47" by taradavies (CC0) has missing textures and is 53k triangles once subdivided; "High Poly AK-47" (CC0) is modelled on one side only with no UVs; "Soviet Assault Rifle 3D" by GGBotNet (CC0) is untextured.
   - The procedural rifle in `js/game/weapons.js` stays as the fallback until the model has loaded.
 - **Sounds.** "Gunshot Sounds" on OpenGameArt says CC0 on its page, but its zip carries a CC-BY notice, so it was left out. Ricochets were only found under CC-BY-SA, so they are not used.
+
+## Scenery textures and light (`textures/`, `fx/`) — Look pass, Terre 39 prototype
+
+All CC0; credited as a courtesy. Taken from the local library `BORDERLINE_ASSETS_LIBRARY` (each
+set's `_SOURCE_ET_LICENCE.json` / `License.txt` was checked).
+
+| File | Source | Author | Licence | Changes |
+|------|--------|--------|---------|---------|
+| `textures/asphalt_alb.webp`, `asphalt_nrm.jpg` | "Asphalt 01", https://polyhaven.com/a/asphalt_01 | Poly Haven | CC0 | AO baked into the colour, desaturated, brightness matched to the game's asphalt; normal (OpenGL) and roughness packed in one JPEG; 1K. |
+| `textures/stone_alb.webp`, `stone_nrm.jpg` | "Castle Wall Varriation", https://polyhaven.com/a/castle_wall_varriation | Poly Haven (Rob Tuytel) | CC0 | Normal and cavity AO computed from its height map; desaturated 45 %; 2K colour, 1K data. |
+| `textures/wood_alb.webp`, `wood_nrm.jpg` | "Wooden Planks", https://polyhaven.com/a/wooden_planks | Poly Haven | CC0 | AO baked, colour matched to the game's wood; normal + roughness packed; 2K colour, 1K data. |
+| `fx/lamp_cone.png` | "Light Masks" (`cone_d_blur`), https://kenney.nl/assets/light-masks | Kenney | CC0 | Luminance only, flipped, 128×256. |
+
+## Sounds (`sounds/kenney/`) — Look pass
+
+| File | Source | Author | Licence | Notes |
+|------|--------|--------|---------|-------|
+| `card_slide_*`, `card_place_*`, `card_fan_*`, `card_shove_*` | "Casino Audio", https://kenney.nl/assets/casino-audio | Kenney | CC0 | Trimmed, normalised (RMS −20 to −24 dBFS, peak ≤ −3 dBFS), mono MP3. |
+| `ui_click_*` | "Interface Sounds", https://kenney.nl/assets/interface-sounds (`click_001`, `select_001`, `select_002`) | Kenney | CC0 | idem |
+| `step_concrete_*`, `step_wood_*`, `land_*`, `glass_*` | "Impact Sounds", https://kenney.nl/assets/impact-sounds (`footstep_concrete`, `footstep_wood`, `impactSoft_heavy`, `impactGlass_heavy`) | Kenney | CC0 | idem |
+| `switch_latch`, `switch_click`, `creak_*` | "RPG Audio", https://kenney.nl/assets/rpg-audio (`metalLatch`, `metalClick`, `creak1..3`) | Kenney | CC0 | idem |
