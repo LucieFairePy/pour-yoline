@@ -54,6 +54,8 @@
     hit: 'Un éclat t’a touché{e}.',
     ghost: 'Regardez le sol : la lumière y a laissé son chemin.',
     wave: 'Saute !',
+    notMine: 'Ce miroir est de l’autre côté de la vitre : c’est à {mate} de le tourner.',
+    notMineArena: 'Les miroirs de l’arène, c’est {mate} qui les tourne. Toi, tu allumes les tourelles.',
   };
   T.cards.d2 = {
     title: 'Les Miroirs',
@@ -142,6 +144,8 @@
     }
   };
 
+  // who may turn a mirror: room 1 is split by the glass, the arena ring is the Valet's
+  const mirrorOwner = (m) => (m.side === 'w' ? 'dame' : 'valet');
   const reach = (c, who, m) => {
     const q = W.rel(c.pos(who));
     return Math.hypot(q.x - m.x, q.z - m.z) < 3.8 && Math.abs(q.y) < 2.5;
@@ -325,6 +329,8 @@
         const room1 = m.id[0] === 'm';
         if (room1 && x.stage !== 1) return;
         if (!room1 && x.stage !== 4) return;
+        // each one turns their own mirrors: ♥ side the Dame's, ♠ side and the arena the Valet's
+        if (who !== mirrorOwner(m)) return;
         c.set((s) => (s.x.mirrors[d.id] = (((s.x.mirrors[d.id] + d.dir * m.step) % 360) + 360) % 360));
       }
       if (d.a === 'aim' && who === 'dame') {
@@ -374,7 +380,14 @@
       // turning mirrors (both players), E forward, F backward for the Valet
       const set = x.stage === 1 ? ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'] : x.stage === 4 ? DEG.map((d, i) => 'a' + i) : [];
       const m = set.length ? W.nearMirror(q, set) : null;
-      if (m) {
+      if (m && mirrorOwner(m) !== r) {
+        // not yours: pressing E only says whose it is
+        if (Input.pressed('interact') && !local.said.nm) {
+          local.said.nm = 1;
+          setTimeout(() => (local.said.nm = 0), 5000);
+          HUD.say(x.stage === 1 ? TX.notMine : TX.notMineArena, T.master, 3200);
+        }
+      } else if (m) {
         local.rep -= dt;
         const back = r === 'valet' && Input.held('ability');
         const fwdE = Input.held('interact');
