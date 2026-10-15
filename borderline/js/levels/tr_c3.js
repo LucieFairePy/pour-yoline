@@ -24,7 +24,7 @@
     s2lift: 'Tu montes. Reste sur le plateau.',
     launch: 'Catapulté{e} !',
     s3: 'La table penche avec vous. Guidez les billes dans leurs trous, dans l’ordre ♥ ♦ ♣. Les trous rouges les renvoient au départ.',
-    s3look: 'Le belvédère, à droite en haut des marches, permet de tout voir : l’un guide, l’autre penche.',
+    s3look: 'Seul, ton poids ne suffit pas à lancer une bille : penchez tous les deux du même côté. Le belvédère, en haut des marches, montre tout le plateau.',
     hole: 'Dans le mille.',
     trap: 'Piège. La bille repart du départ.',
     wrong: 'Mauvais trou : la bille repart du départ.',
@@ -111,6 +111,8 @@
   };
 
   // ---------- marble (host) ----------
+  // one player at the very edge tilts an axis by at most TBL.max / (2 * 0.85) ≈ 0.071
+  const MARBLE_TILT = 0.075;
   const resetMarble = () => {
     sim.mb.x = W.CHUTE[0];
     sim.mb.z = W.CHUTE[1];
@@ -138,9 +140,13 @@
     const g = 9.8 * 1.5;
     const n = 4;
     const sdt = dt / n;
+    // the marble only starts rolling past a tilt that one player alone (even at the very edge)
+    // cannot give: steering it takes both leaning the same way
+    const ax = Math.abs(sim.tz) > MARBLE_TILT ? sim.tz : 0;
+    const az = Math.abs(sim.tx) > MARBLE_TILT ? sim.tx : 0;
     for (let k = 0; k < n; k++) {
-      mb.vx += -g * Math.sin(sim.tz) * sdt;
-      mb.vz += -g * Math.sin(sim.tx) * sdt;
+      mb.vx += -g * Math.sin(ax) * sdt;
+      mb.vz += -g * Math.sin(az) * sdt;
       const fr = Math.exp(-0.32 * sdt);
       mb.vx *= fr;
       mb.vz *= fr;

@@ -657,6 +657,19 @@ const TrC3 = (() => {
     M.lever = arm;
     // a light bar that shows the lock on both screens
     M.lockBar = K.deco(new THREE.BoxGeometry(PLANK_W + 0.4, 0.06, 0.06), mats.gold, 0, ISLE + 0.04, 26.5);
+    // seesaw A runs in a channel (invisible walls along its rails): no double jump off its side
+    // or its far end onto island B. A light gate shuts that end until the plank is raised by a
+    // counterweight on the near end (see update)
+    const az0 = A.z - PLANK_L / 2 + 0.3;
+    [-1, 1].forEach((s) => K.collider(s * (PLANK_W / 2 + 0.15), 2.5, (az0 + 26.3) / 2, 0.2, 9, 26.3 - az0, { tag: 'nocam' }));
+    M.gateA = K.collider(0, 2.5, 26.2, PLANK_W + 0.5, 9, 0.2, { tag: 'nocam' });
+    M.gateAM = K.deco(
+      new THREE.BoxGeometry(PLANK_W + 0.4, 3.6, 0.04),
+      new THREE.MeshBasicMaterial({ color: '#4fd1b5', transparent: true, opacity: 0.22, toneMapped: false, depthWrite: false }),
+      0,
+      ISLE + 0.6,
+      26.2,
+    );
     M.sB = seesaw(B, ['♠', '♣']);
     // perch: two steps and the high platform over seesaw B
     solid(5.25, (ISLE + 5.5) / 2, 32, 3.5, 5.5 - ISLE, 3, mats.stone);
@@ -869,6 +882,11 @@ const TrC3 = (() => {
     });
     M.lever.rotation.z = damp(M.lever.rotation.z, st.lock ? -0.9 : 0.9, 8, dt);
     M.lockBar.visible = st.lock;
+    // the gate at the far end of seesaw A opens only while that end is raised
+    const gateOpen = st.tA > 0.2;
+    M.gateA.on = !gateOpen && group.visible;
+    M.gateAM.visible = !gateOpen;
+    M.gateAM.material.opacity = 0.16 + Math.sin(t * 3) * 0.06;
     M.ring.rotation.y = t;
     // the lift and its cables
     const ly = st.lift;
