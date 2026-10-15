@@ -190,8 +190,19 @@ const Cut = (() => {
       g.gain.setValueAtTime(peak, t + a + hold);
       g.gain.linearRampToValueAtTime(0, t + a + hold + rel);
     };
+    let nbuf = null;
+    const noiseBuf = () => {
+      if (nbuf) return nbuf;
+      nbuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const d = nbuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      return nbuf;
+    };
     return {
-      pad(notes, t0, dur, vol = 0.04) {
+      // a soft chord; o.a / o.r = attack and release as shares of dur (o.r tiny = cut dead)
+      pad(notes, t0, dur, vol = 0.04, o = {}) {
+        const a = o.a ?? 0.35;
+        const r = o.r ?? 0.35;
         notes.forEach((m, i) =>
           [-7, 7].forEach((det) => {
             const o = ctx.createOscillator();
@@ -202,7 +213,7 @@ const Cut = (() => {
             f.type = 'lowpass';
             f.frequency.value = 1500;
             const g = ctx.createGain();
-            env(g, at + t0 + i * 0.06, dur * 0.35, vol, dur * 0.3, dur * 0.35);
+            env(g, at + t0 + i * 0.06, dur * a, vol, dur * (1 - a - r), dur * r);
             o.connect(f).connect(g).connect(out);
             o.start(at + t0);
             o.stop(at + t0 + dur + 0.5);
@@ -221,6 +232,41 @@ const Cut = (() => {
         o.start(at + t0);
         o.stop(at + t0 + decay + 0.1);
         nodes.push(o);
+      },
+      // a plucked string (a little harpsichord): bright, short
+      pluck(m, t0, vol = 0.05, decay = 0.9) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = hz(m);
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.setValueAtTime(5200, at + t0);
+        f.frequency.exponentialRampToValueAtTime(700, at + t0 + decay);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, at + t0);
+        g.gain.linearRampToValueAtTime(vol, at + t0 + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + t0 + decay);
+        o.connect(f).connect(g).connect(out);
+        o.start(at + t0);
+        o.stop(at + t0 + decay + 0.05);
+        nodes.push(o);
+      },
+      // filtered noise: breath, wind, a sigh (f0 → f1 sweep)
+      noise(t0, dur, f0, f1, vol = 0.05, type = 'bandpass', q = 0.9) {
+        const s = ctx.createBufferSource();
+        s.buffer = noiseBuf();
+        s.loop = true;
+        const f = ctx.createBiquadFilter();
+        f.type = type;
+        f.Q.value = q;
+        f.frequency.setValueAtTime(f0, at + t0);
+        f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), at + t0 + dur);
+        const g = ctx.createGain();
+        env(g, at + t0, dur * 0.3, vol, dur * 0.2, dur * 0.5);
+        s.connect(f).connect(g).connect(out);
+        s.start(at + t0);
+        s.stop(at + t0 + dur + 0.05);
+        nodes.push(s);
       },
       stop() {
         const t = ctx.currentTime;
@@ -383,6 +429,10 @@ const Cut = (() => {
       P.score = clip.score ? Sound.score((ctx, dest) => clip.score(scoreKit(ctx, dest))) : null;
       return new Promise((res) => (P.done = res));
     },
+    /** Jumps the playing clip to t (tests and frame checks). */
+    seek(t) {
+      if (P.on && !P.waiting) P.t = t;
+    },
     /** After the local end: a line on the black screen while the other player still watches. */
     wait(s) {
       if (S) text(S.$wait, s);
@@ -435,15 +485,22 @@ const Cut = (() => {
         if (!Story.S || Story.S.phase !== 'cut' || local.sent) return;
         local.sent = true;
         Cut.wait('{mate} regarde encore la cinématique…');
-        c.act({ a: 'cutDone' });
+        c.act({ a: 'cutDone', who: Story.me });
       });
+    },
+    // the host came back (reload) and lost who was done: say it again
+    apply(c) {
+      const x = c.S.x;
+      if (local.sent && !(x.seen || []).includes(Story.me)) c.act({ a: 'cutDone', who: Story.me });
     },
     exit() {
       Cut.stop();
       Player.mode = 'walk';
     },
     action(c, who, d) {
-      if (d.a === 'cutDone' && !(c.S.x.seen || []).includes(who)) c.set((s) => (s.x.seen = [...(s.x.seen || []), who]));
+      // counted by player (not by kit: kits can be the same for both right after a reload)
+      const k = d.who || who;
+      if (d.a === 'cutDone' && !(c.S.x.seen || []).includes(k)) c.set((s) => (s.x.seen = [...(s.x.seen || []), k]));
     },
     host(c) {
       const x = c.S.x;
