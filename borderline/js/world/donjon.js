@@ -17,9 +17,9 @@ const Donjon = (() => {
   const plates = {};
   let ring = null;
 
-  // 1024² procedural stone, triplanar in world space (js/world/textures.js)
-  const wallM = Tex.mat('stone', { color: '#9a8ea8', scale: 3.2, bump: 1.4 });
-  const floorMat = Tex.mat('cobble', { color: '#8e8496', scale: 3, bump: 1.6 });
+  // 1024² procedural stone, triplanar in world space (js/world/textures.js): old warm limestone
+  const wallM = Tex.mat('stone', { color: '#9a8a76', scale: 3.2, bump: 1.4 });
+  const floorMat = Tex.mat('cobble', { color: '#857a6c', scale: 3, bump: 1.6 });
   const wallMat = () => wallM;
   const floorM = () => floorMat;
   const iron = Tex.mat('metal', { color: '#4a4452', metal: 0.75, rough: 0.9, scale: 1.5 });
@@ -32,7 +32,9 @@ const Donjon = (() => {
   });
 
   // room: floor + walls (+ ceiling), openings at z0 and z1 of width door
+  const rooms = [];
   const room = (cx, z0, z1, w, h, door = 4.4, prevW = 0, ceil = true) => {
+    rooms.push({ z0, z1, w, h });
     const d = z1 - z0;
     const cz = (z0 + z1) / 2;
     K.solid(cx, -0.5, cz, w, 1, d, floorM(w, d));
@@ -81,7 +83,7 @@ const Donjon = (() => {
     const halo = K.deco(
       new THREE.SphereGeometry(0.5, 10, 8),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#ff8a3a').multiplyScalar(0.5),
+        color: new THREE.Color('#ff8a3a').multiplyScalar(0.8),
         transparent: true,
         opacity: 0.35,
         blending: THREE.AdditiveBlending,
@@ -92,7 +94,7 @@ const Donjon = (() => {
       y + 0.45,
       z,
     );
-    torches.push({ flame, halo, ph: Math.random() * 10, cup });
+    torches.push({ flame, halo, ph: Math.random() * 10, cup, pos: P(x - s * 0.3, y + 0.55, z), s, k: 1 });
   };
 
   // ch: collider height, up to the lintel when the doorway is taller than the bars
@@ -285,6 +287,256 @@ const Donjon = (() => {
     screen.mesh.position.copy(P(0, 8, 39.4));
     screen.mesh.rotation.y = Math.PI;
     group.add(screen.mesh);
+    dress();
+  };
+
+  // ---------- set dressing: no colliders, against the walls or above the heads ----------
+  const amb = {
+    haze: new THREE.Color('#130d0a'),
+    lit: new THREE.Color('#130d0a'),
+    dark: new THREE.Color('#030202'),
+    dust: null,
+  };
+  // a few real lights follow the fires nearest to the camera (the ossuary keeps its dark)
+  const pool = [];
+  let poolT = 0;
+  const dress = () => {
+    const box = (sx, sy, sz) => new THREE.BoxGeometry(sx, sy, sz);
+    const stoneB = LvKit.batch();
+    const ironB = LvKit.batch();
+    const r = rng(505);
+    rooms.forEach(({ z0, z1, w, h }) => {
+      const ossuary = z0 === 100;
+      const corridor = z0 === 40;
+      const arena = z0 === 130;
+      const len = z1 - z0;
+      const cz = (z0 + z1) / 2;
+      // plinth along the wall feet and a cornice under the vault
+      [-1, 1].forEach((s) => {
+        stoneB.add(box(0.35, 0.45, len - 1), P(s * (w / 2 - 0.17), 0.22, cz));
+        stoneB.add(box(0.5, 0.35, len - 1), P(s * (w / 2 - 0.25), h - 0.18, cz));
+      });
+      // pilasters between the torches (the ossuary has its shelves, the corridor its ledge)
+      if (!ossuary && !corridor) {
+        const zs = [];
+        if (arena) zs.push(145.5, 156.5, 167.5, 178.5);
+        else for (let z = z0 + 8; z < z1 - 3; z += 8) zs.push(z);
+        zs.forEach((z) =>
+          [-1, 1].forEach((s) => {
+            stoneB.add(box(0.6, h - 0.8, 1.1), P(s * (w / 2 - 0.3), h / 2 - 0.2, z));
+            stoneB.add(box(0.9, 0.5, 1.5), P(s * (w / 2 - 0.45), 0.25, z));
+            stoneB.add(box(0.9, 0.4, 1.5), P(s * (w / 2 - 0.45), h - 0.9, z));
+          }),
+        );
+      }
+      // transverse ribs under the vault, on the torch rhythm
+      if (!corridor)
+        for (let z = z0 + 4; z < z1 - 2; z += 8) stoneB.add(box(w, 0.55, 0.9), P(0, h - 0.28, z));
+      // rubble at the wall feet
+      const rock = new THREE.DodecahedronGeometry(0.3, 0);
+      for (let i = 0; i < (arena ? 14 : 7); i++) {
+        const s = r() < 0.5 ? -1 : 1;
+        const z = z0 + 2 + r() * (len - 4);
+        const k = 0.5 + r() * 1.2;
+        stoneB.add(
+          rock,
+          P(s * (w / 2 - 0.5 - r() * 0.5), 0.1 * k, z),
+          [r() * 3, r() * 3, r() * 3],
+          [k, k * 0.7, k],
+        );
+      }
+      // chains hanging from the high vaults
+      if (h >= 12) {
+        const link = new THREE.TorusGeometry(0.11, 0.03, 4, 8);
+        for (let c = 0; c < 6; c++) {
+          const x = (r() - 0.5) * (w - 8);
+          const z = z0 + 4 + r() * (len - 8);
+          const n = 8 + Math.floor(r() * 10);
+          for (let k = 0; k < n; k++)
+            ironB.add(link, P(x, h - 0.3 - k * 0.19, z), [0, (k % 2) * (Math.PI / 2), 0]);
+        }
+      }
+    });
+    // door frames round each gate: jambs and a lintel standing proud of the wall
+    [11, 40, 58, 100, 130].forEach((z) => {
+      [-1, 1].forEach((s) => stoneB.add(box(0.7, 6.4, 1.6), P(s * 2.55, 3.2, z)));
+      stoneB.add(box(5.8, 0.7, 1.6), P(0, 6.55, z));
+      stoneB.add(box(0.8, 0.9, 1.7), P(0, 6.6, z));
+    });
+    // the nave's pillars get capitals
+    for (let z = 66; z < 96; z += 10)
+      [-9, 9].forEach((x) => {
+        stoneB.add(box(2.3, 0.9, 2.3), P(x, 11.2, z));
+        stoneB.add(box(1.9, 0.4, 1.9), P(x, 10.6, z));
+      });
+    // the arena's braziers, near the walls (lit by the same light pool)
+    const fireB = LvKit.batch();
+    [
+      [-19.5, 137],
+      [19.5, 137],
+      [-19.5, 183],
+      [19.5, 183],
+    ].forEach(([x, z]) => {
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * TAU;
+        ironB.add(
+          box(0.08, 1.3, 0.08),
+          P(x + Math.cos(a) * 0.35, 0.62, z + Math.sin(a) * 0.35),
+          [Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25],
+        );
+      }
+      ironB.add(new THREE.CylinderGeometry(0.75, 0.4, 0.45, 14, 1, true), P(x, 1.4, z));
+      fireB.add(new THREE.ConeGeometry(0.5, 0.9, 8), P(x, 1.75, z));
+      torches.push({ pos: P(x, 2.2, z), k: 1.6, brazier: true });
+    });
+    group.add(stoneB.mesh(wallM), ironB.mesh(iron), fireB.mesh(LvKit.glow('#ff8a3a', 2.2)));
+    // soot above every torch, grime and damp on the floors, webs in the high corners
+    const decal = (map, opt = {}) =>
+      new THREE.MeshStandardMaterial({
+        map,
+        transparent: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        roughness: 0.95,
+        ...opt,
+      });
+    const sootT = LvKit.tex(128, 256, (g, w, hh) => {
+      const grd = g.createRadialGradient(w / 2, hh * 0.75, 4, w / 2, hh * 0.55, hh * 0.5);
+      grd.addColorStop(0, 'rgba(10,6,4,0.85)');
+      grd.addColorStop(1, 'rgba(10,6,4,0)');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, w, hh);
+    });
+    const soot = LvKit.batch();
+    torches.forEach((tc) => {
+      if (tc.brazier) return;
+      const pl = new THREE.PlaneGeometry(1.2, 2.4).rotateY((-tc.s * Math.PI) / 2);
+      soot.add(pl, tc.pos.clone().add(V3(tc.s * 0.29, 0.75, 0)));
+    });
+    group.add(soot.mesh(decal(sootT)));
+    const grimeT = LvKit.tex(512, 512, (g, w) => {
+      for (let i = 0; i < 26; i++) {
+        const x = 40 + Math.random() * (w - 80);
+        const y = 40 + Math.random() * (w - 80);
+        const rad = 20 + Math.random() * 70;
+        const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+        grd.addColorStop(0, Math.random() < 0.35 ? 'rgba(40,52,24,0.55)' : 'rgba(14,10,8,0.6)');
+        grd.addColorStop(1, 'rgba(14,10,8,0)');
+        g.fillStyle = grd;
+        g.fillRect(0, 0, w, w);
+      }
+      g.strokeStyle = 'rgba(8,6,5,0.6)';
+      g.lineWidth = 2;
+      for (let i = 0; i < 6; i++) {
+        let x = Math.random() * w;
+        let y = Math.random() * w;
+        g.beginPath();
+        g.moveTo(x, y);
+        for (let k = 0; k < 8; k++) {
+          x += (Math.random() - 0.5) * 60;
+          y += (Math.random() - 0.5) * 60;
+          g.lineTo(x, y);
+        }
+        g.stroke();
+      }
+    });
+    const grime = LvKit.batch();
+    rooms.forEach(({ z0, z1, w }) => {
+      for (let i = 0; i < Math.ceil((z1 - z0) / 6); i++) {
+        const sz = 3 + r() * 5;
+        grime.add(
+          new THREE.PlaneGeometry(sz, sz).rotateX(-Math.PI / 2),
+          P((r() - 0.5) * (w - 4), 0.012 + i * 0.0004, z0 + 2 + r() * (z1 - z0 - 4)),
+          [0, r() * TAU, 0],
+        );
+      }
+    });
+    group.add(grime.mesh(decal(grimeT, { opacity: 0.9 })));
+    const webT = LvKit.tex(256, 256, (g) => {
+      g.strokeStyle = 'rgba(220,214,200,0.55)';
+      g.lineWidth = 1.2;
+      for (let k = 0; k < 9; k++) {
+        const a = (k / 8) * (Math.PI / 2);
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.lineTo(Math.cos(a) * 250, Math.sin(a) * 250);
+        g.stroke();
+      }
+      for (let rr = 24; rr < 250; rr += 22 + Math.random() * 10) {
+        g.beginPath();
+        for (let k = 0; k <= 8; k++) {
+          const a = (k / 8) * (Math.PI / 2);
+          // the threads sag between the spokes
+          const sag = k % 2 ? 0.92 : 1;
+          if (k) g.lineTo(Math.cos(a) * rr * sag, Math.sin(a) * rr * sag);
+          else g.moveTo(rr, 0);
+        }
+        g.stroke();
+      }
+    });
+    const webs = LvKit.batch();
+    rooms.forEach(({ z0, z1, w, h }) => {
+      [
+        [-1, z0 + 0.6, 1],
+        [1, z0 + 0.6, 1],
+        [-1, z1 - 0.6, -1],
+        [1, z1 - 0.6, -1],
+      ].forEach(([s, z, dz]) => {
+        if (r() < 0.35) return;
+        const sz = 1.6 + r() * 1.4;
+        // a quarter web spanning the corner between the wall and the vault, facing the room
+        const pl = new THREE.PlaneGeometry(sz, sz).translate(sz / 2, -sz / 2, 0);
+        webs.add(pl, P(s * (w / 2 - 0.05), h - 0.05, z + dz * 0.02), [0, s > 0 ? Math.PI : 0, 0]);
+      });
+    });
+    group.add(
+      webs.mesh(
+        new THREE.MeshBasicMaterial({
+          map: webT,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          opacity: 0.7,
+        }),
+      ),
+    );
+    // the arena's floor seal
+    const sealT = LvKit.tex(1024, 1024, (g, w) => {
+      g.translate(w / 2, w / 2);
+      g.strokeStyle = 'rgba(20,12,8,0.75)';
+      [470, 440, 300].forEach((rad, i) => {
+        g.lineWidth = i === 1 ? 6 : 14;
+        g.beginPath();
+        g.arc(0, 0, rad, 0, TAU);
+        g.stroke();
+      });
+      g.fillStyle = 'rgba(20,12,8,0.7)';
+      for (let k = 0; k < 24; k++) {
+        g.save();
+        g.rotate((k / 24) * TAU);
+        g.fillRect(-4, -440, 8, 140);
+        g.restore();
+      }
+      Icons.draw(g, Icons.of('♠'), 0, 0, 360);
+    });
+    const seal = new THREE.Mesh(new THREE.PlaneGeometry(22, 22).rotateX(-Math.PI / 2), decal(sealT));
+    seal.position.copy(P(0, 0.02, 160));
+    group.add(seal);
+    for (let i = 0; i < 6; i++) {
+      const l = new THREE.PointLight('#ff9a4a', 0, 15, 2);
+      group.add(l);
+      pool.push(l);
+    }
+    amb.dust = LvKit.motes({
+      n: 420,
+      size: 1.5,
+      colors: ['#ffcf9a', '#c8b8a4'],
+      rise: [-0.06, 0.1],
+      box: [36, 12],
+      alpha: 0.28,
+      seed: 5,
+    });
   };
 
   const SPAWN = [
@@ -373,6 +625,21 @@ const Donjon = (() => {
       return pts.map(([t, x, z]) => [t, P(x, 0, z)]);
     },
     bossPos: () => P(0, 0, 172),
+    // the crypt's own light: a low warm ambient, the torches do the rest (restored on exit)
+    mood(on) {
+      amb.on = on && built;
+      if (!amb.on) return LvKit.mood(null);
+      LvKit.mood({
+        sky: '#a89078',
+        ground: '#2a1c12',
+        hemi: 0.6,
+        sun: '#ffd8b0',
+        sunI: 0.2,
+        exposure: 1.45,
+        haze: amb.haze,
+        extras: [amb.dust],
+      });
+    },
     update(dt, t, x) {
       if (!built) return;
       screen.update(dt, t);
@@ -386,10 +653,42 @@ const Donjon = (() => {
         gt.glowBar.visible = !o;
       });
       torches.forEach((tc) => {
+        if (tc.brazier) return;
         const f = 0.85 + Math.sin(t * 13 + tc.ph) * 0.1 + Math.sin(t * 7.3 + tc.ph * 2) * 0.08;
         tc.flame.scale.set(1, f, 1);
         tc.halo.material.opacity = 0.25 + f * 0.12;
       });
+      // the light pool: on the fires nearest to the camera (none in the ossuary), flickering
+      LvKit.tick(t);
+      const cam = R.camera.position;
+      poolT -= dt;
+      if (poolT <= 0) {
+        poolT = 0.3;
+        const near = torches
+          .filter((tc) => {
+            const z = tc.pos.z - O.z;
+            return z < 99 || z > 131;
+          })
+          .sort((a, b) => a.pos.distanceToSquared(cam) - b.pos.distanceToSquared(cam));
+        pool.forEach((l, i) => {
+          l.userData.tc = near[i];
+          if (near[i]) l.position.copy(near[i].pos).add(V3(-(near[i].s || 0) * 0.5, 0, 0));
+        });
+      }
+      pool.forEach((l, i) => {
+        const tc = l.userData.tc;
+        l.intensity = tc
+          ? tc.k * (1.6 + Math.sin(t * 11 + i * 2.3) * 0.18 + Math.sin(t * 17.7 + i) * 0.12)
+          : 0;
+      });
+      // the ossuary swallows the haze and the ambient light (no darker than it was, no lighter)
+      const qz = cam.z - O.z;
+      const oss = qz > 101 && qz < 130;
+      amb.haze.lerp(oss ? amb.dark : amb.lit, Math.min(1, dt * 2));
+      if (amb.on) {
+        R.hemi.intensity = damp(R.hemi.intensity, oss ? 0.3 : 0.6, 2, dt);
+        R.moon.intensity = damp(R.moon.intensity, oss ? 0.05 : 0.2, 2, dt);
+      }
       Object.entries(plates).forEach(([who, p]) => {
         const on = (x.plates || []).includes(who);
         p.m.material.color.copy(p.col).multiplyScalar(on ? 1.8 : 0.4);
