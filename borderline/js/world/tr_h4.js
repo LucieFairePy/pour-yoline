@@ -644,6 +644,9 @@ const H4 = (() => {
     K.solid(T2.x, 8.7, T2.z, 5.5, 0.3, 5.5, pave);
     K.solid(-3.9, 2.65, 140, 2.2, 0.6, 2.2, stoneDark);
     K.solid(-3.9, 5.6, 142.4, 2.2, 0.6, 2.2, stoneDark);
+    // from the causeway a long double jump reached the mossy step past the ring of stones: an
+    // unseen wall in between (the ring itself and the invisible stair pass beside and above it)
+    K.collider(-3.25, 0.5, 146, 17.5, 7, 0.3, { tag: 'nocam' });
     // a continuous ring of stones (13 of them): this part is about trust, not jumping
     for (let i = 0; i <= 12; i++) {
       const a = -Math.PI / 2 + (i / 12) * Math.PI;
