@@ -330,12 +330,12 @@ const CONFIG = {
     cabins: {
       enter: 'Chacun dans sa cabine.',
       rule: 'Un seul sortira. Appuie pour te sauver.',
-      failDame: 'Raté. Tu as pensé à toi. Réessaie, et pense à {lui}.',
-      failValet: 'Raté. Tu as pensé à toi. Réessaie, et pense à {lui}.',
-      failBoth: 'Vous avez appuyé tous les deux. Chacun a voulu se sauver.',
+      failDame: 'Intéressant. On recommence ?',
+      failValet: 'Intéressant. On recommence ?',
+      failBoth: 'Deux boutons. Intéressant. On recommence ?',
       hints: [
         'Le plafond ralentit à la fin. Personne n’a dit qu’il vous écraserait.',
-        'Et si personne n’appuyait ?',
+        'Qui a dit qu’il fallait choisir ?',
       ],
       countdown: 'Le plafond s’arrête dans',
       win: 'Personne n’a appuyé. Les deux portes s’ouvrent.',

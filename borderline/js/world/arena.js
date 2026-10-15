@@ -99,6 +99,7 @@ const Arena = (() => {
   const cab = {};
   let harness;
   let crank;
+  let crank2;
   let curve;
   let screen;
   let card;
@@ -110,6 +111,9 @@ const Arena = (() => {
   let tileTex;
   let glassMat;
   let lit;
+  let pathOf;
+  let layLane;
+  const laid = { valet: 0, dame: 0 };
 
   const build = (myRole, seed) => {
     if (built) return;
@@ -124,14 +128,19 @@ const Arena = (() => {
 
     const r = rng(seed);
     const path = {};
-    for (const who of ['valet', 'dame']) {
-      let c = (r() * 3) | 0;
-      path[who] = [];
+    const walk = (rr) => {
+      let c = (rr() * 3) | 0;
+      const out = [];
       for (let i = 0; i < ROWS; i++) {
-        path[who].push(c);
-        c = clamp(c + (((r() * 3) | 0) - 1), 0, 2);
+        out.push(c);
+        c = clamp(c + (((rr() * 3) | 0) - 1), 0, 2);
       }
-    }
+      return out;
+    };
+    for (const who of ['valet', 'dame']) path[who] = walk(r);
+    // after a fall the glass of that bridge is dealt again: a path learned by falling is
+    // worthless, only the one who sees it can tell the way
+    pathOf = (who, gen) => (gen ? walk(rng(seed * 31 + gen * 7919 + (who === 'dame' ? 17 : 3))) : path[who]);
 
     // ---- the two bridges ----
     // Glass tiles with a glowing frame and a painted "row + lane" label so the one who sees
@@ -239,31 +248,65 @@ const Arena = (() => {
       t.scale.setScalar(0.85 + 0.15 * Math.min(1, k));
     };
 
+    // each lane in its own group, rebuilt when its glass is dealt again; colliders exist only
+    // on the walker's own client (the other bridge is not there for you), one per slot
+    const cols = { valet: [], dame: [] };
+    for (let i = 0; i < ROWS; i++)
+      for (const who of ['valet', 'dame'])
+        cols[who].push(
+          COLS[who].map((x) => {
+            const b = Phys.box(O.x + x, O.y - 0.15, O.z + rowZ(i), 1.8, 0.3, 2.6, { tag: 'tile' });
+            b.on = false;
+            return b;
+          }),
+        );
+    const lanes = {};
+    layLane = (who, gen) => {
+      const pth = pathOf(who, gen);
+      if (lanes[who]) {
+        group.remove(lanes[who]);
+        lanes[who].children.forEach((t) => {
+          t.userData.top.material.dispose();
+          t.userData.lines.material.dispose();
+        });
+      }
+      const lg = new THREE.Group();
+      lanes[who] = lg;
+      group.add(lg);
+      const add = (t) => {
+        group.remove(t);
+        lg.add(t);
+        return t;
+      };
+      if (who === 'valet') blind.length = 0;
+      else own.length = 0;
+      for (let i = 0; i < ROWS; i++) {
+        const z = rowZ(i);
+        COLS[who].forEach((x, c) => {
+          const real = pth[i] === c;
+          if (who === role) cols[who][i][c].on = real;
+          if (who === 'valet') {
+            if (!real) return;
+            if (role === 'valet') {
+              // blind: invisible until the Valet stands on it, then it stays lit (a footprint)
+              const t = add(makeTile(x, z, i + 1, LANE[c], 'real'));
+              t.userData.k = 0;
+              lit(t, 0);
+              blind.push(t);
+            } else add(makeTile(x, z, i + 1, LANE[c], 'seen'));
+          } else if (role === 'dame') {
+            // all three look the same for her: she has to trust the other one's voice
+            const t = add(makeTile(x, z, i + 1, LANE[c], 'plain'));
+            t.userData.real = real;
+            own.push(t);
+          } else add(makeTile(x, z, i + 1, LANE[c], real ? 'real' : 'fake'));
+        });
+      }
+    };
+    layLane('valet', 0);
+    layLane('dame', 0);
     for (let i = 0; i < ROWS; i++) {
       const z = rowZ(i);
-      COLS.valet.forEach((x, c) => {
-        const real = path.valet[i] === c;
-        if (!real) return;
-        if (role === 'valet') {
-          Phys.box(O.x + x, O.y - 0.15, O.z + z, 1.8, 0.3, 2.6, { tag: 'tile' });
-          // blind: invisible until the Valet stands on it, then it stays lit (a footprint)
-          const t = makeTile(x, z, i + 1, LANE[c], 'real');
-          t.userData.k = 0;
-          lit(t, 0);
-          blind.push(t);
-        }
-        if (role === 'dame') makeTile(x, z, i + 1, LANE[c], 'seen');
-      });
-      COLS.dame.forEach((x, c) => {
-        const real = path.dame[i] === c;
-        if (role === 'dame') {
-          // all three look the same for her: she has to trust the other one's voice
-          const t = makeTile(x, z, i + 1, LANE[c], 'plain');
-          t.userData.real = real;
-          own.push(t);
-          if (real) Phys.box(O.x + x, O.y - 0.15, O.z + z, 1.8, 0.3, 2.6, { tag: 'tile' });
-        } else makeTile(x, z, i + 1, LANE[c], real ? 'real' : 'fake');
-      });
       const n = sprite(String(i + 1), 1.3, '#e8bd84');
       n.position.copy(P(0, 1.2, z));
       group.add(n);
@@ -365,6 +408,15 @@ const Arena = (() => {
     const wl = sprite('♥', 0.8, '#ff5f8a');
     wl.position.copy(P(-5, 2.4, 49.5));
     group.add(wl);
+
+    // the rings' crank on the far side: they glow (and hold) only while it is turned
+    solid(7.5, 0.6, 86, 0.5, 1.2, 0.5, metal);
+    crank2 = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.06, 8, 20), gold);
+    crank2.position.copy(P(7.5, 1.4, 86));
+    group.add(crank2);
+    const cl = sprite('♠', 0.8, '#6cc8ff');
+    cl.position.copy(P(7.5, 2.4, 86));
+    group.add(cl);
 
     const A = P(4, 4.6, 51.5);
     const B = P(4, 4.6, 83.5);
@@ -534,10 +586,18 @@ const Arena = (() => {
       q.y > -0.5 &&
       q.y < 1,
     nearWinch: (q) => Math.hypot(q.x + 5, q.z - 49.5) < 2.4,
+    nearCrank: (q) => Math.hypot(q.x - 7.5, q.z - 86) < 2.2 && q.y > -0.5,
     nearHarness: (q) => Math.hypot(q.x - 4, q.z - 51.5) < 2.4 && q.y > -0.5,
     nearButton: (q, who) => Math.abs(q.x - CAB[who]) < 1.45 && q.z > CAB_Z1 - 1.6,
     nearCard: (q) => Math.hypot(q.x, q.z - 90) < 3.2,
     harnessPos,
+    // the bridge of `who` dealt again (gen = how many times); a no-op when already laid
+    setLane(who, gen) {
+      if (!built || laid[who] === (gen || 0)) return false;
+      laid[who] = gen || 0;
+      layLane(who, laid[who]);
+      return true;
+    },
     update(dt, t, S) {
       if (!built) return;
       screen.update(dt, t);
@@ -579,8 +639,9 @@ const Arena = (() => {
       const h = S.h || { t: 0 };
       harnessPos(h.t, harness.position);
       if (a.hold) crank.rotation.z -= dt * 6;
+      if (a.stage === 3 && a.lit) crank2.rotation.z -= dt * 6;
       rings.forEach((rg) => {
-        const on = a.stage === 3;
+        const on = a.stage === 3 && !!a.lit;
         rg.m.material.color
           .setRGB(1, 0.31, 0.53)
           .multiplyScalar(on ? 2.2 + Math.sin(t * 4) * 0.5 : 0.25);

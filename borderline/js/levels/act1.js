@@ -3,7 +3,7 @@
   const A = T.act1;
   // this épreuve's card, from the plan (js/game/trials.js)
   const CARD = Cards.tagOf('h10');
-  const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0, hp: V3() };
+  const local = { stage: 0, cab: null, held: false, left: 0, both: false, heart: 0, hp: V3(), fell: {}, crank: false };
   // reused every frame
   const qd = V3();
   const qv = V3();
@@ -32,7 +32,11 @@
       Sound.play('reveal');
     }
     if (st === 3) {
-      HUD.objective(r === 'dame' ? A.winch.grapple : '{Il} arrive. Attends-{le} de l’autre côté.');
+      HUD.objective(
+        r === 'dame'
+          ? A.winch.grapple + ' Les anneaux ne tiennent que tant que {mate} tourne la manivelle.'
+          : 'Tiens la manivelle (maintiens E) : elle allume les anneaux de {mate}. Ne lâche pas avant qu’{il} arrive.',
+      );
       if (r === 'valet') c.spawn(Arena.spawn(3, 'valet'), 0);
       Arena.screen.show('Le grappin', 'Vise les anneaux · F', '#ff5f8a');
       Sound.play('reveal');
@@ -92,7 +96,7 @@
   const cab0 = () => ({ phase: 'open', t: 0, who: null, y: 0, fails: 0 });
 
   Story.register('act1', {
-    init: () => ({ stage: 1, hold: false, att: false, h: { t: 0 }, cab: cab0() }),
+    init: () => ({ stage: 1, hold: false, att: false, lit: false, gen: { valet: 0, dame: 0 }, h: { t: 0 }, cab: cab0() }),
     voice: () => 1,
     net: {
       left: (c, n) => !Net.isHost && Arena.built && showLeft(n),
@@ -111,7 +115,7 @@
       Player.killY = Arena.O.y - 25;
       Player.checkpoint = () => Arena.spawn(Story.S.x.stage, c.role);
       Player.targets = () =>
-        c.role === 'dame' && Story.S.x.stage === 3 ? Arena.rings.map((r) => r.pos) : [];
+        c.role === 'dame' && Story.S.x.stage === 3 && Story.S.x.lit ? Arena.rings.map((r) => r.pos) : [];
       c.fog(0.006);
       Arena.screen.show(CARD, A.title, '#ff5f8a');
       HUD.visa(CARD + ' · ' + A.title);
@@ -129,6 +133,12 @@
     apply(c) {
       if (!Arena.built) return;
       const x = c.S.x;
+      const g = x.gen || {};
+      const dealt = ['valet', 'dame'].filter((w) => Arena.setLane(w, g[w] || 0));
+      if (dealt.length && local.stage === 1 && x.stage === 1) {
+        Sound.play('creak');
+        HUD.say(dealt[0] === c.role ? 'Tu es tombé{e} : ton pont de verre a changé. Écoute {mate}.' : 'Le pont de {mate} a changé. Guide-{le} à nouveau.', T.master, 2600);
+      }
       if (x.stage !== local.stage && x.stage <= 4) stageEnter(c, x.stage);
       if (x.cab.phase !== local.cab) {
         local.both = !!x.cab.both;
@@ -147,6 +157,18 @@
       Arena.rel(c.pos('dame'), qd);
       Arena.rel(c.pos('valet'), qv);
       if (x.stage === 1 && Arena.onB(qd) && Arena.onB(qv)) c.set((s) => (s.x.stage = 2));
+      if (x.stage === 1)
+        [['dame', qd], ['valet', qv]].forEach(([w, qq]) => {
+          // a fall from the glass deals that bridge again (once per fall)
+          if (qq.y < -4 && qq.z > 11 && qq.z < 43 && !local.fell[w]) {
+            local.fell[w] = true;
+            c.set((s) => {
+              s.x.gen = s.x.gen || { valet: 0, dame: 0 };
+              s.x.gen[w] = (s.x.gen[w] || 0) + 1;
+            });
+          }
+          if (qq.y > -1) local.fell[w] = false;
+        });
       if (x.stage === 2) {
         if (x.att) {
           if (x.hold && Arena.nearWinch(qd)) {
@@ -211,6 +233,7 @@
     action(c, who, d) {
       const x = c.S.x;
       if (d.a === 'winch' && who === 'dame' && x.stage === 2) c.set((s) => (s.x.hold = !!d.on));
+      if (d.a === 'lit' && who === 'valet' && x.stage === 3 && !!d.on !== !!x.lit) c.set((s) => (s.x.lit = !!d.on));
       if (d.a === 'attach' && who === 'valet' && x.stage === 2 && !x.att)
         c.set((s) => (s.x.att = true));
       if (
@@ -265,6 +288,14 @@
           Player.hangPos.set(hp.x + Math.sin(t * 1.3) * 0.15, hp.y - 2.45, hp.z);
         }
       }
+      // the rings' crank (stage 3): held by the one already across
+      const cranking = x.stage === 3 && r === 'valet' && Arena.nearCrank(q) && Input.held('interact');
+      if (cranking !== local.crank) {
+        local.crank = cranking;
+        c.act({ a: 'lit', on: cranking });
+      }
+      if (x.stage === 3 && r === 'valet' && Arena.nearCrank(q))
+        prompt = ['E', cranking ? 'Tiens bon…' : 'Tourner la manivelle des anneaux (maintenir)', true];
       if (x.stage === 4) {
         const k = x.cab;
         if (
