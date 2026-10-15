@@ -30,6 +30,127 @@ const City = (() => {
     [0, -W - 1, 800, 2],
   ].forEach(([x, z, sx, sz]) => Phys.box(x, 50, z, sx, 120, sz, { tag: 'nocam' }));
 
+  // Look pass (js/world/look.js): the same street, lit by its own lamps. Painted lines and
+  // crossings are albedo (lit, not glowing), the asphalt scan gives the grain, its normal and
+  // roughness catch the lamps, puddles gather along the kerbs, shop windows spill on the
+  // pavement and the facades darken the ground they stand on.
+  const GROUND_LOOK = `
+    uniform float uTime;
+    uniform float uGold;
+    uniform float uGray;
+    uniform float uRed;
+    uniform sampler2D tAsph;
+    uniform sampler2D tAsphD;
+    uniform sampler2D tPave;
+    uniform sampler2D tPaveD;
+    uniform sampler2D tPlaza;
+    uniform float aNrm;
+    varying vec3 vW;
+    #include <fog_pars_fragment>
+    ${Look.LAMP_GLSL}
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+    float noise(vec2 p) {
+      vec2 i = floor(p), f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+    }
+    void main() {
+      vec2 l = mod(vW.xz + 15.0, 30.0) - 15.0;
+      vec2 a = abs(l);
+      float lot = step(a.x, 11.0) * step(a.y, 11.0);
+      float walk = step(a.x, 12.6) * step(a.y, 12.6) * (1.0 - lot);
+      float road = 1.0 - walk - lot;
+      vec2 cellId = floor((vW.xz + 15.0) / 30.0);
+      float plaza = step(abs(cellId.x), 0.5) * step(abs(cellId.y), 0.5);
+      float n = noise(vW.xz * 0.6) * 0.5 + noise(vW.xz * 2.3) * 0.25;
+      float big = noise(vW.xz * 0.045 + 7.0);
+
+      // asphalt: the scan (mean 0.2), patched and worn on a large scale
+      vec2 ua = vW.xz / 4.0;
+      vec3 ta = texture2D(tAsph, ua).rgb;
+      vec4 td = texture2D(tAsphD, ua);
+      vec3 asph = ta * vec3(0.5, 0.47, 0.55) * (0.78 + big * 0.35 + n * 0.12);
+      vec3 N = vec3(0.0, 1.0, 0.0);
+      float rough = 0.85;
+      if (aNrm > 0.5) {
+        vec2 t = td.rg * 2.0 - 1.0;
+        N = normalize(vec3(t.x, 1.0, -t.y) * vec3(1.6, 1.0, 1.6));
+        rough = td.b;
+      }
+      // pavement slabs and plaza tiles (procedural maps)
+      vec3 tp = texture2D(tPave, vW.xz / 6.0).rgb;
+      float hp = texture2D(tPaveD, vW.xz / 6.0).r;
+      vec3 side = vec3(0.2, 0.165, 0.2) * (0.45 + tp * 0.85) * (0.8 + hp * 0.25);
+      vec3 tz = texture2D(tPlaza, vW.xz / 13.0).rgb;
+      vec2 pt = abs(fract(vW.xz / 3.0) - 0.5);
+      float joint = step(0.485, max(pt.x, pt.y));
+      vec3 plz = vec3(0.22, 0.16, 0.21) * (0.5 + tz * 0.7) * (1.0 - 0.45 * joint);
+      vec3 alb = mix(asph, side, walk + lot);
+      alb = mix(alb, plz, lot * plaza);
+      rough = mix(rough, 0.8, walk + lot);
+      // kerb stones: a lighter band at the edge of the pavement
+      float kerb = walk * smoothstep(12.25, 12.4, max(a.x, a.y));
+      alb = mix(alb, vec3(0.36, 0.33, 0.36) * (0.8 + n * 0.3), kerb);
+
+      // painted lines and zebra crossings (worn paint)
+      float wear = smoothstep(0.25, 0.6, noise(vW.xz * 3.1) + n * 0.4);
+      float lineX = step(abs(a.x - 15.0), 0.07) * step(0.5, fract(vW.z / 4.0)) * step(12.6, a.y);
+      float lineZ = step(abs(a.y - 15.0), 0.07) * step(0.5, fract(vW.x / 4.0)) * step(12.6, a.x);
+      float cw = step(12.6, a.x) * step(a.x, 17.4) * step(11.2, a.y) * step(a.y, 12.6) * step(0.5, fract(vW.x));
+      float cw2 = step(12.6, a.y) * step(a.y, 17.4) * step(11.2, a.x) * step(a.x, 12.6) * step(0.5, fract(vW.z));
+      alb = mix(alb, vec3(0.42, 0.35, 0.2), (lineX + lineZ) * wear);
+      alb = mix(alb, vec3(0.4, 0.39, 0.41), clamp(cw + cw2, 0.0, 1.0) * wear * 0.9);
+      rough = mix(rough, 0.55, clamp(cw + cw2 + lineX + lineZ, 0.0, 1.0) * wear);
+
+      // water: puddles in the road's low spots and a wet strip along the kerbs
+      float pud = smoothstep(0.66, 0.74, noise(vW.xz * 0.13 + 3.0) * 0.8 + noise(vW.xz * 0.9) * 0.25);
+      float gutter = road * smoothstep(1.4, 0.0, min(abs(a.x - 12.6), abs(a.y - 12.6)) + n * 0.6);
+      float wet = clamp(pud * road + gutter * 0.85, 0.0, 1.0) * (1.0 - plaza * lot);
+      alb *= 1.0 - 0.45 * wet;
+      rough = mix(rough, 0.07, wet);
+      N = normalize(mix(N, vec3(0.0, 1.0, 0.0), wet * 0.9));
+
+      // light: the night sky, the street lamps, the shop windows
+      vec3 V = normalize(cameraPosition - vW);
+      vec3 spec;
+      vec3 irr = lookLamps(vW, N, V, rough, spec);
+      // the plaza: its lit fountain (light in the spray, above the rim) and the big screen
+      {
+        vec3 fd = vec3(0.0, 2.2, 0.0) - vW;
+        float fr2 = dot(fd, fd);
+        irr += vec3(1.0, 0.52, 0.8) * 55.0 * max(dot(N, fd * inversesqrt(fr2)), 0.0) / (fr2 + 6.0);
+        vec3 sd = vec3(0.0, 22.0, -16.0) - vW;
+        float sr2 = dot(sd, sd);
+        irr += vec3(0.62, 0.55, 0.85) * 160.0 * max(dot(N, sd * inversesqrt(sr2)), 0.0) / (sr2 + 80.0) * step(sd.z, 0.0);
+      }
+      vec3 amb = vec3(0.17, 0.125, 0.26) * (0.75 + 0.25 * N.y) * (1.0 + uGray * 0.9);
+      // facades darken the ground at their foot (contact shadow) and their shops spill light
+      float toWall = (lot > 0.5) ? 0.0 : max(min(a.x, a.y) - 11.0, 0.0);
+      float facade = (1.0 - plaza) * step(max(a.x, a.y), 13.5);
+      float contact = mix(1.0, 0.45 + 0.55 * smoothstep(0.0, 1.4, toWall), facade * (1.0 - lot));
+      float shop = facade * (1.0 - lot) * exp(-toWall * 0.8) * (0.6 + 0.4 * noise(vW.xz * 0.4));
+      vec3 spill = vec3(0.85, 0.42, 0.6) * shop * 0.55;
+      vec3 col = alb * (amb * contact + irr * contact + spill) + spec * uLampCol * uLampK * (0.15 + 0.85 * wet);
+      // puddles mirror the street: the night sky above, the facades and their lit shop
+      // windows near the horizon (a flat mirror, so the reflected ray's height is enough)
+      float fres = 0.02 + 0.98 * pow(1.0 - max(V.y, 0.0), 5.0);
+      vec3 Rf = reflect(-V, N);
+      vec3 refl = mix(vec3(0.03, 0.02, 0.05), vec3(0.08, 0.045, 0.14), smoothstep(0.1, 0.7, Rf.y));
+      float shopB = smoothstep(0.0, 0.03, Rf.y) * smoothstep(0.16, 0.05, Rf.y);
+      refl += vec3(0.75, 0.4, 0.6) * shopB * (0.5 + 0.5 * noise(vec2(atan(Rf.z, Rf.x) * 9.0, 0.5))) * 0.6;
+      col += refl * wet * fres * 1.6;
+      // the plaza ring stays a glowing inlay
+      float ring = abs(length(vW.xz) - 9.0);
+      col += vec3(0.9, 0.25, 0.45) * smoothstep(0.12, 0.0, ring) * 0.6;
+
+      float lum = dot(col, vec3(0.3, 0.59, 0.11));
+      col = mix(col, col * vec3(1.45, 1.05, 0.72) + vec3(0.05, 0.025, 0.0), uGold);
+      col = mix(col, vec3(lum * 0.85), uGray);
+      col = mix(col, vec3(lum * 1.8, lum * 0.18, lum * 0.22), uRed * 0.85);
+      gl_FragColor = vec4(col, 1.0);
+      ${GL_TAIL}
+    }
+  `;
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(900, 900, 1, 1).rotateX(-Math.PI / 2),
     new THREE.ShaderMaterial({
@@ -38,8 +159,12 @@ const City = (() => {
         ...fogU,
         uTime: { value: 0 },
         ...MOOD,
-        tAsph: { value: TX.asphalt.albedo },
-        tAsphD: { value: TX.asphalt.data },
+        // shared uniform objects: the scanned asphalt (js/world/look.js) swaps in when it lands
+        tAsph: TX.asphalt.uAlb,
+        tAsphD: TX.asphalt.uDat,
+        aNrm: TX.asphalt.uNrm,
+        uLampK: Look.LAMP.k,
+        uLampCol: Look.LAMP.col,
         tPave: { value: TX.pavement.albedo },
         tPaveD: { value: TX.pavement.data },
         tPlaza: { value: TX.pavement.albedo },
@@ -55,7 +180,7 @@ const City = (() => {
           #include <fog_vertex>
         }
       `,
-      fragmentShader: `
+      fragmentShader: Look.on('ground') ? GROUND_LOOK : `
         uniform float uTime;
         uniform float uGold;
         uniform float uGray;
@@ -204,6 +329,8 @@ const City = (() => {
       tConcD: { value: TX.concrete.data },
       tBrickD: { value: TX.brick.data },
       tPlasD: { value: TX.plaster.data },
+      uLampK: Look.LAMP.k,
+      uLampCol: Look.LAMP.col,
     },
     vertexShader: `
       attribute float aSeed;
@@ -246,6 +373,7 @@ const City = (() => {
       varying float vTop;
       varying vec3 vView;
       #include <fog_pars_fragment>
+      ${Look.on('ground') ? Look.LAMP_GLSL : ''}
       float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float box(vec2 p, vec2 a, vec2 b) { return step(a.x, p.x) * step(p.x, b.x) * step(a.y, p.y) * step(p.y, b.y); }
 
@@ -430,6 +558,17 @@ const City = (() => {
           col += vec3(1.0, 0.3, 0.5) * smoothstep(0.25, 0.0, dt) * step(0.72, vSeed) * 1.6;
           col += vec3(0.12, 0.04, 0.1) * exp(-vW.y * 0.25);
         }
+        ${
+          Look.on('ground')
+            ? `if (side > 0.5) {
+          // Look pass: the street lamps light the lower floors, the ground darkens the foot
+          vec3 lsp;
+          vec3 irr = lookLamps(vW, n, V, 0.85, lsp);
+          col += base * min(irr, vec3(3.0)) * 0.3;
+          col *= 0.5 + 0.5 * smoothstep(0.0, 1.8, vW.y);
+        }`
+            : ''
+        }
 
         float lum = dot(col, vec3(0.3, 0.59, 0.11));
         col = mix(col, col * vec3(1.45, 1.05, 0.72) + vec3(0.05, 0.025, 0.0), uGold);
@@ -580,6 +719,70 @@ const City = (() => {
   poleM.frustumCulled = bulbM.frustumCulled = false;
   R.scene.add(poleM, bulbM);
 
+  // Look pass: a soft cone of light under every lamp (Kenney Light Masks, cone_d_blur), one
+  // instanced quad turned toward the camera around the vertical, faded near and far
+  const coneU = { tCone: { value: null }, uK: { value: 0 }, uCol: Look.LAMP.col };
+  if (Look.on('lamps') && typeof Assets !== 'undefined') {
+    const coneM = new THREE.InstancedMesh(
+      new THREE.PlaneGeometry(1, 1).translate(0, -0.5, 0),
+      new THREE.ShaderMaterial({
+        uniforms: coneU,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        vertexShader: `
+          varying vec2 vUv;
+          varying float vFade;
+          void main() {
+            vec3 c = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+            vec3 tc = cameraPosition - c;
+            tc.y = 0.0;
+            vec3 rt = normalize(cross(vec3(0.0, 1.0, 0.0), tc + vec3(1e-4, 0.0, 0.0)));
+            vec3 p = c + rt * position.x * 6.0 + vec3(0.0, position.y * 5.9, 0.0);
+            vUv = vec2(position.x + 0.5, position.y + 1.0);
+            float d = length(cameraPosition - p);
+            vFade = smoothstep(2.5, 9.0, d) * smoothstep(170.0, 50.0, d);
+            gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D tCone;
+          uniform float uK;
+          uniform vec3 uCol;
+          varying vec2 vUv;
+          varying float vFade;
+          void main() {
+            float m = texture2D(tCone, vUv).r;
+            // brighter near the lantern, a thin haze toward the ground
+            float k = m * vFade * uK * (0.35 + 0.65 * vUv.y);
+            gl_FragColor = vec4(uCol * k * 0.16, 1.0);
+          }
+        `,
+      }),
+      lamps.length,
+    );
+    const head = V3();
+    lamps.forEach(([x, z], i) => {
+      const ox = x - Math.round(x / LOT) * LOT;
+      const oz = z - Math.round(z / LOT) * LOT;
+      lampQ.setFromAxisAngle(lampY, Math.atan2(ox, oz));
+      head.set(0, 5.92, 1.42).applyQuaternion(lampQ).add(V3(x, 0, z));
+      m4.makeTranslation(head.x, head.y, head.z);
+      coneM.setMatrixAt(i, m4);
+    });
+    coneM.frustumCulled = false;
+    coneM.renderOrder = 2;
+    coneM.visible = false;
+    R.scene.add(coneM);
+    Assets.get('fx.cone')
+      .then((t) => {
+        coneU.tCone.value = t;
+        coneU.uK.value = 1;
+        coneM.visible = true;
+      })
+      .catch(() => {});
+  }
+
   const stone = Tex.mat('stone', { color: '#6a4a72', scale: 3 });
   const fountain = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.5, 0.6, 48), stone);
   fountain.position.y = 0.3;
@@ -595,7 +798,8 @@ const City = (() => {
       color: '#2a0f3a',
       roughness: 0.05,
       metalness: 0.9,
-      emissive: '#3a0c2a',
+      // Look pass: the fountain is lit from inside (it lights the plaza, see the ground shader)
+      emissive: Look.on('ground') ? '#7a2a62' : '#3a0c2a',
     }),
   );
   water.position.y = 0.55;
@@ -2248,6 +2452,8 @@ const City = (() => {
         dim * (1 - moodNow.red * 0.6),
       );
       bulbM.material.color.setRGB(1, 0.69, 0.44).multiplyScalar(2.4 * dim);
+      if (Look.on('ground')) Look.LAMP.k.value = dim;
+      if (coneU.tCone.value) coneU.uK.value = dim * (1 - moodNow.gold * 0.7);
       bMat.uniforms.uLight.value = 1 - moodNow.gray * 0.85;
       R.scene.fog.color
         .copy(FOGC)

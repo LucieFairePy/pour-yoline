@@ -198,18 +198,23 @@ const Lobby = (() => {
       const r = q.get('r');
       const lc = q.get('local');
       // ?stand: the solo firing range (js/levels/stand.js), no partner, no lobby
-      if (q.has('stand')) {
+      // ?go=<phase> (city, tr_s1…): straight into a place, solo, to look at it
+      if (q.has('stand') || q.get('go')) {
         role = 'yoline';
         Net.local('stand' + Math.random().toString(36).slice(2, 7), true);
-        const s = document.createElement('script');
-        s.src = 'js/levels/stand.js';
-        s.onload = () => {
+        const go = () => {
           $('lobby').hidden = true;
           Sound.init();
           onStart(role, null);
-          setTimeout(() => Story.goto('stand'), 600);
+          setTimeout(() => Story.goto(q.get('go') || 'stand'), 600);
         };
-        document.head.appendChild(s);
+        if (q.get('go')) go();
+        else {
+          const s = document.createElement('script');
+          s.src = 'js/levels/stand.js';
+          s.onload = go;
+          document.head.appendChild(s);
+        }
         return;
       }
       if (lc) {

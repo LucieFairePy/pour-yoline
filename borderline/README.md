@@ -80,8 +80,22 @@ js/
   hq/ cine/         astronautes détaillés et film d'intro
   game/             HUD, joueur, joueur distant, caméra, bancs, moteur d'histoire, lobby
   levels/           un fichier par partie (ville, act1 … act5, soleil, donjon, balade, raid, final)
+  lab/lab.js        salles de test des assets (lab.html)
   main.js           boucle de jeu
+assets/             modèles, textures, sons, sprites externes (CC0) : voir assets/CATALOG.md
+lab.html            labo assets : ?lab=sword|grapple|veil|stone, &ext=0 (fait main) / 1 / all
 ```
+
+Assets externes : déclarés une fois dans `js/core/assets.js` (chargement unique, partagé, en
+arrière-plan), branchés sur les systèmes existants par `js/game/assetfx.js` sans en changer la
+logique. `?noassets` revient partout à la version faite main.
+
+Passe « Look » (prototype Terre 39, `js/world/look.js`) : scans Poly Haven (asphalte, pierre, bois :
+albedo + normale + rugosité) chargés seulement quand un niveau du monde 1 les utilise, rue éclairée
+par ses vrais lampadaires (flaques, reflets, vitrines), cônes de lumière, reflets de nuit sur le
+métal et le bois verni, réglage de lumière par scène, sons Kenney (cartes, interface, pas, leviers).
+`?look=0` (ou `?noassets`) = rendu d'avant ; `?look=tex,ground,lamps,env,grade,sound` = au choix ;
+`&tex=all` = les scans dans tous les mondes (aperçu de la généralisation).
 
 L'hôte fait autorité sur l'état de la partie, chaque joueur simule son propre personnage.
 
