@@ -235,6 +235,19 @@ const Lore = (() => {
       ['Une tour plus haute que les nuages, au cœur de la tempête. Tout en haut, la Cour.'],
       'Au sommet, l’orage se tait. Douze figures vous attendent, autour de quatre tables : la Cour.',
     ],
+    // the ♠ table of the Cour
+    sV: [
+      ['La table de Pique, dans l’Armurerie : fer noir, acier fumé, lumière froide. Ici, on agit.'],
+      'Le Valet s’incline. Derrière sa galerie, une salle ronde où sifflent des lames : la Dame vous attend.',
+    ],
+    sD: [
+      ['La Salle d’armes. La Dame de Pique ne se bat pas : elle donne des leçons.'],
+      'La porte du nord s’ouvre sur la salle du trône. Le Roi de Pique y garde son champion.',
+    ],
+    sR: [
+      ['La Salle du Trône d’acier. Le Roi de Pique ne se lève jamais : son champion se bat pour lui.'],
+      'Les trois figures de Pique ont posé leurs cartes. Une table de la Cour est à vous.',
+    ],
     // the ♦ table of the Cour
     dV: [
       ['La table de Carreau, dans un observatoire de verre et de laiton. Ici, on joue avec la tête.'],
