@@ -37,6 +37,12 @@ const Assets = (() => {
     'tex.c10metal.nrm': { type: 'tex', url: 'textures/c10_rustmetal_nrm.jpg', repeat: true, data: true },
     // street lamp light cone (Kenney Light Masks cone_d_blur, flipped, luminance)
     'fx.cone': { type: 'tex', url: 'fx/lamp_cone.png' },
+    // ♦10 Le Lac gelé (js/world/tr_d10.js binds them to its own materials only): Poly Haven rock
+    // face, and the coast sand turned into snow
+    'tex.d10rock.alb': { type: 'tex', url: 'textures/d10_rock_alb.webp', repeat: true },
+    'tex.d10rock.nrm': { type: 'tex', url: 'textures/d10_rock_nrm.jpg', repeat: true, data: true },
+    'tex.d10snow.alb': { type: 'tex', url: 'textures/d10_snow_alb.webp', repeat: true },
+    'tex.d10snow.nrm': { type: 'tex', url: 'textures/d10_snow_nrm.jpg', repeat: true, data: true },
     // ♥10 Le Marché (js/world/tr_h10.js binds them to its own materials only): the harlequin
     // floor (Poly Haven floor tiles 08, recoloured as a checker) and ivory plaster
     'tex.h10.floor.alb': { type: 'tex', url: 'textures/h10_floor_alb.webp', repeat: true },
