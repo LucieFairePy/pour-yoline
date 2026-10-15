@@ -13,6 +13,7 @@ const Balade = (() => {
   let built = false;
   let bridge = null;
   let bridgeB = null;
+  let gapB = [];
   let card = null;
   let skyLan = null;
   let flies = null;
@@ -400,6 +401,11 @@ const Balade = (() => {
     bridge.position.copy(P(0, -0.08, 60));
     group.add(bridge);
     bridgeB = Phys.box(O.x, O.y - 0.08, O.z + 60, RW * 2 + 1.6, 0.16, 2.6, { dyn: true });
+    // while the light bridge is out, its gap in the bank walls is closed too: the river is
+    // never jumped, it is crossed hand in hand
+    gapB = [-1, 1].map((s) =>
+      Phys.box(O.x + s * (RW + 0.5), O.y + 2, O.z + 60, 1.1, 4, 8, { dyn: true, tag: 'nocam' }),
+    );
     [-1, 1].forEach((s) =>
       [-1.3, 1.3].forEach((dz) =>
         K.deco(
@@ -647,6 +653,7 @@ const Balade = (() => {
       if (!built) return;
       U.uTime.value = t;
       bridgeB.on = bridgeOn;
+      gapB.forEach((b) => (b.on = !bridgeOn));
       bridge.children[0].material.opacity = damp(
         bridge.children[0].material.opacity,
         bridgeOn ? 0.6 : 0.04,
