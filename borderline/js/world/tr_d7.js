@@ -1411,6 +1411,9 @@ const TrD7 = (() => {
     group.add(bg);
     S2.bridge = bg;
     S2.bridgeBox = Phys.box(0, 0, 0, 1, 1, 1, { dyn: true });
+    // an invisible lid 2.2 m over the bridge's 13 m gap: a late double jump reaches 12-13 m, so
+    // without it you could jump across and skip the two plates and the latch
+    K.collider(0, 2.4, (BR.z0 + BR.z1) / 2, 18.5, 0.4, BR.z1 - BR.z0 - 0.8, { tag: 'nocam' });
     // gear housings at both ends
     [BR.z0, BR.z1].forEach((z) => {
       const g = deco(gearGeo(1.4, 18, 0.18, 0.3, { holes: 4, heart: true }), m.brass, 0, -0.9, z);
@@ -1692,6 +1695,9 @@ const TrD7 = (() => {
       g.add(blur);
       S3.discs.push({ g, top, blur, a: 0 });
     });
+    // invisible lids 2.2 m over both gears: the 9-10 m spans are within a long double jump, which
+    // would skip the brakes (J2 / J3) the two of you are meant to hold for each other
+    DISCS.forEach((c) => K.collider(c.x, c.y + 2.4, c.z - (c === DISCS[0] ? 0.3 : 0), 20, 0.4, 2 * DISC_R - 0.6, { tag: 'nocam' }));
     // bridges between
     slab(0, LEDGE.y - 0.25, 199.5, 2.4, 0.5, 2.6, m.floorD);
     slab(0, LEDGE.y - 0.25, 211.6, 2.4, 0.5, 2.8, m.floorD);
