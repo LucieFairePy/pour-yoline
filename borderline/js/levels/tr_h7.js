@@ -770,10 +770,10 @@
       if (Math.hypot(ql.x - (C.x + mk[0]), ql.z - (C.z + mk[1])) < 1.2) local.okLead = true;
       const d = Math.hypot(ql.x - qf.x, ql.z - qf.z);
       local.folAll += dt;
-      if (d > 0.5 && d < 3.2) local.folIn += dt;
+      if (d > 0.6 && d < 2.6) local.folIn += dt;
     }
     if (local.beat > due + 0.65) {
-      const okF = local.folAll <= 0 || local.folIn / local.folAll >= 0.5;
+      const okF = local.folAll <= 0 || local.folIn / local.folAll >= 0.65;
       const okL = local.okLead;
       local.okLead = false;
       local.folIn = local.folAll = 0;
@@ -1666,6 +1666,14 @@
     if (x.stage === 4) {
       say(TXT.s4.fall, 1800);
       c.send('h7say', [TXT.s4.fallMate, 1800]);
+      // the way you had found goes dark again: it is shown anew, never kept by trial and error
+      const half = x.half || 1;
+      const lane = laneOf(c.role);
+      Object.values(H7.gallery.tiles).forEach((tl) => {
+        if (tl.half !== half || tl.lane !== lane || !tl.litWant) return;
+        tl.litWant = 0;
+        c.send('h7lit', [tl.id, 0]);
+      });
     } else if (x.stage === 5) {
       say(TXT.s5.fall, 1800);
       c.send('h7say', [TXT.s5.fallMate, 1800]);
