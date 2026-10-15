@@ -60,6 +60,9 @@
     card: 'La carte ' + CARD + ' est au milieu du cœur. Allez-y ensemble.',
     cp: 'Point de passage.',
     crash: 'Le vaisseau décroche… Retour au dernier point de passage.',
+    lost: 'Liaison perdue avec {mate} : le vaisseau tient sa position. Le vol reprend à son retour.',
+    back: '{Il} est de retour. On repart.',
+    resume: 'On reprend au dernier point de passage.',
     fire: 'Feu à bord !',
     fireNav: 'Feu à bord : vise-le et maintiens E pour l’éteindre.',
     ext: 'Feu éteint.',
@@ -157,6 +160,8 @@
     shield: [SHIELD, SHIELD, SHIELD, SHIELD],
     frontS: null,
     frontV: 0,
+    // the partner's page went quiet mid-flight: the flight holds still until it is back
+    paused: false,
     host: null,
     camP: V3(),
     camL: V3(),
@@ -198,8 +203,14 @@
     lowSaid: false,
     rise: 0,
     shield: [SHIELD, SHIELD, SHIELD, SHIELD],
+    // the progress the host acts on (the pilot's reported one, rate-limited), and a pause to settle
+    sOk: null,
+    wasPaused: false,
   });
   local.host = newHost();
+  // fastest the skiff's progress can honestly grow (boost, plus the cable's tug and some slack)
+  const S_MAX = BOOST * 2;
+  const mateLost = () => !Net.connected || (Remote.has && !Remote.fresh);
   const HAZE = new THREE.Color('#c07a90');
   const HAZE_ST = new THREE.Color('#211c2b');
   const HEMI = new THREE.Color('#ffc0c8');
@@ -902,6 +913,13 @@
   const pushPose = (d) => {
     const now = performance.now();
     const st = d[0];
+    const B0 = local.buf;
+    // the pilot's page was reloaded: its clock starts over, so does the playback
+    if (B0.length && st < B0[B0.length - 1][0] - 1000) {
+      B0.length = 0;
+      local.off = null;
+      local.newClock = true;
+    }
     const o = now - st;
     if (local.off === null || o < local.off) local.off = o;
     else local.off += (o - local.off) * 0.002;
@@ -2165,15 +2183,18 @@
   };
 
   // ---------- the host: progress, drones, the mothership, the rift ----------
-  const crash = (c) => {
+  // resume: back to the last checkpoint after a lost partner, without the crash or its repairs
+  const crash = (c, resume) => {
     const x = c.S.x;
     const H = local.host;
-    fxBoth(c, ['crash', ...local.view.p.toArray()]);
+    if (!resume) fxBoth(c, ['crash', ...local.view.p.toArray()]);
     clearHazards(c);
     c.set((s) => {
       s.x.rs = (s.x.rs || 0) + 1;
-      s.x.hull = 100;
-      s.x.fires = [0, 0, 0];
+      if (!resume) {
+        s.x.hull = 100;
+        s.x.fires = [0, 0, 0];
+      }
       s.x.waves = (s.x.waves || [0, 0, 0]).map((v) => (v === 1 ? 0 : v));
     });
     const cpS = x.cp ? W.passS[x.cp] : W.PAD_S;
@@ -2183,7 +2204,7 @@
     H.rise = 0;
     H.shield = [SHIELD, SHIELD, SHIELD, SHIELD];
     setShield(c, H.shield);
-    sayBoth(c, TXT.crash);
+    sayBoth(c, resume ? TXT.resume : TXT.crash);
   };
   const clearHazards = (c) => {
     const H = local.host;
@@ -2555,6 +2576,7 @@
       local.mom.on = false;
       local.mom.dieT = -1;
       local.frontS = null;
+      local.paused = false;
       local.said = {};
       local.nav.g = null;
       local.heartSent = {};
@@ -2765,6 +2787,29 @@
       }
       const V = local.view;
       if (!V.ok) return;
+      // a partner lost mid-flight: nothing moves on (no hazards, no fire, no progress)
+      if (local.paused) {
+        H.wasPaused = true;
+        return;
+      }
+      // the pilot's client flies the skiff: its progress may only grow at flying speed here, and
+      // one that comes back far behind after a pause (its page reloaded at the last checkpoint)
+      // puts the hazards back for where it is now
+      if (seatOf(x, c.role) !== 'pilot') {
+        if (H.sOk == null || V.s < H.sOk) {
+          if ((H.wasPaused || local.newClock) && H.sOk != null && V.s < H.sOk - 20) {
+            H.wasPaused = false;
+            local.newClock = false;
+            H.sOk = V.s;
+            crash(c, true);
+            return;
+          }
+          H.sOk = V.s;
+        } else H.sOk = Math.min(V.s, H.sOk + S_MAX * dt);
+        V.s = H.sOk;
+      }
+      H.wasPaused = false;
+      local.newClock = false;
       // checkpoints: the start of each pass
       let k = 0;
       for (let i = 0; i < W.passS.length; i++) if (V.s >= W.passS[i] + 4) k = i;
@@ -2864,6 +2909,7 @@
         H.damSay = 6;
         sayBoth(c, x.stage === 4 ? TXT.bar : TXT.dam);
       }
+      if (local.paused && (d.a === 'hit' || d.a === 'shot')) return;
       if (d.a === 'hit' && flying(x)) {
         if (d.k === 'b') {
           local.bolts.delete(d.id);
@@ -3044,8 +3090,21 @@
         local.cy = Cam.yaw;
         local.cpch = Cam.pitch;
       }
+      // a partner lost mid-flight: hold still (and say so) until they are back
+      const lost = fly && mateLost();
+      if (lost !== local.paused) {
+        local.paused = lost;
+        // the objective line says it for as long as it lasts (a spoken line could queue too late)
+        HUD.objective(objective(c));
+        if (!lost) HUD.say(TXT.back, T.master, 2000);
+        // a page that came back plays its poses on a new clock: start the playback over
+        if (!lost) {
+          local.buf.length = 0;
+          local.off = null;
+        }
+      }
       // the flight
-      if (fly && seat === 'pilot') pilotStep(c, x, dt, t);
+      if (fly && seat === 'pilot' && !local.paused) pilotStep(c, x, dt, t);
       computeView(x, seat, dt);
       const V = local.view;
       if (fly && seat === 'pilot') {
@@ -3135,12 +3194,12 @@
       }
       if (x.stage !== 4 && x.stage < 5) W.riftU.uFront.value = -1e4;
       else W.riftU.uFront.value = local.frontS != null ? local.frontS : -1e4;
-      if (!Net.isHost && local.frontS != null && (x.stage === 4 || x.stage === 5)) local.frontS += local.frontV * dt;
+      if (!Net.isHost && !local.paused && local.frontS != null && (x.stage === 4 || x.stage === 5)) local.frontS += local.frontV * dt;
       if (x.stage !== 4) local.frontS = x.stage >= 5 ? local.frontS : null;
       // the skiff
       drawShip(x, seat, dt, t);
       drawSeats(x, dt, t, fly);
-      tickHazards(c, x, dt, t);
+      if (!local.paused) tickHazards(c, x, dt, t);
       // me in my seat, or on foot
       let prompt = null;
       if (fly) {
@@ -3293,6 +3352,7 @@
   const objective = (c) => {
     const x = c.S.x;
     const seat = seatOf(x, c.role);
+    if (local.paused) return TXT.lost;
     if (x.stage === 0) {
       const n = (x.moor || []).filter((v) => v).length;
       if (n < 2) return TXT.moor.replace('{n}', n);
