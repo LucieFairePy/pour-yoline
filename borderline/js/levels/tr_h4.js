@@ -69,6 +69,7 @@
     },
     card: 'La carte ' + CARD + ' descend au centre de la clairière. Allez-y ensemble.',
     scared: 'Une ombre t’a touché{e}. Retour au dernier passage.',
+    stair: 'Pas en sautant : descends par l’escalier invisible, en écoutant {mate}.',
     near: 'Une ombre approche. Rejoins la lumière.',
     scaredMate: 'Une ombre a touché {mate}.',
   };
@@ -447,8 +448,8 @@
       if (x.stage === 1 && H4.at('l1', qd) && H4.at('l1', qv)) c.set((s) => (s.x.stage = 2));
       if (x.stage === 2 && H4.at('a2', qd) && H4.at('a2', qv)) c.set((s) => (s.x.stage = 3));
       if (x.stage === 3 && H4.at('s2', qd) && H4.at('s2', qv)) c.set((s) => (s.x.stage = 4));
-      if (x.stage === 4 && x.blind1 && H4.at('s2b', qd) && H4.at('s2b', qv)) c.set((s) => (s.x.stage = 5));
-      if (x.stage === 5 && x.blind2 && H4.at('s2c', qd) && H4.at('s2c', qv)) c.set((s) => (s.x.stage = 6));
+      if (x.stage === 4 && x.blind1 && x.down1 && H4.at('s2b', qd) && H4.at('s2b', qv)) c.set((s) => (s.x.stage = 5));
+      if (x.stage === 5 && x.blind2 && x.down2 && H4.at('s2c', qd) && H4.at('s2c', qv)) c.set((s) => (s.x.stage = 6));
       if (x.stage === 6 && !x.fight && H4.inArena(qd) && H4.inArena(qv)) {
         local.atkT = 3.5;
         local.charge = 1;
@@ -592,6 +593,9 @@
         HUD.say(who === c.role ? TXT.leverMine : TXT.lever, T.master, 2600);
         c.send('h4say', [who === c.role ? TXT.lever : TXT.leverMine]);
       }
+      // the one in the dark came down their invisible stair
+      if (d.a === 'down' && ((d.k === 'b1' && x.stage === 4 && x.blind1) || (d.k === 'b2' && x.stage === 5 && x.blind2)))
+        c.set((s) => (s.x[d.k === 'b1' ? 'down1' : 'down2'] = true));
       if (d.a === 'drain' && x.stage === 6 && x.fight && !x.won && L.who === who) {
         local.charge = Math.max(0, local.charge - 0.3);
         c.send('h4c', +local.charge.toFixed(3));
@@ -659,6 +663,27 @@
         bossFace: face,
         dawn: x.stage === 7 ? Math.max(0.01, local.dawn / 3) : 0,
       });
+      // the gap holds until the lantern hangs on its post across it (the grapple's hop goes through)
+      local.hopT = Player.mode === 'grapple' ? 1.4 : Math.max(0, (local.hopT || 0) - dt);
+      if (H4.gapWall) H4.gapWall.on = x.stage <= 2 && L.post !== 'pA' && !local.hopT;
+      // the one left in the dark comes down the invisible stair, not off the side of the tower
+      const bk = x.stage === 4 && x.blind1 && r === 'dame' ? 'b1' : x.stage === 5 && x.blind2 && r === 'valet' ? 'b2' : null;
+      if (!bk) local.steps = null;
+      else if (Player.body.grounded) {
+        local.steps = local.steps || new Set();
+        H4.blind[bk].forEach((s, i) => {
+          if (Math.hypot(p.x - s.pos.x, p.z - s.pos.z) < 1.2 && Math.abs(p.y - s.pos.y) < 0.35) local.steps.add(i);
+        });
+        const done = bk === 'b1' ? x.down1 : x.down2;
+        if (!done && local.steps.size >= H4.blind[bk].length / 2) {
+          if (!local.downCd) c.act({ a: 'down', k: bk });
+          local.downCd = (local.downCd || 0) + dt > 1 ? 0 : (local.downCd || 0) + dt;
+        } else if (!done && q.y < 0.6) {
+          local.steps = null;
+          HUD.say(TXT.stair, T.master, 2600);
+          respawn(c);
+        }
+      }
       // levers ease down
       Object.values(H4.levers).forEach((lv) => (lv.down = damp(lv.down, lv.want || 0, 6, dt)));
       if (x.stage === 6 || x.stage === 7) tickAttacks(c, dt);

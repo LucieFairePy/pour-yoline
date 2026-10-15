@@ -86,6 +86,7 @@ const H4 = (() => {
   const flames = [];
   // small pools of flower light around the levers: a safe place to wait in the dark
   const glows = [];
+  let gapWall = null;
   const runeTex = {};
   const tmp = V3();
   const tmp2 = V3();
@@ -262,8 +263,9 @@ const H4 = (() => {
     ring.position.y = 0.02;
     g.add(col, hook, base, ring);
     group.add(g);
-    // a thin collider so nobody walks through the post
-    K.collider(p[0], p[1] - 0.6, p[2], 0.4, 1.1, 0.4);
+    // a thin collider so nobody walks through the post, taller than any jump: standing on the
+    // post's top was a step onto the cliff without the light stair
+    K.collider(p[0], p[1] + 0.45, p[2], 0.4, 3.2, 0.4, { tag: 'nocam' });
     posts[id] = { g, ring, pos: P(...p), r: POSTS[id].r };
   };
 
@@ -603,6 +605,9 @@ const H4 = (() => {
 
     // section 1b · the gap: grapple across, then the lantern on its post builds the bridge back
     [50.4, 53, 55.6].forEach((z) => slab(-2, 0, z, 2.4, 2.4, 'post', 2, 'pA'));
+    // a double jump can clear the gap: an unseen wall at the far edge holds until the bridge is
+    // lit (it drops for the Dame's own grapple hop)
+    gapWall = K.collider(-1, 0.5, 57.1, 17, 5, 0.4, { dyn: true, tag: 'nocam' });
     // section 1c · the cliff: the double jump climbs, the light stair appears for the other
     K.solid(-2, 1.475, 71, 12, 2.95, 10, rock);
     K.deco(new THREE.BoxGeometry(12.05, 0.1, 10.05), moss, -2, 2.97, 71);
@@ -1238,6 +1243,9 @@ const H4 = (() => {
     update,
     light,
     inLight,
+    get gapWall() {
+      return gapWall;
+    },
     slabs,
     posts,
     rings,
