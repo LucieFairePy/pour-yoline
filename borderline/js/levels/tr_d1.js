@@ -19,7 +19,7 @@
       dame: 'Salle 2 · Le code est gravé au sol, mais il ne se lit que d’en haut. Grappin sur l’anneau (F), puis guide {mate}.',
       valet: 'Salle 2 · Les cristaux sont sur les corniches : double saut, prends-en un (E), pose-le sur un socle. {mate} connaît l’ordre.',
     },
-    r2wrong: 'Mauvaise couleur. Le cristal retourne sur sa corniche.',
+    r2wrong: 'Mauvaise couleur. Les cristaux retournent sur leurs corniches, et le code gravé change.',
     r2good: 'Le socle s’allume.',
     r3: {
       dame: 'Salle 3 · Monte sur une de tes plateformes (grappin). Tes leviers : ♥ et ♦. Seul{pe} {mate} voit l’ordre sur l’horloge.',
@@ -47,6 +47,7 @@
   const NAMES = { rouge: 'rouge', bleu: 'bleu', or: 'or', vert: 'vert', blanc: 'blanc' };
   const ROUNDS = [3, 4, 5];
   const STEP = [12, 10, 9];
+  const SIDE_OF = { L: 'dame', R: 'valet' };
   const local = { stage: 0, gAng: 0, gTarget: 0, slam: 0, hand: 0, gT: 0, pulled: {}, msgCd: 0 };
 
   const neighbors = (i) => {
@@ -230,13 +231,17 @@
             s.x.stage = 2;
           });
       } else if (x.stage === 1) local.gT = 0;
-      // room 2: wrong crystals fly back after a moment
+      // room 2: after a wrong crystal, every crystal flies back to its ledge and the engraved code
+      // is drawn again (no guessing your way through without the one who reads it)
       if (x.stage === 2 && local.back) {
         local.back.t -= dt;
         if (local.back.t <= 0) {
-          const col = local.back.col;
           local.back = null;
-          c.set((s) => delete s.x.crys[col]);
+          c.set((s) => {
+            s.x.crys = {};
+            s.x.carrier = null;
+            s.x.code = pickCode();
+          });
         }
       }
       // room 3: the clock and its guardian
@@ -309,6 +314,8 @@
     action(c, who, d) {
       const x = c.S.x;
       if (d.a === 'tile' && x.stage === 1) {
+        // each half's tiles answer only to the one who took its door (♥ Dame, ♠ Valet)
+        if (who !== SIDE_OF[d.side]) return;
         // a tile in one half flips the OTHER half's board, unless that board is already lit
         const target = d.side === 'L' ? 'R' : 'L';
         if (x.grid[target].every(Boolean)) return;
@@ -330,12 +337,13 @@
           c.send('d1fx', ['good', pos]);
         }
       }
-      if (d.a === 'pick' && x.stage === 2 && !x.carrier) {
+      // only the Valet carries the crystals: the Dame reads the code from the gallery
+      if (d.a === 'pick' && x.stage === 2 && !x.carrier && who === 'valet') {
         const col = Object.keys(D1.COLORS).find((cc) => {
           const w = x.crys[cc] || 'l' + D1.crystals[cc].ledge;
           return w === d.where;
         });
-        if (!col || (local.back && local.back.col === col)) return;
+        if (!col || local.back) return;
         c.set((s) => {
           s.x.crys[col] = 'carried';
           s.x.carrier = who;
@@ -370,7 +378,7 @@
           c.send('d1fx', ['bad', pos]);
           HUD.say(TXT.r2wrong, T.master, 2000);
           c.send('d1say', [TXT.r2wrong]);
-          local.back = { col, t: 1.3 };
+          local.back = { t: 1.3 };
         }
       }
       if (d.a === 'pull' && x.stage === 3) {
@@ -414,7 +422,8 @@
       const q = D1.rel(p);
       const r = c.role;
       if (x.stage === 1) {
-        const tl = D1.tileAt(q);
+        const tl0 = D1.tileAt(q);
+        const tl = tl0 && SIDE_OF[tl0.side] === r ? tl0 : null;
         const target = tl && (tl.side === 'L' ? 'R' : 'L');
         if (tl && !x.grid[target].every(Boolean)) {
           if (Input.pressed('interact')) {
@@ -443,7 +452,7 @@
             if (Input.pressed('interact')) c.act({ a: 'place', ped });
             return ['E', 'Poser le cristal sur ' + D1.SYM[ped]];
           }
-        } else if (!x.carrier) {
+        } else if (!x.carrier && r === 'valet') {
           const l = D1.nearLedge(q);
           const where = l && 'l' + l.i;
           const has =

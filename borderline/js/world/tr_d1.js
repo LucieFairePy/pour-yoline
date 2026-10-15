@@ -698,8 +698,13 @@ const D1 = (() => {
       gt.b.on = gt.off < 2.5;
     });
     // room 2
-    if (x.code && !engraving.material.uniforms.map.value)
+    // drawn again whenever the host re-draws the code (after a wrong crystal)
+    const codeKey = x.code ? x.code.h + x.code.c + x.code.s : '';
+    if (x.code && engraving.userData.key !== codeKey) {
+      if (engraving.material.uniforms.map.value) engraving.material.uniforms.map.value.dispose();
       engraving.material.uniforms.map.value = engraveTex(x.code);
+      engraving.userData.key = codeKey;
+    }
     engraving.visible = role === 'dame' && x.stage === 2 && !!x.code;
     engraving.material.uniforms.uCam.value.copy(R.camera.position);
     rings.r2.m.visible = x.stage === 2;
