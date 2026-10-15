@@ -2096,7 +2096,11 @@ const C6M = (() => {
           try {
             amb.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.6);
             const oo = amb.o;
-            setTimeout(() => oo.forEach((o) => o.stop()), 2500);
+            setTimeout(() => {
+              oo.forEach((o) => o.stop());
+              // nothing left to play: the context sleeps until the next sound wakes it (ok() resumes)
+              if (!amb && ac) ac.suspend().catch(() => {});
+            }, 2500);
           } catch (e) {}
           amb = null;
         }
