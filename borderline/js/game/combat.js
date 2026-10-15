@@ -93,7 +93,6 @@ const Combat = (() => {
     const to = hit
       ? cam.position.clone().addScaledVector(fwd, hit.d)
       : cam.position.clone().addScaledVector(fwd, 60);
-    tracer(from, to);
     Player.weapon.fire();
     Sound.play('shoot');
     C.aim = 0.7;
@@ -290,7 +289,6 @@ const Combat = (() => {
     if (!Remote.has) return;
     const to = V3(d[0], d[1], d[2]);
     const from = (Remote.weapon ? Remote.weapon.muzzle(handV) : Remote.hand(handV)).clone();
-    tracer(from, to, '#ffd0a0');
     Remote.weapon.fire();
     Sound.play('shoot', from);
     if (d[3]) {
