@@ -15,6 +15,8 @@
       Portes.screen.show('Salle 1', 'Le bouton derrière la vitre', '#4fb4ff');
     }
     if (st === 2) {
+      // room 1 was crossed through the portals
+      if (prev) Lore.during('d9', 'portal', 1200);
       HUD.objective(A.s2[r]);
       Portes.screen.show('Salle 2', 'Chose rapide entre, chose rapide sort', '#ff9a3a');
       Sound.play('reveal');

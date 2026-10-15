@@ -29,9 +29,14 @@
     HUD.objective(objective(c));
     if (st === 2) Sound.play('reveal');
     if (st === 3) Sound.play('chime');
+    // the lanterns rise to the heart without a word: it sparkles for a moment (no star: a star
+    // is always a card)
     if (st === 4) {
-      HUD.say(A.released, T.master, 3600);
       Sound.play('lantern');
+      if (local.stage === 4 && local.lanternSeen !== true) {
+        local.lanternSeen = true;
+        setTimeout(() => Sky.sparkle(5), 2600);
+      }
     }
     if (st === 5) {
       Sound.play('card');

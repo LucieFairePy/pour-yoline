@@ -2081,3 +2081,23 @@ body.rec #cine .cskip {
   font-size: 1.32rem;
   line-height: 1.2;
 }
+
+/* a reward with its detail and its words: the card makes room, the subtitles keep the bottom */
+#card.rich {
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1rem 1rem 7.2rem;
+}
+
+#card.rich .card-face {
+  width: min(220px, 50vw, 27vh);
+  border-radius: 0.9rem;
+}
+
+#card.rich .card-face .big {
+  font-size: min(5rem, 7vh);
+}
+
+#card.rich .card-title {
+  font-size: clamp(1.6rem, min(5vw, 6vh), 3rem);
+}

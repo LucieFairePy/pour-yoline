@@ -58,6 +58,7 @@
       Sound.play('reveal');
     }
     if (st === 3) {
+      if (prev) Lore.during('c4', 'swap');
       HUD.objective(A.swap[r]);
       Maze.screen.show('L’inversion', 'À ' + Story.name('dame') + ' le noir', '#7ce0ff');
       Sound.play('reveal');
@@ -91,8 +92,6 @@
     async enter(c, first) {
       if (!first) await fadeTo(true);
       Maze.build(c.role, c.S.seed);
-      const dead = Maze.mazes.m1.dead;
-      if (dead) Clues.add('c3', Maze.P(dead.x, 0.9, dead.z));
       local.stage = 0;
       local.round = -1;
       c.spawn(Maze.spawn(c.S.x.stage, c.role), Maze.yaw(c.S.x.stage, c.role));

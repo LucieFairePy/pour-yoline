@@ -20,8 +20,8 @@ const Lore = (() => {
     {
       n: 2,
       id: 'ciel',
-      name: 'La Planète-Ciel',
-      sub: 'Une planète de nuages et d’îles flottantes',
+      name: 'Céleste',
+      sub: 'La planète-ciel : des nuages et des îles flottantes',
       outfit: 'Aviateurs : blouson de cuir, écharpe, lunettes et harnais.',
       power: 'Le câble qui vous relie.',
       memory: 'kino',
@@ -70,42 +70,37 @@ const Lore = (() => {
   const TRIALS = {
     // Monde 1 · Terre 39
     s1: [
-      [
-        'Après votre oui, la soucoupe des Veilleurs vous a arraché votre cœur, la galaxie du voyage, et vous a posés ici.',
-        'Retrouvez-le, et rentrez avec lui. Chaque carte en est un morceau, et le fait briller un peu plus près.',
-      ],
-      'L’autel s’ouvre sur un cadre de porte vide. Dans le ciel, votre cœur brille un peu plus fort.',
+      ['Première table. Facile. On apprend à marcher. À deux, sinon ce n’est pas drôle.'],
+      'Bien. L’autel s’ouvre sur un cadre de porte vide. Vous n’avez pas peur des portes, j’espère.',
     ],
     d9: [
-      ['Le cadre de l’autel menait ici : la salle d’essai des Veilleurs. Ils veulent voir comment vous pensez.'],
-      'Derrière le dernier portail, des rires d’enfants : les Veilleurs ont fouillé vos souvenirs.',
+      ['La salle d’essai des Veilleurs. Ils adorent les portes qui mènent ailleurs. Moi aussi.'],
+      'Derrière le dernier portail, des rires d’enfants. Les Veilleurs ont fouillé dans vos souvenirs. Ils ne se gênent jamais.',
     ],
     s3: [
-      ['Pour vous étudier, les Veilleurs ont recréé une cour de récréation de votre enfance, et sa Poupée.'],
-      'En s’endormant, la Poupée a montré du doigt une tour noire.',
+      ['Une cour de récréation. Les Veilleurs l’ont recopiée chez vous. Et ils y ont mis… une amie.'],
+      'En s’endormant, la Poupée a montré du doigt une tour noire. Elle ne montre jamais rien au hasard. Moi non plus.',
     ],
     c4: [
-      [
-        'La tour noire que montrait la Poupée. En bas, un labyrinthe sans lumière. En haut, de quoi le voir en entier.',
-      ],
-      'La sortie du labyrinthe ouvre une écluse. L’eau noire descend vers deux cabines de verre.',
+      ['En haut, on voit tout. En bas, on ne voit rien. Je vous laisse choisir… non, en fait, je choisis.'],
+      'La sortie ouvre une écluse. L’eau descend vers deux cabines de verre. Elles vous attendaient.',
     ],
     h10: [
-      [
-        'Les Veilleurs ont pris votre cœur sans comprendre ce qu’il est. Leur question : tient-il quand l’un peut se sauver seul ?',
-      ],
-      'Les cabines s’ouvrent sur une rivière. Pour une fois, ce ne sera pas une épreuve.',
+      ['Ici, on pèse. Ce que l’un voit, l’autre ne le voit pas. Et à la fin… on verra.'],
+      'Les cabines s’ouvrent sur une rivière. Pas de jeu, ce soir. Même moi, j’ai besoin d’une pause.',
     ],
     h2: [
-      ['Les Veilleurs veulent savoir ce qu’est un oui. Ce soir, ils ne jouent pas : ils écoutent.'],
-      'Vos lanternes montent vers votre cœur, qui n’a jamais brillé aussi près. L’une d’elles retombe sur les toits.',
+      [
+        'Remontez la rivière jusqu’à la cascade. Prenez votre temps. Les Veilleurs ont des questions ; ils ne comprennent pas ce qu’ils ont volé.',
+      ],
+      'Une lanterne est retombée sur les toits. C’est par là-haut qu’on se rapproche du cœur. Dommage : les toits ne sont pas très solides, ces temps-ci.',
     ],
     s2: [
       [
-        'La lanterne est retombée sur les toits : c’est par là-haut que l’on se rapproche du cœur.',
-        'Mais les toits ne tiennent plus, et des drones gardent le chemin.',
+        'Le plus haut toit de la ville. Le plus près du cœur. Les Veilleurs ont posté leurs drones. Ne le prenez pas personnellement : ils gardent leur collection.',
       ],
-      'Au bord du dernier toit, le cœur est si grand dans le ciel qu’on croirait le toucher… et la soucoupe revient. Son rayon vous emporte vers une autre planète.',
+      // no line: the cinematic follows
+      '',
     ],
     // Monde 2 · La Planète-Ciel
     c1: [
@@ -230,6 +225,115 @@ const Lore = (() => {
     ],
   };
 
+  // a few lines during the épreuves, each said once per visit (Lore.during(trial, key))
+  const DURING = {
+    s1: {
+      relay: 'Vous voyez ? L’un avance, l’autre tient. Retenez la danse.',
+      wave: 'Ne regardez pas derrière. Regardez à côté.',
+    },
+    d9: { portal: 'L’une ouvre, l’autre traverse. Vous commencez à comprendre la maison.' },
+    s3: { zone3: 'Elle a choisi sa préférée. Vous allez faire quoi, maintenant ?' },
+    c4: { swap: 'On rebat. Celui qui guidait marche, celui qui marchait guide.' },
+    s2: { collapse: 'Ne regardez pas derrière. Je vous l’ai déjà dit, non ?' },
+  };
+  const said = new Set();
+  const during = (trialId, key, delay = 0) => {
+    const k = trialId + '.' + key;
+    const line = DURING[trialId] && DURING[trialId][key];
+    if (!line || said.has(k)) return;
+    said.add(k);
+    if (delay) setTimeout(() => HUD.say(line, CONFIG.master), delay);
+    else HUD.say(line, CONFIG.master);
+  };
+
+  // ---------- the Visa (only the story moves it, never real time) ----------
+  const VISA = ['3 jours', '2 jours 20 h'];
+  const visaText = (S) => {
+    const done = (S && S.done) || [];
+    const n = completed(done).filter((w) => w.n <= 1).length;
+    return 'Visa · ' + VISA[Math.min(n, VISA.length - 1)];
+  };
+  let lastVisa = null;
+  const showVisa = () => {
+    const v = visaText(Story.S);
+    HUD.visa(v, lastVisa !== null && v !== lastVisa);
+    lastVisa = v;
+  };
+
+  // ---------- the reward screen: a detail back, then a few words of the heart ----------
+  const H = CONFIG.heart;
+  const reward = (trialId) => {
+    if (!H.words[trialId] && !(trialId in H.details)) return null;
+    return { detail: H.details[trialId] || null, words: H.words[trialId] || '' };
+  };
+  // the words kept in the box: one per épreuve done, in the order they came back
+  const words = (done) =>
+    (done || [])
+      .filter((id) => H.words[id])
+      .map((id) => ({ id, words: H.words[id], card: Trials.byId[id] && Trials.byId[id].card }));
+  // the world that this épreuve finishes (its memory comes back on the reward screen)
+  const finishes = (trialId) => {
+    const w = worldOf(trialId);
+    if (!w) return null;
+    const built = w.trials.filter((id) => Trials.built(Trials.byId[id]));
+    return built[built.length - 1] === trialId ? w : null;
+  };
+
+  // ---------- a white card without a suit, hidden once in every level of the world ----------
+  // [phase, () => world, x, z, yaw] in the level's own frame (world.P), lying on the ground a
+  // few steps off the way in: something to notice, never explained
+  const BLANKS = [
+    ['tr_s1', () => TrS1, -6.2, 7.5, 0.5],
+    ['portes', () => Portes, 5.6, 6.5, -0.3],
+    ['soleil', () => Soleil, 10.5, 3.2, 0.8],
+    ['act2', () => Maze, 3.2, -3.2, 2.2],
+    ['act1', () => Arena, 6.6, 7.5, -0.6],
+    ['balade', () => Balade, 11.2, 7.5, 1.1],
+    ['tr_s2', () => TrS2, 5.4, 3.5, 0.2],
+  ];
+  const blanks = {};
+  let blankGeo = null;
+  let blankMat = null;
+  const blankCard = () => {
+    if (!blankGeo) {
+      blankGeo = new THREE.BoxGeometry(0.3, 0.42, 0.004);
+      const c = document.createElement('canvas');
+      c.width = 150;
+      c.height = 210;
+      const g = c.getContext('2d');
+      g.fillStyle = '#f3f1ec';
+      g.fillRect(0, 0, 150, 210);
+      g.strokeStyle = 'rgba(0,0,0,0.12)';
+      g.lineWidth = 3;
+      g.strokeRect(9, 9, 132, 192);
+      const tex = new THREE.CanvasTexture(c);
+      blankMat = new THREE.MeshStandardMaterial({
+        map: tex,
+        color: 0xd6d4cf,
+        roughness: 0.55,
+        metalness: 0,
+        emissive: 0x2a2a2a,
+        emissiveMap: tex,
+      });
+    }
+    return new THREE.Mesh(blankGeo, blankMat);
+  };
+  const placeBlanks = (phase) => {
+    BLANKS.filter((b) => b[0] === phase).forEach((b, i) => {
+      const key = phase + i;
+      const W = b[1]();
+      if (blanks[key] || !W || !W.built || !W.P) return;
+      const m = blankCard();
+      const p = W.P(b[2], 0, b[3]);
+      p.y = Phys.groundAt(p.x, p.y + 4, p.z) + 0.006;
+      m.position.copy(p);
+      m.rotation.set(-Math.PI / 2, b[4], 0, 'YXZ');
+      m.name = 'blankCard';
+      R.scene.add(m);
+      blanks[key] = m;
+    });
+  };
+
   const worldOf = (trialId) => {
     const t = Trials.byId[trialId];
     return t ? WORLDS[t.world - 1] : null;
@@ -245,14 +349,29 @@ const Lore = (() => {
 
   /** Called by Story when a phase starts, before the level's own enter (and its intro). */
   const enter = (phase, prev) => {
+    if (prev === phase) return;
+    said.clear();
+    // every screen carries the Visa and, once the welcome is over, the return reserve
+    HUD.title('');
+    showVisa();
+    // (the welcome lights it up itself, at its moment)
+    HUD.reserve(phase === 'prologue' || phase === 'welcome' ? '' : CONFIG.prologue.reserve);
     const t = Trials.byPhase[phase];
-    if (!t || prev === phase || !Trials.built(t)) return;
+    if (!t || !Trials.built(t)) return;
     const L = TRIALS[t.id];
     if (opens(t)) {
-      HUD.chapter(worldOf(t.id));
+      HUD.chapter(worldOf(t.id), undefined, visaText(Story.S));
       HUD.pause(5600);
     }
     if (L) L[0].forEach((line) => HUD.say(line, CONFIG.master));
+  };
+
+  let tick = 0;
+  const update = (dt) => {
+    tick += dt;
+    if (tick < 0.5 || !Story.S) return;
+    tick = 0;
+    placeBlanks(Story.S.phase);
   };
 
   return {
@@ -261,6 +380,14 @@ const Lore = (() => {
     worldOf,
     completed,
     enter,
+    update,
+    during,
+    reward,
+    words,
+    finishes,
+    visaText,
+    showVisa,
+    BLANKS,
     arrive: (trialId) => (TRIALS[trialId] ? TRIALS[trialId][0] : []),
     next: (trialId) => (TRIALS[trialId] ? TRIALS[trialId][1] : ''),
   };

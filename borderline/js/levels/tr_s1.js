@@ -7,7 +7,7 @@
   const TX = {
     card: CARD,
     title: 'Premiers pas',
-    intro: 'Épreuve ♠, la première. Ici, on apprend à marcher. Ensemble, évidemment.',
+    intro: 'Épreuve ♠ : le corps.',
     lanes: {
       dame: 'Les dalles jumelles. Ta dalle fantôme ne tient que si {mate} est sur la plaque du même symbole. Une dalle chacun, en relais.',
       valet:
@@ -78,6 +78,7 @@
       Sound.mood('tense');
       HUD.say(TX.run, T.master, 2600);
     }
+    if (st === 2) Lore.during('s1', 'relay');
     // a player left behind by a checkpoint jumps to it
     if (prev && st > prev && st >= 2) {
       const q = W.rel(Player.body.p);
@@ -386,7 +387,17 @@
         local.cdSaid = true;
         HUD.say(TX.countdown, T.master, 1600);
       }
-      if (x.wrun) local.cdSaid = false;
+      if (x.wrun) {
+        local.cdSaid = false;
+        Lore.during('s1', 'wave', 900);
+      }
+      // the first time one of you waits on a plate while the other crosses on the lit slab
+      if (x.stage === 1 && x.on.length && x.pressed.length) {
+        const qd = W.rel(c.pos('dame'));
+        const qv = W.rel(c.pos('valet'));
+        if (W.GHOSTS.some(([gid]) => x.on.includes(gid) && (W.onGhost(qd, gid) || W.onGhost(qv, gid))))
+          Lore.during('s1', 'relay');
+      }
       if (x.stage === 4 && x.gate && !local.gateSaid) {
         local.gateSaid = true;
         HUD.objective(TX.altar);

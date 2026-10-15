@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230d0612'/%3E%3Cpath fill='%23d8324f' d='M50 82C24 63 12 49 12 34C12 22 21 14 32 14C40 14 46 19 50 26C54 19 60 14 68 14C79 14 88 22 88 34C88 49 76 63 50 82Z'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=Caveat:wght@500;700&display=swap">
 <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
@@ -36,14 +36,13 @@ setTimeout(function () {
 <div id="hud" hidden>
   <div class="hud-top">
     <div class="brand"><span class="mono">BORDERLINE</span><span class="suit" id="hudSuit"><i data-ic="heart"></i></span></div>
-    <div class="hud-right"><div class="visa label" id="hudVisa">Visa · 3 jours</div><div class="label deckcount" id="hudCards"></div><div class="label clues" id="hudClues"></div></div>
+    <div class="hud-right"><div class="label hud-title" id="hudTitle" hidden></div><div class="visa label" id="hudVisa">Visa · 3 jours</div><div class="label reserve" id="hudReserve" hidden></div><div class="label deckcount" id="hudCards"></div><div class="label clues" id="hudClues"></div><div class="status" id="status"></div></div>
   </div>
   <div class="objective" id="objective"><span class="label">Objectif</span><p id="objText"></p></div>
   <div class="partner" id="partner"><i class="arrow"></i><span id="partnerDist"></span></div>
   <div class="partner goal" id="goal"><i class="arrow"></i><span id="goalDist"></span></div>
   <div class="prompt" id="prompt" hidden><kbd id="promptKey">E</kbd><span id="promptText"></span></div>
   <div class="subtitle" id="subtitle" hidden><span class="who" id="subWho"></span><p id="subText"></p></div>
-  <div class="status" id="status"></div>
   <div class="crosshair" id="crosshair"></div>
   <div class="vign" id="vign"></div>
   <div class="hurt" id="hurt"></div>
@@ -62,6 +61,8 @@ setTimeout(function () {
   <div class="card-face"><span class="corner" id="cardCorner"></span><span class="big" id="cardBig"></span><span class="corner flip" id="cardCorner2"></span></div>
   <p class="card-title" id="cardTitle"></p>
   <p class="card-sub" id="cardSub"></p>
+  <div class="card-detail" id="cardDetail" hidden><span class="label">Un détail revient</span><p id="cardDetailText"></p></div>
+  <p class="card-words" id="cardWords" hidden></p>
 </div>
 
 <div id="chapter" hidden>
@@ -70,6 +71,7 @@ setTimeout(function () {
     <h2 id="chapName"></h2>
     <p class="chapter-sub" id="chapSub"></p>
     <span class="chapter-suits"><i data-ic="heart"></i><i data-ic="spade"></i><i data-ic="diamond"></i><i data-ic="club"></i></span>
+    <p class="label chapter-visa" id="chapVisa" hidden></p>
     <dl>
       <dt class="label">Tenue</dt><dd id="chapOutfit"></dd>
       <dt class="label" id="chapPowerK">Pouvoir</dt><dd id="chapPower"></dd>
@@ -87,7 +89,7 @@ setTimeout(function () {
     <header class="deck-head">
       <canvas id="deckHeart" width="220" height="200" aria-hidden="true"></canvas>
       <div class="deck-title">
-        <span class="label">Le Oui · brisé en 52 cartes</span>
+        <span class="label">La boîte à cartes · le cœur en 52 morceaux</span>
         <h2>Votre jeu <em id="deckCount">0 / 52</em></h2>
         <ol class="deck-steps" id="deckSteps">
           <li><span class="label">1 · Les chiffres</span><b id="deckNums">0 / 40</b></li>
@@ -100,6 +102,7 @@ setTimeout(function () {
     </header>
     <div class="deck-grid" id="deckGrid"></div>
     <ul class="deck-where" id="deckWhere"></ul>
+    <section class="deck-words" id="deckWords"><span class="label" id="deckWordsTitle"></span><ol id="deckWordsList"></ol></section>
     <p class="label deck-foot"><kbd>P</kbd> ou <kbd>Tab</kbd> pour fermer</p>
   </div>
 </div>
@@ -339,6 +342,7 @@ setTimeout(function () {
 <script src="js/cine/score.js"></script>
 <script src="js/cine/intro.js"></script>
 <script src="js/cine/cut.js"></script>
+<script src="js/cine/pasencore.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

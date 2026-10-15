@@ -1,5 +1,5 @@
 // ♠ 4 · Les Toits qui tombent (épreuve d'adresse, kits normaux).
-// ---------- the Joker's drones (♠ 4): searchlights flying too high for the sword, so the rifle
+// ---------- the Veilleurs' drones (♠ 4): searchlights flying too high for the sword, so the rifle
 // shoots them, and the Voile hides you from their beams; on the roof itself, the Joker's
 // shield guards: the rifle glances off their shields, the sword breaks the guard ----------
 (() => {
@@ -231,7 +231,7 @@
     board: 'Le panneau ne glisse que si quelqu’un tient un levier (E maintenu). L’un tient, l’autre traverse. Puis on inverse.',
     boardFar: 'Tiens le levier de ce côté (E maintenu) pour ramener le panneau à {mate}.',
     drones: {
-      dame: 'Les drones du Joker volent : abats-les au fusil, cache-toi de leurs projecteurs. Les gardes au bouclier, ton fusil rebondit dessus : laisse {mate} les sonner à l’épée, puis tire. Le toit s’effondre derrière vous : avancez !',
+      dame: 'Les drones des Veilleurs volent : abats-les au fusil, cache-toi de leurs projecteurs. Les gardes au bouclier, ton fusil rebondit dessus : laisse {mate} les sonner à l’épée, puis tire. Le toit s’effondre derrière vous : avancez !',
       valet:
         'Les drones volent trop haut pour ton épée : c’est {mate} qui les abat. Toi, brise le bouclier des gardes à l’épée (son fusil n’y peut rien), et deviens invisible avec le Voile (F). Le toit s’effondre derrière vous : avancez !',
     },
@@ -245,8 +245,8 @@
     },
     cardObj: 'La carte. Allez-y ensemble.',
     zapped: 'Le projecteur t’a vu{e}.',
-    reset: 'Le toit s’est effondré sous vous. Le Joker recommence la course.',
-    wipe: 'Vous êtes tombés tous les deux. Le Joker recommence la course.',
+    reset: 'Le toit s’est effondré sous vous. On recommence la course.',
+    wipe: 'Vous êtes tombés tous les deux. On recommence la course.',
     wait: 'Attends que {mate} te tende la main, de l’autre côté.',
     heavy: 'Trop lourde pour toi : c’est {mate} qui peut la pousser',
   };
@@ -473,8 +473,9 @@
         if (x.sec === 3) {
           Sound.mood('tense');
           Sound.play('glitch');
-          HUD.say(TXT.drones[c.role], T.joker, 4200);
-          W.screen.show('3 / 3', 'Le Joker vous chasse', '#ff2a3a');
+          HUD.say(TXT.drones[c.role], T.master, 4200);
+          W.screen.show('3 / 3', 'Les drones des Veilleurs', '#ff2a3a');
+          Lore.during('s2', 'collapse', 9000);
         }
         if (x.sec === 4) {
           Sound.mood('calm');
@@ -497,7 +498,7 @@
         local.reset = x.reset || 0;
         Combat.reset();
         c.spawn(W.spawn(3, c.role), 0);
-        HUD.say(x.msg === 'wipe' ? TXT.wipe : TXT.reset, T.joker, 3000);
+        HUD.say(x.msg === 'wipe' ? TXT.wipe : TXT.reset, T.master, 3000);
         Sound.play('glitch');
       }
       if ((x.catch || 0) !== local.catchSeen) {
@@ -758,7 +759,7 @@
           Fx.burst(p, '#ff2a3a', 40, 5, 0.6, -3);
           Sound.play('trap');
           c.send('zap', p.toArray().map((v) => +v.toFixed(2)));
-          if (!Combat.down) HUD.say(TXT.zapped, T.joker, 1400);
+          if (!Combat.down) HUD.say(TXT.zapped, 'Projecteur', 1400);
         }
       } else HUD.danger(0);
       const prompt = Combat.on ? Combat.update(dt) : null;

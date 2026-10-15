@@ -71,7 +71,9 @@ const Story = (() => {
 
   // a cinematic (phase cut) is a checkpoint too: reloading during it plays it again,
   // once it is over the save has moved on and it never replays
-  const checkpoint = (ph) => CHECKPOINTS.includes(ph) || ph === 'cut' || !!Trials.byPhase[ph];
+  // so is a reward screen: reloading during it shows it again, without a second card
+  const checkpoint = (ph) =>
+    CHECKPOINTS.includes(ph) || ph === 'cut' || ph === 'reward' || !!Trials.byPhase[ph];
 
   const set = (fn) => {
     fn(S);
@@ -120,6 +122,13 @@ const Story = (() => {
     s.x = PH[s.phase] && PH[s.phase].init ? PH[s.phase].init(s) : {};
     if (s.phase === 'cut') {
       if (p && p.cut && PH[p.after]) Object.assign(s.x, { cut: p.cut, after: p.after });
+      else {
+        s.phase = 'city';
+        s.x = {};
+      }
+    }
+    if (s.phase === 'reward') {
+      if (p && Trials.byId[p.card]) s.x = { card: p.card };
       else {
         s.phase = 'city';
         s.x = {};
@@ -260,6 +269,7 @@ const Story = (() => {
             seen: S.seen,
             cards: S.cards,
             ...(S.phase === 'cut' ? { cut: S.x.cut, after: S.x.after } : {}),
+            ...(S.phase === 'reward' ? { card: S.x.card } : {}),
           },
         });
       apply(S);
@@ -374,8 +384,9 @@ const Story = (() => {
         const g = def.voice ? def.voice(ctx, d) : clamp(1 - (d - 6) / 60, 0, 1);
         Sound.voicePos(V3(rp.x, rp.y + 1.6, rp.z), g);
       }
-      HUD.clues(S.clues.length, Object.keys(T.clues).length);
+      HUD.clues(S.clues.filter((id) => T.clues[id]).length, Object.keys(T.clues).length);
       City.update(t, dt);
+      Lore.update(dt);
       BigScreen.update(dt, t);
       Clues.update(dt, t);
       Cards.update(dt, t);

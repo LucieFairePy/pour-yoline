@@ -62,17 +62,11 @@
       Sound.play('door');
       Sound.mood('calm');
       HUD.danger(0);
-      // the one who pressed hears the lesson, the other hears what happened
-      const msg = k.both
-        ? C.failBoth
-        : k.who === c.role
-          ? k.who === 'dame'
-            ? C.failDame
-            : C.failValet
-          : C.failOther || '{mate} a appuyé pour se sauver. Ta porte reste fermée. On recommence.';
+      // the same light line on both screens: nobody is named, nothing is kept
+      const msg = k.both ? C.failBoth : C.failOne;
       HUD.say(msg, T.master, 2600);
-      Arena.screen.show('Raté', Story.fmt(msg), '#ff2a3a');
-      Arena.cabShow('Raté', '', '#ff2a3a');
+      Arena.screen.show(C.failTitle, msg, '#ff5f8a');
+      Arena.cabShow(C.failCab, '', '#ff5f8a');
       const hint = (k.fails || 1) > 1 && C.hints[Math.min((k.fails || 1) - 2, C.hints.length - 1)];
       if (hint) HUD.say(hint, T.master, 3200);
     }
@@ -86,8 +80,9 @@
       Sound.mood('calm');
       HUD.danger(0);
       HUD.say(C.win, T.master, 2500);
+      HUD.say(C.note, T.master, 2200);
       Arena.screen.show(CARD, C.win, '#ff5f8a');
-      Arena.cabShow('♥', 'Bravo', '#ff5f8a');
+      Arena.cabShow('♥', C.winCab, '#ff5f8a');
       HUD.objective('Allez chercher la carte, ensemble.');
       Sound.play('reveal');
     }
@@ -107,7 +102,6 @@
     async enter(c, first) {
       if (!first) await fadeTo(true);
       Arena.build(c.role, c.S.seed);
-      Clues.add('c2', Arena.P(9.5, 0.9, 99));
       local.stage = 0;
       local.cab = null;
       const sp = Arena.spawn(c.S.x.stage, c.role);
