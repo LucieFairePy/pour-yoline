@@ -35,12 +35,27 @@ const CONFIG = {
   prologue: {
     objective:
       'Retrouve l’autre joueur. Pas de carte, pas de flèche : écoute son signal. Appelle avec C.',
+    // the Maître du jeu on the big screen, once you have found each other: [line, screen title,
+    // screen subtitle]; 'sky' turns both cameras up to the empty heart while it is said
     welcome: [
-      'Bienvenue, Yoline. Bienvenue, William.',
-      'Joueurs : 2. Visa : 3 jours.',
-      'Votre Oui a été brisé en 52 cartes. Réunissez-les toutes.',
-      'Une seule règle : ici, on ne gagne jamais seul.',
+      ['Bienvenue, Yoline. Bienvenue, William.', 'Bienvenue', 'Yoline · William'],
+      ['Joueurs : 2. Visa : 3 jours.', 'Joueurs : 2', 'Visa : 3 jours'],
+      [
+        'Ce que vous voyez là-haut, c’est votre cœur. Enfin… sa forme. Ce qui le remplissait a été éparpillé. En cinquante-deux morceaux.',
+        '52',
+        'morceaux',
+        'sky',
+      ],
+      ['Je les ai rangés dans mes jeux. Gagnez-les, et il se remplira.', 'Mes jeux', 'Gagnez-les'],
+      ['Une seule règle : ici, on ne gagne jamais seul.', 'Une seule règle', 'On ne gagne jamais seul'],
     ],
+    // the card box falls between the two of you (it is the deck menu, P)
+    box: 'Pour ce que vous gagnerez. Elle est vide. Pour l’instant.',
+    boxTitle: 'La boîte',
+    boxSub: 'Vide · pour l’instant',
+    // the line on each visor, and what he says about it
+    reserve: 'Réserve de retour · 100 % · verrouillée',
+    reserveLine: 'Ah. Votre réserve de retour. Gardez-la précieusement. On ne rentre pas à pied, d’ici.',
     abilities: {
       dame: 'Capacités de ce chapitre : le grappin, et tes yeux voient ce que les siens ne voient pas.',
       valet:
@@ -61,13 +76,13 @@ const CONFIG = {
     doorNew: 'Une porte s’est allumée : {card} · {title}. Allez-y ensemble.',
     memory: 'Un nouveau souvenir s’est allumé. Suivez la colonne de lumière.',
     memoryLast: 'Le dernier souvenir s’est allumé, près de la place.',
-    memoryLine: 'Chaque carte gagnée rend un morceau du Oui. Et un souvenir revient.',
+    memoryLine: 'Chaque carte rallume un détail. Une table finie vous rend un souvenir entier.',
     hunt: 'Il manque {n} chiffre(s). Ils sont cachés dans la ville : suivez les colonnes dorées.',
     huntLine: 'Les Veilleurs ont caché le reste des chiffres dans la ville. Tant qu’ils manquent, les figures restent fermées.',
   },
   portes: {
     title: 'Les Portes',
-    intro: 'Épreuve de logique. Les Veilleurs adorent les portes qui mènent ailleurs.',
+    intro: 'Épreuve de logique.',
     hint: {
       dame: 'Clic gauche : portail bleu. Clic droit (ou F) : portail orange. Seulement sur les panneaux blancs. Tes portails ne laissent passer que {mate}.',
       valet:
@@ -127,7 +142,7 @@ const CONFIG = {
   soleil: {
     title: 'Un, deux, trois, Soleil',
     doll: 'La Poupée',
-    intro: 'Épreuve d’adresse. Les Veilleurs ont trouvé ce jeu dans vos souvenirs d’enfance.',
+    intro: 'Épreuve d’adresse.',
     rule: 'Quand elle chante, avancez. Quand elle se retourne, plus un geste.',
     hint: {
       dame: 'Tu vois ce que {mate} ne voit pas : quand les yeux de la Poupée s’allument en rose, elle va vraiment regarder. Préviens-{le}.',
@@ -146,7 +161,7 @@ const CONFIG = {
         'Zone 3 · La Poupée ne quitte plus {mate} des yeux. Mets-toi entre la Poupée et {lui}, et avancez ensemble.',
     },
     finish: 'Touchez la Poupée. Ensemble.',
-    caught: 'Touché·e. Retour à la ligne.',
+    caught: 'Bougé ! …Pardon, c’est la règle. Retour à la ligne.',
     shielded: '{Il} te cache. La Poupée ne te voit pas.',
     sing: 'Un, deux, trois…',
     turn: 'Soleil !',
@@ -315,7 +330,7 @@ const CONFIG = {
   },
   act1: {
     title: 'La Balance',
-    intro: 'Épreuve de confiance. Ce que l’un ne voit pas, l’autre le voit.',
+    intro: 'Épreuve de confiance.',
     bridge: {
       dame: 'Le pont de gauche est invisible pour {mate}. Toi, tu le vois. Guide-{le}.',
       valet: 'Le pont de gauche est invisible pour toi. {mate}, {lui}, le voit. Écoute-{le}.',
@@ -329,16 +344,20 @@ const CONFIG = {
     },
     cabins: {
       enter: 'Chacun dans sa cabine.',
-      rule: 'Un seul sortira. Appuie pour te sauver.',
-      failDame: 'Intéressant. On recommence ?',
-      failValet: 'Intéressant. On recommence ?',
+      rule: 'Un seul sortira. Appuyez pour vous sauver.',
+      // after a press nobody is named and nothing is kept: the same line on both screens
+      failOne: 'Intéressant. On recommence ?',
       failBoth: 'Deux boutons. Intéressant. On recommence ?',
+      failTitle: 'Intéressant.',
+      failCab: 'Encore ?',
       hints: [
         'Le plafond ralentit à la fin. Personne n’a dit qu’il vous écraserait.',
         'Qui a dit qu’il fallait choisir ?',
       ],
       countdown: 'Le plafond s’arrête dans',
-      win: 'Personne n’a appuyé. Les deux portes s’ouvrent.',
+      win: '…Personne. Les deux portes s’ouvrent.',
+      note: 'Je note.',
+      winCab: 'Les deux portes',
     },
   },
   act2: {
@@ -469,7 +488,10 @@ const CONFIG = {
     facesNote: 'Les figures : Valet, Dame et Roi de chaque couleur. Le Joker viendra en dernier.',
     figuresTitle: 'Les figures',
     figures: 'Les quarante chiffres sont à vous. Les figures se réveillent : Valets, Dames et Rois.',
-    tuto: 'P : ton jeu de cartes. Une épreuve, une carte. Les cartes manquantes sont des points d’interrogation.',
+    tuto: 'P : votre boîte à cartes. Une épreuve, une carte. Les cartes manquantes sont des points d’interrogation.',
+    // the words of the heart kept in the box, in the order they came back
+    words: 'Les mots retrouvés',
+    wordsEmpty: 'Chaque carte rend quelques mots. Ils se rangent ici.',
     nextUp: 'Prochaine épreuve',
     later: 'Ensuite',
     soon: 'À venir',
@@ -482,10 +504,31 @@ const CONFIG = {
       city: 'Cachée dans la ville',
     },
   },
+  // what each card gives back on its reward screen: a detail of your story (seen once, kept in
+  // the box) and a few words of the heart, cut from the voyage letter (voyage/js/config.js), never
+  // written for the game. A detail still to come stays null: the screen then shows `missing`.
+  heart: {
+    missing: 'Un détail vous revient…',
+    details: {
+      s1: null, // [À COMPLÉTER] heart.details.s1
+      d9: { text: 'Valorant. Le jeu où vous vous êtes rencontrés.', icon: 'spike' },
+      s3: { text: 'Le 17 juillet.', chalk: true },
+      c4: null, // [À COMPLÉTER] heart.details.c4
+      h10: null, // [À COMPLÉTER] heart.details.h10
+      h2: { text: 'Le premier appel. « On ne s’est pas dit un mot. »' },
+      s2: null, // [À COMPLÉTER] heart.details.s2
+    },
+    words: {
+      s1: '…quelque chose qui ne tienne pas dans un message…',
+      d9: '…juste pour toi…',
+      s3: '…J’aime ton rire…',
+      c4: '…le calme que je ressens quand tu es à côté…',
+      h10: '…je cherche des raisons de te parler…',
+      h2: '…Yoline,…',
+      s2: '…je sais ce que je ressens.',
+    },
+  },
   clues: {
-    c1: 'Cassette 1 · Une voix déformée : « Elle reconnaîtra cette ville. Je l’ai construite de mémoire. »',
-    c2: 'Cassette 2 · « Si elle reste dans la cabine, alors j’ai bien fait de tout construire. »',
-    c3: 'Cassette 3 · « Le manuel… je l’ai écrit à la main. Elle connaît cette écriture. »',
     c4: 'Cassette 4 · « Ce toit, c’est là que je voulais lui montrer la vue. »',
     c5: 'Cassette 5 · « Le Joker n’est pas de moi. Il est arrivé avec la peur. »',
     c6: 'Cassette 6 · Un graffiti : « Y. » — la même signature que dans le voyage.',

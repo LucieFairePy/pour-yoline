@@ -77,6 +77,17 @@ const Icons = (() => {
       'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z',
     ],
     play: ['M6L3L20L12L6L21L6L3Z'],
+    // drawn by hand for the reward of Les Portes: a little bomb device of the game where you
+    // met (a sketch, not its logo)
+    spike: [
+      'M8.3 20.4c-.4-3.3-.2-7.4.5-10.5l3.2-6.2 3.3 6.1c.8 3.2.9 7.4.5 10.7',
+      'M6.4 20.7c3.7.6 7.4.5 11.2-.2',
+      'M8.9 13.1c2.1.6 4.3.5 6.4-.1',
+      'M8.8 16.3c2.2.5 4.4.4 6.6-.1',
+      'M12 11.6l1.1 1.6-1.1 1.8-1-1.7z',
+      'M8.6 10.6l-2.7 2.5',
+      'M15.5 10.7l2.6 2.3',
+    ],
     'rotate-ccw': ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'],
     repeat: [
       'm17 2 4 4-4 4',

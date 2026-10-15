@@ -61,8 +61,80 @@ const Sound = (() => {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // the space around recorded sounds: a short room on the sfx bus (Sound.space)
+    room = ctx.createConvolver();
+    room.buffer = impulse(1.3);
+    roomSend = ctx.createGain();
+    roomSend.gain.value = SPACE[space];
+    roomSend.connect(room).connect(master);
+    for (const k in bank) decode(k);
     ambience();
     loop();
+  };
+
+  // Recorded samples (gunshots, reload, casings, impacts): fetched as soon as they are declared,
+  // decoded once the audio context exists, played with a random variant and a slight pitch and
+  // gain spread so full auto never sounds like one loop. Missing files leave the synth sounds.
+  const bank = {};
+  let room = null;
+  let roomSend = null;
+  const SPACE = { outdoor: 0.12, indoor: 0.42 };
+  let space = 'outdoor';
+  const stats = { decoded: 0, failed: 0, played: {} };
+  let lastTail = 0;
+  const decode = (k) => {
+    const b = bank[k];
+    b.raw.forEach((p, i) => {
+      if (!p || b.bufs[i] !== undefined) return;
+      b.bufs[i] = null;
+      p.then((ab) => (ab ? ctx.decodeAudioData(ab) : null))
+        .then((buf) => {
+          b.bufs[i] = buf;
+          if (buf) stats.decoded++;
+        })
+        .catch(() => stats.failed++);
+    });
+  };
+  const load = (map, base = '') => {
+    for (const k in map) {
+      const urls = Array.isArray(map[k]) ? map[k] : [map[k]];
+      bank[k] = {
+        bufs: [],
+        live: 0,
+        raw: urls.map((u) =>
+          fetch(base + u)
+            .then((r) => (r.ok ? r.arrayBuffer() : null))
+            .catch(() => null),
+        ),
+      };
+      if (ctx) decode(k);
+    }
+  };
+  const has = (k) => !!bank[k] && bank[k].bufs.some((b) => b);
+  // o: gain, rate, spread (pitch, 0.05 = ±5 %), far (distance filter), wet (room send), cap
+  const sample = (k, pos, o = {}) => {
+    const b = bank[k];
+    if (!ctx || !b) return false;
+    const ok = b.bufs.filter((x) => x);
+    if (!ok.length) return false;
+    if (b.live >= (o.cap || 10)) return true;
+    const src = ctx.createBufferSource();
+    src.buffer = ok[(Math.random() * ok.length) | 0];
+    const sp = o.spread != null ? o.spread : 0.05;
+    src.playbackRate.value = (o.rate || 1) * (1 + (Math.random() * 2 - 1) * sp);
+    const g = ctx.createGain();
+    g.gain.value = (o.gain != null ? o.gain : 1) * (0.9 + Math.random() * 0.2);
+    src.connect(g).connect(pos ? spatial(pos, !!o.far) : sfx);
+    if (o.wet && roomSend) {
+      const w = ctx.createGain();
+      w.gain.value = o.wet;
+      g.connect(w).connect(roomSend);
+    }
+    b.live++;
+    src.onended = () => b.live--;
+    src.start(ctx.currentTime + (o.delay || 0));
+    stats.played[k] = (stats.played[k] || 0) + 1;
+    return true;
   };
 
   const impulse = (sec) => {
@@ -328,6 +400,20 @@ const Sound = (() => {
       sweep(ctx.currentTime, 70, 110, 1.6, 0.06, 'sawtooth');
     },
     shoot(pos) {
+      // recorded AK shots: close variants, a distant one past ~45 m, plus the room
+      const far = pos && Sound.dist(pos) > 45;
+      if (
+        sample(far && has('shotFar') ? 'shotFar' : 'shot', pos, { far: !!pos, wet: 0.35, cap: 14 })
+      ) {
+        // the outdoor echo after the crack, not on every round of a burst
+        // the recordings are light below 200 Hz: a short low thump for the shooter's own rifle
+        if (!pos) sweep(ctx.currentTime, 120, 42, 0.09, 0.16, 'sine');
+        if (!far && ctx.currentTime - lastTail > 0.32) {
+          lastTail = ctx.currentTime;
+          sample('tail', pos, { far: !!pos, gain: 0.55, spread: 0.03, cap: 3 });
+        }
+        return;
+      }
       const out = pos ? spatial(pos) : sfx;
       const t = ctx.currentTime;
       // 7.62 crack: a sharp transient, a deep body and a short tail
@@ -336,7 +422,60 @@ const Sound = (() => {
       noise(t + 0.03, 0.35, 260, 0.6, 0.1, 'lowpass', out);
       sweep(t, 160, 45, 0.12, 0.16, 'square', out);
     },
-    // AK reload, timed on the hands (2.4 s): magazine out, magazine in, bolt racked
+    // the reload's steps, each fired by the rifle when the hands get there (js/game/weapons.js):
+    // recorded when available, else short synthetic clicks
+    magOut(pos) {
+      if (sample('magOut', pos, { wet: 0.2 })) return;
+      const out = pos ? spatial(pos) : sfx;
+      const t = ctx.currentTime;
+      noise(t, 0.05, 3000, 3, 0.12, 'bandpass', out);
+      sweep(t + 0.02, 900, 500, 0.05, 0.05, 'square', out);
+    },
+    magIn(pos) {
+      if (sample('magIn', pos, { wet: 0.2 })) return;
+      const out = pos ? spatial(pos) : sfx;
+      const t = ctx.currentTime;
+      noise(t, 0.06, 2200, 3, 0.18, 'bandpass', out);
+      sweep(t + 0.01, 400, 180, 0.07, 0.08, 'square', out);
+    },
+    boltBack(pos) {
+      if (sample('boltBack', pos, { wet: 0.2 })) return;
+      noise(ctx.currentTime, 0.07, 4000, 2, 0.12, 'bandpass', pos ? spatial(pos) : sfx);
+    },
+    boltFwd(pos) {
+      if (sample('boltFwd', pos, { wet: 0.2 })) return;
+      const out = pos ? spatial(pos) : sfx;
+      const t = ctx.currentTime;
+      noise(t, 0.08, 2600, 2, 0.16, 'bandpass', out);
+      sweep(t + 0.01, 600, 250, 0.06, 0.07, 'square', out);
+    },
+    handling(pos) {
+      if (sample('handling', pos, { gain: 0.7 })) return;
+      noise(ctx.currentTime, 0.12, 1800, 1, 0.05, 'bandpass', pos ? spatial(pos) : sfx);
+    },
+    // a spent case on the floor, a magazine dropped, a bullet hitting the world
+    casing(pos) {
+      if (sample('casing', pos, { gain: 0.55, spread: 0.12, cap: 8 })) return;
+      bell(hz(98 + Math.random() * 6), ctx.currentTime, 0.012, pos ? spatial(pos) : sfx);
+    },
+    magDrop(pos) {
+      if (sample('magDrop', pos, { gain: 0.8 })) return;
+      noise(ctx.currentTime, 0.15, 900, 1, 0.12, 'bandpass', pos ? spatial(pos) : sfx);
+    },
+    impact(pos, surf) {
+      if (sample('impact_' + surf, pos, { gain: 0.8, spread: 0.08, cap: 8 })) return;
+      if (sample('impact_concrete', pos, { gain: 0.7, cap: 8 })) return;
+      noise(
+        ctx.currentTime,
+        0.06,
+        surf === 'metal' ? 4200 : 1500,
+        2,
+        0.08,
+        'bandpass',
+        spatial(pos),
+      );
+    },
+    // AK reload in one go (2.4 s): magazine out, magazine in, bolt racked
     reload(pos) {
       const out = pos ? spatial(pos) : sfx;
       const t = ctx.currentTime;
@@ -507,6 +646,21 @@ const Sound = (() => {
     play(name, ...a) {
       if (!ctx || !fx[name]) return;
       fx[name](...a);
+    },
+    load,
+    sample,
+    has,
+    stats,
+    // 'outdoor' or 'indoor': how much room the recorded sounds get
+    space(s) {
+      space = SPACE[s] != null ? s : 'outdoor';
+      if (roomSend) roomSend.gain.setTargetAtTime(SPACE[space], ctx.currentTime, 0.2);
+    },
+    // distance from the listener, for picking a close or distant variant
+    dist(p) {
+      if (!ctx || !ctx.listener.positionX) return 0;
+      const l = ctx.listener;
+      return Math.hypot(p.x - l.positionX.value, p.y - l.positionY.value, p.z - l.positionZ.value);
     },
     mood(m) {
       mood = m;

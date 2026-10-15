@@ -269,6 +269,12 @@ const Cards = (() => {
             `<li><span>${i ? D.later : D.nextUp}</span><b>${Icons.rich(label(t.card) + ' · ' + t.title)}</b></li>`,
         )
         .join('') + (soon ? `<li><span>${D.soon}</span><b>${soon} ${D.soonN}</b></li>` : '');
+    // the words of the heart, kept in the box in the order they came back
+    const words = Lore.words(done);
+    $('deckWordsTitle').textContent = D.words;
+    $('deckWordsList').innerHTML = words.length
+      ? words.map((w) => `<li title="${label(w.card)}">${Icons.rich(w.words)}</li>`).join('')
+      : `<li class="empty">${Icons.rich(D.wordsEmpty)}</li>`;
     paintHeart();
   };
   const paintHeart = () => {

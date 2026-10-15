@@ -70,6 +70,8 @@ const Sky = (() => {
   group.add(gal);
 
   R.scene.add(group);
+  let spark = 0;
+  let sparkT = 0;
 
   return {
     U,
@@ -91,6 +93,17 @@ const Sky = (() => {
         H.uDim.value = 0.22;
       }
       H.uBeat.value = Math.pow(Math.max(0, Math.sin(t * 2.2)), 12) * 0.6;
+      // a sparkle (the lanterns of La Rivière reaching it): brighter beats and glow, no new star
+      if (spark > 0) {
+        spark = Math.max(0, spark - clamp(t - (sparkT || t), 0, 0.1));
+        const k = Math.min(1, spark) * (0.5 + 0.5 * Math.sin(t * 9));
+        H.uBeat.value += k * 0.9;
+        heart.core.material.opacity = 0.32 + k * 0.5;
+      } else heart.core.material.opacity = 0.32;
+      sparkT = t;
+    },
+    sparkle(sec = 4) {
+      spark = sec;
     },
   };
 })();

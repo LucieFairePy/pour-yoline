@@ -20,6 +20,8 @@ const HUD = (() => {
     cross: $('crosshair'),
     vign: $('vign'),
     visa: $('hudVisa'),
+    title: $('hudTitle'),
+    reserve: $('hudReserve'),
     suit: $('hudSuit'),
   };
   const queue = [];
@@ -108,9 +110,11 @@ const HUD = (() => {
       runQueue();
     },
     // the title card of a world (js/game/lore.js), over the start of its first épreuve
-    chapter(w, ms = 5200) {
+    chapter(w, ms = 5200, visa = '') {
       const c = $('chapter');
       put($('chapNum'), 'Monde ' + w.n);
+      put($('chapVisa'), visa);
+      $('chapVisa').hidden = !visa;
       put($('chapName'), w.name);
       put($('chapSub'), w.sub);
       put($('chapOutfit'), w.outfit);
@@ -147,8 +151,23 @@ const HUD = (() => {
       put(el.pText, text);
       el.prompt.classList.toggle('hold', !!hold);
     },
-    visa(t) {
+    // the Visa ('Visa · …', js/game/lore.js); anything else is the épreuve's own title line
+    visa(t, pulse) {
+      if (!/^Visa/.test(t || '')) return this.title(t);
       put(el.visa, t);
+      if (!pulse) return;
+      el.visa.classList.remove('pulse');
+      void el.visa.offsetWidth;
+      el.visa.classList.add('pulse');
+    },
+    title(t) {
+      put(el.title, t || '');
+      el.title.hidden = !t;
+    },
+    // the small line on the visor: the return reserve of the jetpacks
+    reserve(t) {
+      put(el.reserve, t || '');
+      el.reserve.hidden = !t;
     },
     status(t) {
       el.status.innerHTML = Icons.glyphs(t);
@@ -204,7 +223,7 @@ const HUD = (() => {
       void el.goal.offsetWidth;
       el.goal.classList.add('ping');
     },
-    card(corner, big, title, sub) {
+    card(corner, big, title, sub, rich) {
       put($('cardCorner'), corner);
       put($('cardCorner2'), corner);
       put($('cardBig'), big);
@@ -220,7 +239,10 @@ const HUD = (() => {
       face.classList.toggle('black', !Tex.isRed(big));
       put($('cardTitle'), title);
       put($('cardSub'), sub);
+      $('cardDetail').hidden = true;
+      $('cardWords').hidden = true;
       const c = $('card');
+      c.classList.toggle('rich', !!rich);
       c.hidden = false;
       c.querySelectorAll('.card-face,.card-title,.card-sub').forEach((n) => {
         n.style.animation = 'none';
@@ -230,6 +252,45 @@ const HUD = (() => {
     },
     hideCard() {
       $('card').hidden = true;
+      this.memoryFlash(null);
+    },
+    // under the card: the detail that comes back (or, while it is still to be written, a
+    // neutral line), with its small drawing or its chalk
+    cardDetail(d, missing) {
+      const box = $('cardDetail');
+      const txt = $('cardDetailText');
+      box.classList.toggle('missing', !d);
+      box.classList.toggle('chalk', !!(d && d.chalk));
+      txt.innerHTML = d ? (d.icon ? Icons.svg(d.icon, 'drawn') : '') + Icons.rich(F(d.text)) : Icons.rich(missing);
+      box.hidden = false;
+      box.style.animation = 'none';
+      void box.offsetWidth;
+      box.style.animation = '';
+    },
+    // then a few words of the heart: italic, unsigned
+    cardWords(t) {
+      const w = $('cardWords');
+      put(w, t);
+      w.hidden = !t;
+      w.style.animation = 'none';
+      void w.offsetWidth;
+      w.style.animation = '';
+    },
+    // a world's memory, on its own for a few seconds (no button: nothing to dismiss)
+    memoryFlash(spec) {
+      const m = $('memory');
+      if (!spec) {
+        if (m.classList.contains('flash')) {
+          m.hidden = true;
+          m.classList.remove('flash');
+        }
+        return;
+      }
+      put($('memTag'), spec.tag);
+      put($('memTitle'), spec.name);
+      put($('memText'), spec.text);
+      m.classList.add('flash');
+      m.hidden = false;
     },
     combat(on) {
       $('combat').hidden = !on;
@@ -349,6 +410,7 @@ const HUD = (() => {
       };
     },
     memory(tag, title, text) {
+      $('memory').classList.remove('flash');
       return new Promise((res) => {
         put($('memTag'), tag);
         put($('memTitle'), title);

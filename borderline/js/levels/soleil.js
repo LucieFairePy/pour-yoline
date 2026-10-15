@@ -77,6 +77,54 @@
     if (d.ph === 'sleep') Soleil.screen.show(CARD, A.win, '#ffcf8a');
   };
 
+  // the detail this card gives back, written in chalk on the playground, then slowly wiped away
+  let chalk = null;
+  const chalkDate = async () => {
+    const d = CONFIG.heart.details.s3;
+    if (!d || chalk) return;
+    try {
+      await document.fonts.load('700 120px Caveat');
+    } catch (e) {}
+    const cv = document.createElement('canvas');
+    cv.width = 1024;
+    cv.height = 320;
+    const g = cv.getContext('2d');
+    g.font = '700 150px Caveat, "Bradley Hand", cursive';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    // chalk: a few offset passes of a grainy white
+    for (let i = 0; i < 6; i++) {
+      g.globalAlpha = 0.22;
+      g.fillStyle = '#f6f3ec';
+      g.fillText(d.text.replace(/\.$/, ''), 512 + (Math.random() - 0.5) * 5, 165 + (Math.random() - 0.5) * 5);
+    }
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 9000; i++) {
+      g.globalAlpha = Math.random() * 0.6;
+      g.fillRect(Math.random() * 1024, Math.random() * 320, 2, 2);
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, color: 0xcfcbc4 });
+    chalk = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.44).rotateX(-Math.PI / 2).rotateY(Math.PI), mat);
+    chalk.position.copy(Soleil.P(0, 0.04, 84.6));
+    chalk.rotation.y = 0.06;
+    R.scene.add(chalk);
+    const t0 = performance.now();
+    const step = () => {
+      const t = (performance.now() - t0) / 1000;
+      mat.opacity = Math.min(smooth(clamp(t / 2.4, 0, 1)), 1 - smooth(clamp((t - 16) / 12, 0, 1))) * 0.85;
+      if (t < 28) requestAnimationFrame(step);
+      else {
+        R.scene.remove(chalk);
+        chalk.geometry.dispose();
+        mat.dispose();
+        tex.dispose();
+        chalk = null;
+      }
+    };
+    step();
+  };
+
   const caught = (c) => {
     local.cd = 1.2;
     const b = Player.body;
@@ -91,7 +139,7 @@
       if (Player.mode === 'frozen' && Story.S && Story.S.phase === 'soleil') Player.mode = 'walk';
     }, 700);
     Cam.shake = 0.2;
-    if (!HUD.talking) HUD.say(A.caught, A.doll, 1600);
+    if (!HUD.talking) HUD.say(A.caught, T.master, 2200);
     c.send('scaught');
   };
 
@@ -143,6 +191,7 @@
         }
         if (x.stage === 3) {
           HUD.objective(T.portes.card.replace('{card}', CARD));
+          chalkDate();
           HUD.say(A.win, T.master, 2600);
           Sound.play('card');
           HUD.danger(0);
@@ -224,6 +273,7 @@
         local.zoneSeen = zone;
         HUD.objective(zoneText(c, zone));
         if (zone > 0) Sound.play('reveal');
+        if (zone === 2) Lore.during('s3', 'zone3', 600);
       }
       local.cd -= dt;
       const inField = q.z > Soleil.LINES[0] && q.z < Soleil.LINES[3];

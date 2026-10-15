@@ -39,7 +39,11 @@ const Combat = (() => {
     const html =
       (C.reloadT > 0
         ? '<span style="font-size:.7rem;opacity:.8">RECHARGEMENT</span>'
-        : '<span style="font-size:2rem;' + (low ? 'color:#ff8fa0' : '') + '">' + C.mag + '</span>' +
+        : '<span style="font-size:2rem;' +
+          (low ? 'color:#ff8fa0' : '') +
+          '">' +
+          C.mag +
+          '</span>' +
           '<span style="font-size:.85rem;opacity:.6"> / 30</span>') +
       '<div style="font-size:.6rem;opacity:.55;margin-top:.15rem">R · RECHARGER</div>';
     if (ammoEl.innerHTML !== html) ammoEl.innerHTML = html;
@@ -47,7 +51,7 @@ const Combat = (() => {
   const startReload = () => {
     if (C.reloadT > 0 || C.mag >= MAG) return;
     C.reloadT = RELOAD;
-    Sound.play('reload');
+    // the sounds come from the rifle, on the hands' marks (js/game/weapons.js)
   };
   // bullet tracers: pooled glowing beams (a 1 px line was invisible from the other player)
   const TRACER_T = 0.14;
@@ -58,6 +62,9 @@ const Combat = (() => {
   const handV = V3();
   const fwd = V3();
   const tmp = V3();
+  const shotTo = V3();
+  const remoteTo = V3();
+  const remoteN = V3();
   const tracer = (a, b, col = '#ffb0c8') => {
     let tr = tracers.find((x) => x.t <= 0);
     if (!tr) {
@@ -123,27 +130,34 @@ const Combat = (() => {
     fwd.z += (Math.random() - 0.5) * spread;
     fwd.normalize();
     C.bloom = Math.min(0.05, C.bloom + 0.008);
-    const hit = Enemies.raycast(cam.position, fwd, 80);
-    const from = Player.weapon.muzzle(handV).clone();
-    const to = hit
-      ? cam.position.clone().addScaledVector(fwd, hit.d)
-      : cam.position.clone().addScaledVector(fwd, 60);
+    let hit = Enemies.raycast(cam.position, fwd, 80);
+    // the world: the first wall, floor or prop past the player (the camera sits behind her)
+    tmp.copy(Player.body.p).sub(cam.position);
+    const wh = Phys.rayHit(cam.position, fwd, 80, Math.max(0, tmp.dot(fwd)) + 0.4);
+    const wall = wh && (!hit || wh.t < hit.d);
+    if (wall) hit = null;
+    const d = hit ? hit.d : wall ? wh.t : 60;
+    const to = shotTo.copy(cam.position).addScaledVector(fwd, d);
     Player.weapon.fire();
     Sound.play('shoot');
     C.aim = 0.7;
+    if (wall) Weapons.impact(to, wh.n, wh.surf);
     if (hit) {
       Fx.burst(to, hit.weak ? '#ffcf8a' : '#ff8fb0', hit.weak ? 16 : 8, 3.5, 0.35, 0);
       HUD.hitmark(hit.weak);
       Enemies.flash(hit.e.id);
       act({ a: 'hit', id: hit.e.id, dmg: 9, weak: hit.weak });
     }
-    // the other player sees the shot, the muzzle flash and the impact
+    // the other player sees the shot, the muzzle flash and the impact (and the hole it leaves:
+    // its surface and which face, 0..5 = -x +x -y +y -z +z)
     Net.send('shot', [
       +to.x.toFixed(2),
       +to.y.toFixed(2),
       +to.z.toFixed(2),
       hit ? (hit.weak ? 2 : 1) : 0,
       hit ? hit.e.id : 0,
+      wall ? Weapons.SURFS.indexOf(wh.surf) : -1,
+      wall ? (wh.n.x ? 0 : wh.n.y ? 2 : 4) + (wh.n.x + wh.n.y + wh.n.z > 0 ? 1 : 0) : -1,
     ]);
     Player.yaw = Math.atan2(fwd.x, fwd.z);
   };
@@ -338,10 +352,14 @@ const Combat = (() => {
 
   Net.on('shot', (d) => {
     if (!Remote.has) return;
-    const to = V3(d[0], d[1], d[2]);
-    const from = (Remote.weapon ? Remote.weapon.muzzle(handV) : Remote.hand(handV)).clone();
+    const to = remoteTo.set(d[0], d[1], d[2]);
+    const from = Remote.weapon ? Remote.weapon.muzzle(handV) : Remote.hand(handV);
     Remote.weapon.fire();
     Sound.play('shoot', from);
+    if (d[5] >= 0 && d[6] >= 0 && Weapons.SURFS[d[5]]) {
+      remoteN.set(0, 0, 0).setComponent(d[6] >> 1, d[6] & 1 ? 1 : -1);
+      Weapons.impact(to, remoteN, Weapons.SURFS[d[5]]);
+    }
     if (d[3]) {
       Fx.burst(to, d[3] === 2 ? '#ffcf8a' : '#ff8fb0', d[3] === 2 ? 16 : 8, 3.5, 0.35, 0);
       if (d[4]) Enemies.flash(d[4]);

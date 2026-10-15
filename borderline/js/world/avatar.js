@@ -422,25 +422,40 @@ const Avatar = (() => {
     // recoil of the last shot (1 = just fired), set by kick()
     let gunKick = 0;
     // points on the rifle (rifle space, see js/game/weapons.js): pistol grip, under the handguard,
-    // the magazine, the magazine pulled out, the charging handle forward and back
-    const GRIP = V3(0, -0.035, 0);
-    const FORE = V3(0, -0.03, 0.27);
-    const MAG = V3(0, -0.13, 0.1);
-    const MAGOUT = V3(0.02, -0.3, 0.14);
-    const BOLT = V3(-0.035, 0.025, 0.13);
-    const BOLTBACK = V3(-0.04, 0.025, 0.04);
+    // the magazine, the magazine pulled out, the charging handle forward and back. The rifle model
+    // carries its own (rifle.userData.pts, measured on the mesh); these fit the procedural one.
+    const PTS0 = {
+      GRIP: V3(0, -0.035, 0),
+      FORE: V3(0, -0.03, 0.27),
+      MAG: V3(0, -0.13, 0.1),
+      MAGOUT: V3(0.02, -0.3, 0.14),
+      BOLT: V3(-0.035, 0.025, 0.13),
+      BOLTBACK: V3(-0.04, 0.025, 0.04),
+      // how far back the mount sits when shouldered, so the butt meets the shoulder
+      ads: 0,
+    };
+    let PTS = PTS0;
     const BELT = V3(0.17, -0.3, 0.08);
-    // the reload, as keyframes of the left hand: [progress, point, in rifle space?]
+    // the reload, as keyframes of the left hand: [progress, point, in rifle space?]. Hand to the
+    // magazine, rock it out, drop it (0.3), a full one from the belt, rock it in (0.66), over the
+    // top to the charging handle, rack it (0.84) and let it fly (0.88), back under the handguard.
+    // js/game/weapons.js moves the magazine and the bolt and plays the sounds on the same marks.
     const RELOAD = [
-      [0, FORE, true],
-      [0.12, MAG, true],
-      [0.28, MAGOUT, true],
-      [0.4, BELT, false],
-      [0.55, MAGOUT, true],
-      [0.68, MAG, true],
-      [0.78, BOLT, true],
-      [0.86, BOLTBACK, true],
-      [1, FORE, true],
+      [0, 'FORE', true],
+      [0.1, 'MAG', true],
+      [0.16, 'MAG', true],
+      [0.28, 'MAGOUT', true],
+      [0.31, 'MAGOUT', true],
+      [0.42, BELT, false],
+      [0.47, BELT, false],
+      [0.58, 'MAGOUT', true],
+      [0.64, 'MAG', true],
+      [0.69, 'MAG', true],
+      [0.77, 'BOLT', true],
+      [0.8, 'BOLT', true],
+      [0.86, 'BOLTBACK', true],
+      [0.89, 'BOLTBACK', true],
+      [1, 'FORE', true],
     ];
     const kp = V3();
     const kq = V3();
@@ -453,8 +468,10 @@ const Avatar = (() => {
       const [t1, p1, g1] = RELOAD[i + 1];
       const k = clamp((t - t0) / (t1 - t0), 0, 1);
       const e = k * k * (3 - 2 * k);
-      g0 ? toBody(p0, kp) : kp.copy(p0);
-      g1 ? toBody(p1, kq) : kq.copy(p1);
+      const a = typeof p0 === 'string' ? PTS[p0] : p0;
+      const b = typeof p1 === 'string' ? PTS[p1] : p1;
+      g0 ? toBody(a, kp) : kp.copy(a);
+      g1 ? toBody(b, kq) : kq.copy(b);
       return out.copy(kp).lerp(kq, e);
     };
     // Two-bone arm with the elbow let out: the elbow sits on its circle around the shoulder-hand
@@ -477,7 +494,9 @@ const Avatar = (() => {
       }
       const r = Math.sqrt(Math.max(0, L * L - (d * d) / 4));
       const v = kq.copy(hint).addScaledVector(u, -hint.dot(u)).normalize();
-      P.E = S.clone().addScaledVector(u, d / 2).addScaledVector(v, r);
+      P.E = S.clone()
+        .addScaledVector(u, d / 2)
+        .addScaledVector(v, r);
       P.H = Hc;
       P.palm = palm;
       P.g = g;
@@ -494,6 +513,8 @@ const Avatar = (() => {
         return;
       }
       const a = gunAim;
+      const rifle = gunMount.children[0];
+      PTS = (rifle && rifle.userData.pts) || PTS0;
       // body space: -x is the right side. Aiming, the stock sits in the right shoulder pocket and
       // the barrel runs straight ahead; at rest it is held low and forward, muzzle down and across
       // to the left, elbows loose. Running, it bobs with the stride; sprinting, the left hand lets
@@ -504,7 +525,7 @@ const Avatar = (() => {
       gunMount.position.set(
         lerp(-0.1, -0.21, a) + tilt * 0.05,
         lerp(0.02, 0.3, a) + bob - tilt * 0.02,
-        lerp(0.38, 0.3, a) - 0.05 * gunKick,
+        lerp(0.38, 0.3 - PTS.ads, a) - 0.05 * gunKick,
       );
       gunE.set(
         lerp(0.42 + run * 0.35, s.pitch || 0, a) - 0.12 * gunKick - tilt * 0.25,
@@ -516,10 +537,12 @@ const Avatar = (() => {
       // right hand on the pistol grip, palm toward the rifle's left side
       const right = V3(1, 0, 0).applyQuaternion(gunMount.quaternion);
       const up = V3(0, 1, 0).applyQuaternion(gunMount.quaternion);
-      armTo(1, toBody(GRIP, V3()), HINT_R, right, 0.9, gunK);
+      armTo(1, toBody(PTS.GRIP, V3()), HINT_R, right, 0.9, gunK);
       // left hand: under the handguard (palm up), on the reload's path, or free when sprinting
       if (rl > 0) armTo(0, reloadHand(rl, V3()), HINT_L, up, 0.8, gunK);
-      else armTo(0, toBody(FORE, V3()), HINT_L, up, 0.85, gunK * (1 - run));
+      else armTo(0, toBody(PTS.FORE, V3()), HINT_L, up, 0.85, gunK * (1 - run));
+      // the shot goes into the shoulder: the torso gives a little with each round
+      hips.rotation.x -= 0.035 * gunKick * gunK;
     };
     // Seated on a bench. William leans back, both arms along the backrest; Yoline sits with her
     // hands in her lap and, when he is beside her, leans in with her head on his arm by his
