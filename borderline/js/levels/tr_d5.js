@@ -69,7 +69,8 @@
     ],
   };
 
-  const local = {
+  // per-run state, rebuilt on every enter()
+  const fresh = () => ({
     stage: 0,
     flipN: 0,
     flipT: -1,
@@ -96,7 +97,10 @@
     solvedT: 0,
     cardT: 0,
     seenLanes: null,
-  };
+    hostFlipT: null, // host only: time into the current turn
+    hostS0: 0,
+  });
+  const local = fresh();
   const ringTargets = () => [D5.ringPos()];
   const ringLand = () => D5.P(-12, 0, 86);
   const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
@@ -162,7 +166,7 @@
       if (!cr.g.visible || cr.held) return;
       cr.y = cr.float0 + (D5.PY - 0.5 - cr.float0) * lift;
       cr.g.position.y = D5.O.y + cr.y + 0.5;
-      cr.g.rotation.z = Math.sin(t * 2) * 0.25 * (1 - k * 0);
+      cr.g.rotation.z = Math.sin(t * 2) * 0.25;
       cr.g.rotation.x = Math.sin(t * 1.6 + 1) * 0.2;
     });
     if (t < ROT1) {
@@ -351,17 +355,18 @@
       },
     },
     async enter(c, first) {
+      for (const k in local) delete local[k];
+      Object.assign(local, fresh());
       if (!first) await fadeTo(true);
       D5.build(c.role);
       const x = c.S.x;
-      local.stage = 0;
       local.flipN = x.r1.n;
-      local.flipT = -1;
       D5.setCubeState(x.r1.s);
       D5.setCubeAngle(x.r1.s * Math.PI);
       syncCrates(c, x, true);
-      local.isl = 0;
       c.spawn(x.stage === 1 ? D5.spawn(1, c.role) : checkpoint(c), 0);
+      // joined in the middle of a turn: play it out here too, so the room lands on the new floor
+      if (x.r1.flip) startFlipLocal(c, x.r1.s);
       Player.killY = D5.O.y - 16;
       Player.checkpoint = () => checkpoint(c);
       Player.targets = null;
@@ -436,6 +441,11 @@
           H.dame = H.valet = null;
         }
         if (r1.flip) {
+          // a turn already under way when this host took over (resume, host change): time it from now
+          if (local.hostFlipT == null) {
+            local.hostFlipT = 0;
+            local.hostS0 = r1.s;
+          }
           local.hostFlipT += dt;
           if (local.hostFlipT >= ROT1 + 0.05) {
             const ns = 1 - local.hostS0;
@@ -459,6 +469,7 @@
               s.x.r1.seal = seal;
               if (done) s.x.r1.done = true;
             });
+            local.hostFlipT = null;
             if (done) both(c, 'good', D5.P(0, 1.5, 33).toArray(), TXT.sealsDone);
             else if (seal.some(Boolean)) both(c, 'good', null, TXT.seal);
             else if (ns === 1) both(c, 'bad', null, TXT.noSeal);
