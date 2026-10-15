@@ -420,6 +420,9 @@ const Tex = (() => {
     if (cache.has(kind)) return cache.get(kind);
     const p = core.gen(kind, PREVIEW);
     const out = { albedo: mkTex(p.A, PREVIEW), data: mkTex(p.D, PREVIEW), size: PREVIEW };
+    // shared by every world: an unloaded world never frees them (js/world/life.js)
+    Life.keep(out.albedo);
+    Life.keep(out.data);
     // shared uniforms: every material of this kind follows a later swap (see `external`)
     out.uAlb = { value: out.albedo };
     out.uDat = { value: out.data };
@@ -520,7 +523,7 @@ const Tex = (() => {
   const mat = (kind, opt = {}) => {
     const key = kind + JSON.stringify(opt);
     if (matCache.has(key)) return matCache.get(key);
-    const m = new THREE.MeshStandardMaterial({
+    const m = Life.keep(new THREE.MeshStandardMaterial({
       color: opt.color || '#ffffff',
       roughness: opt.rough != null ? opt.rough : 1,
       metalness: opt.metal || 0,
@@ -528,7 +531,7 @@ const Tex = (() => {
       emissiveIntensity: opt.emissiveIntensity != null ? opt.emissiveIntensity : 1,
       transparent: !!opt.transparent,
       opacity: opt.opacity != null ? opt.opacity : 1,
-    });
+    }));
     if (!hq() || !RC[kind]) {
       matCache.set(key, m);
       return m;
@@ -1108,7 +1111,7 @@ const Tex = (() => {
     }
     const t = new THREE.CanvasTexture(c);
     t.anisotropy = R_ANISO();
-    cardCache.set(key, t);
+    cardCache.set(key, Life.keep(t));
     return t;
   };
 
