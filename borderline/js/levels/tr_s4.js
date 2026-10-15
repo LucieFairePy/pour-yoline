@@ -32,6 +32,7 @@
     brakeP: 'Tenir le frein',
     braked: 'Frein tenu : les engrenages ralentissent, le bras s’arrête.',
     armHit: 'Le grand bras t’a balayé{e}. Il ne s’arrête que si quelqu’un tient un frein.',
+    spun: 'Sans frein, l’engrenage tourne trop vite : il t’a projeté{e}. Il faut que {mate} tienne un frein.',
     winds: {
       dame: 'Les courants. Toi seul{e} vois quand le vent souffle dans les colonnes. Dis à {mate} quand sauter. Toi, prends les anneaux (F).',
       valet:
@@ -1044,6 +1045,23 @@
         body.p.x += disc.x - disc.px;
         body.p.z += disc.z - disc.pz;
       }
+      // unbraked, the cogs spin too fast to ride: a moment on one and it throws you off toward the
+      // wall, so the climb really needs the other one on a brake (held, it changes nothing)
+      if (disc && x.stage === 1 && !(x.brk || []).length) {
+        local.spinT = (local.spinT || 0) + dt;
+        if (local.spinT > 0.15) {
+          local.spinT = 0;
+          const l = Math.hypot(q.x, q.z) || 1;
+          body.v.set((q.x / l) * 7, 5, (q.z / l) * 7);
+          body.grounded = false;
+          Sound.play('thud', body.p.clone());
+          Cam.shake = Math.max(Cam.shake, 0.25);
+          if (!local.said.spun) {
+            local.said.spun = true;
+            HUD.say(TX.spun, T.master, 3000);
+          }
+        }
+      } else local.spinT = 0;
       // the cogs moved after this frame's physics: one that slid into the player would make the
       // next physics step shove them under it. Settle that here: low enough, they climb onto it;
       // otherwise the cog pushes them aside.
