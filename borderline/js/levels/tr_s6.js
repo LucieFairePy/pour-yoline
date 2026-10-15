@@ -31,6 +31,9 @@
     leverB: 'Le levier de l’îlot tient. Le Givre ne fond pas tout de suite : reviens par le pont.',
     gate: 'La porte s’ouvre. Descendez au quai.',
     leverP: 'Tirer le levier',
+    // each lever answers one kit (the Dame could also reach the islet by the low stones)
+    leverOwn: { a: 'dame', b: 'valet' },
+    notMine: 'Ce levier-là, c’est celui de {mate}.',
     board: 'Le radeau d’obsidienne. Montez dessus tous les deux.',
     go: 'Penchez-vous ensemble pour gouverner : tous les deux à gauche, il vire à gauche. Évitez les rochers et les chutes de lave.',
     steer: 'Seul{e}, tu ne le fais tourner qu’à moitié. Il faut être deux du même côté.',
@@ -47,7 +50,7 @@
     },
     heart: {
       dame: 'Le cœur de magma est à nu. Quand {mate} l’a givré, vise-le : il ne refroidit pas longtemps.',
-      valet: 'Le cœur de magma est à nu. Deux givres (F) le refroidissent : frappez tous les deux tant qu’il est bleu. Ensuite il brûle plus fort un moment.',
+      valet: 'Le cœur de magma est à nu, trop haut pour l’épée. Deux givres (F) le refroidissent : {mate} tire tant qu’il est bleu. Ensuite il brûle plus fort un moment.',
     },
     hot: 'Trop chaud : ça ricoche. Il faut d’abord le givre.',
     cooled: 'Refroidi ! Frappez maintenant.',
@@ -1281,13 +1284,19 @@
     },
     action(c, who, d) {
       const x = c.S.x;
-      if (d.a === 'hit') Enemies.damage(d.id, d.dmg, d.stun || 0, !!d.weak);
+      if (d.a === 'hit') {
+        // the Titan's heart and his shoulder plates are out of the sword's reach: the rifle's
+        // (the sword still breaks the cooled fist plates when they rest on the ground)
+        const e = Enemies.list.get(d.id);
+        const high = e && (e.type === 'titan' || (e.type === 'plaque' && e.k < 2));
+        if (!(who === 'valet' && high)) Enemies.damage(d.id, d.dmg, d.stun || 0, !!d.weak);
+      }
       if (d.a === 'revive') {
         const target = who === 'dame' ? 'valet' : 'dame';
         if (target === c.role) Combat.revived();
         else c.send('revived');
       }
-      if (d.a === 'lev' && x.stage === 1 && (d.id === 'a' || d.id === 'b')) {
+      if (d.a === 'lev' && x.stage === 1 && (d.id === 'a' || d.id === 'b') && TX.leverOwn[d.id] === who) {
         if (!x.lev || x.lev[d.id] == null) c.set((s) => (s.x.lev = { ...(s.x.lev || {}), [d.id]: +local.clk.toFixed(2) }));
       }
       if (d.a === 'frost') {
@@ -1525,6 +1534,10 @@
       if (prompt) return prompt;
       if (x.stage === 1) {
         const id = ['a', 'b'].find((k) => W.nearLever(q, k));
+        if (id && !(x.lev && x.lev[id] != null) && TX.leverOwn[id] !== r) {
+          if (Input.pressed('interact')) HUD.say(TX.notMine, T.master, 2000);
+          return ['E', TX.leverP, false];
+        }
         if (id && !(x.lev && x.lev[id] != null)) {
           if (Input.pressed('interact')) {
             c.act({ a: 'lev', id });
