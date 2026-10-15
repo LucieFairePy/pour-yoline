@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BORDERLINE · labo assets</title>
+<meta name="robots" content="noindex">
+</head>
+<body style="background:#07060c;color:#ccc;font:14px monospace">
+<p>Chargement du labo…</p>
+<script>
+// The asset lab runs the real game page (index.html) with the lab scripts added before main.js,
+// so it always tests the current game. Rooms: ?lab=sword | grapple | veil | stone, ?ext=0 for the
+// current hand-made version, ?ext=1 (default) for the external assets. See js/lab/lab.js.
+fetch('index.html', { cache: 'no-store' })
+  .then(function (r) { return r.text(); })
+  .then(function (t) {
+    var add = '';
+    if (t.indexOf('js/core/assets.js') < 0) add += '<script src="js/core/assets.js"><\/script>';
+    if (t.indexOf('js/game/assetfx.js') < 0) add += '<script src="js/game/assetfx.js"><\/script>';
+    add += '<script src="js/lab/lab.js"><\/script>';
+    t = t.replace('<script src="js/main.js"><\/script>', add + '<script src="js/main.js"><\/script>');
+    document.open();
+    document.write(t);
+    document.close();
+  });
+</script>
+</body>
+</html>

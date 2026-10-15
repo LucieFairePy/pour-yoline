@@ -420,6 +420,10 @@ const Tex = (() => {
     if (cache.has(kind)) return cache.get(kind);
     const p = core.gen(kind, PREVIEW);
     const out = { albedo: mkTex(p.A, PREVIEW), data: mkTex(p.D, PREVIEW), size: PREVIEW };
+    // shared uniforms: every material of this kind follows a later swap (see `external`)
+    out.uAlb = { value: out.albedo };
+    out.uDat = { value: out.data };
+    out.uMul = { value: 1 };
     cache.set(kind, out);
     const ws = workers();
     if (ws.length) {
@@ -470,8 +474,9 @@ const Tex = (() => {
     const bump = opt.bump != null ? opt.bump : 1;
     m.userData.tri = { kind };
     m.onBeforeCompile = (sh) => {
-      sh.uniforms.tAlb = { value: T.albedo };
-      sh.uniforms.tDat = { value: T.data };
+      sh.uniforms.tAlb = T.uAlb;
+      sh.uniforms.tDat = T.uDat;
+      sh.uniforms.triMul = T.uMul;
       sh.uniforms.triScale = { value: scale };
       sh.uniforms.triBump = { value: bump * 0.05 };
       sh.vertexShader = sh.vertexShader
@@ -497,6 +502,7 @@ const Tex = (() => {
           uniform sampler2D tAlb;
           uniform sampler2D tDat;
           uniform float triScale;
+          uniform float triMul;
           uniform float triBump;
           vec3 triW() {
             vec3 w = pow(abs(normalize(vTriN)), vec3(4.0));
@@ -504,7 +510,7 @@ const Tex = (() => {
           }
           vec4 triSample(sampler2D t) {
             vec3 w = triW();
-            vec3 p = vTriP * triScale;
+            vec3 p = vTriP * triScale * triMul;
             return texture2D(t, p.zy) * w.x + texture2D(t, p.xz) * w.y + texture2D(t, p.xy) * w.z;
           }`,
         )
@@ -1011,5 +1017,24 @@ const Tex = (() => {
     return t;
   };
 
-  return { mat, build, card, isRed, ready, kinds: Object.keys(RC), RED, BLACK };
+  /**
+   * swap a kind's procedural maps for external ones (js/core/assets.js), same channel layout:
+   * albedo, and data (R = height, G = roughness). mul scales the tiling (external maps cover a
+   * real-world size that differs from the recipe's). Every material of the kind follows at once.
+   */
+  const external = (kind, albedo, data, mul = 1) => {
+    const T = build(kind);
+    [albedo, data].forEach((t) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = R_ANISO();
+      t.needsUpdate = true;
+    });
+    T.uAlb.value = albedo;
+    T.uDat.value = data;
+    T.uMul.value = mul;
+    T.size = Infinity;
+    T.external = true;
+  };
+
+  return { mat, build, card, isRed, ready, external, kinds: Object.keys(RC), RED, BLACK };
 })();
