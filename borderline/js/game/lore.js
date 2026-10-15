@@ -235,6 +235,19 @@ const Lore = (() => {
       ['Une tour plus haute que les nuages, au cœur de la tempête. Tout en haut, la Cour.'],
       'Au sommet, l’orage se tait. Douze figures vous attendent, autour de quatre tables : la Cour.',
     ],
+    // the ♦ table of the Cour
+    dV: [
+      ['La table de Carreau, dans un observatoire de verre et de laiton. Ici, on joue avec la tête.'],
+      'Le Valet s’incline. Derrière lui, la galerie de sa Dame brille de miroirs.',
+    ],
+    dD: [
+      ['La Galerie des Prismes. La Dame de Carreau aime la lumière, surtout quand elle se perd.'],
+      'Le rayon touche le cristal. Au bout de la galerie, une coupole s’ouvre sur le Roi.',
+    ],
+    dK: [
+      ['Sous la coupole, le Roi de Carreau garde un code. Il ne le dira qu’en morceaux.'],
+      'Les trois figures de Carreau ont posé leurs cartes. Une table de la Cour est tombée.',
+    ],
     // the ♣ table of the Cour (the Roi's trial id is cK: cR is Le Caveau)
     cV: [
       ['La table de Trèfle, dans une salle de cordes et de poulies. Ici, rien ne se fait seul.'],
