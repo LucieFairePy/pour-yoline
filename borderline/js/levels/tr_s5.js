@@ -23,6 +23,10 @@
     gateA: 'La grille s’ouvre quand {mate} est sur la passerelle.',
     gateB: 'La grille s’ouvre quand {mate} est sur la passerelle de droite.',
     gateAme: 'La grille s’ouvre dès que tu es sur la passerelle.',
+    notMine: {
+      valet: 'La passerelle, c’est pour {mate}. Toi, tu cours en bas.',
+      dame: 'Cette passerelle, c’est pour {mate}. À toi de courir en bas.',
+    },
     hit: 'Touché{e}. Retour au dernier repère.',
     drum: 'Le tambour ne se lève que si on le bloque d’en haut.',
     jamP: 'Bloquer {n} (4 s)',
@@ -32,13 +36,13 @@
     jammed: '{N} bloqué{s} ! 4 secondes.',
     swap: 'Mi-chemin. On échange : l’autre passerelle, l’autre couloir.',
     armory: {
-      dame: 'L’armurerie. Ton fusil abat les lames volantes et les duellistes. Les porte-boucliers, seul {mate} peut briser leur garde : achève-les ensuite.',
-      valet: 'L’armurerie. Ton épée brise les boucliers (clic gauche) ; {mate} achève au fusil. Relevez-vous l’un l’autre (maintiens E).',
+      dame: 'L’armurerie. Ton fusil abat les lames volantes. Les duellistes parent les balles : c’est l’épée de {mate}. Les porte-boucliers : {mate} brise leur garde, tu les achèves.',
+      valet: 'L’armurerie. Ton épée abat les duellistes et brise les boucliers (clic gauche) ; les lames volantes, c’est le fusil de {mate}. Relevez-vous l’un l’autre (maintiens E).',
     },
     waves: ['Les Lames volantes', 'Les Duellistes', 'Les Porte-Boucliers'],
     waveSay: [
-      'Les lames volantes. Elles visent, puis foncent : la ligne rouge, c’est leur trajet.',
-      'Les duellistes. Ils se fendent en ligne droite, puis restent ouverts un instant.',
+      'Les lames volantes : hors de portée de l’épée, c’est le fusil. Elles visent, puis foncent : la ligne rouge, c’est leur trajet.',
+      'Les duellistes parent les balles : c’est l’épée. Ils se fendent en ligne droite, puis restent ouverts un instant.',
       'Les porte-boucliers. Les balles glissent dessus : l’épée d’abord.',
     ],
     cleared: 'L’armurerie se tait. La porte de la forge s’ouvre.',
@@ -259,6 +263,8 @@
   Enemies.define('lame', {
     stats: { hp: 36, speed: 5, radius: 0.6, hitR: 0.8, height: 1.4, reach: 3.0, stunP: 1.6, dieColor: '#ffb070' },
     model: lameModel,
+    // it flies above the sword: a blow only knocks it out of its dash; the rifle brings it down
+    mult: (e, weak, stun) => (stun ? 0 : 1),
     sim(e, dt, players, targets) {
       e.t = (e.t || 0) - dt;
       if (!e.st) e.st = 0;
@@ -531,18 +537,21 @@
   Enemies.define('duelliste', {
     stats: { hp: 70, speed: 3.2, radius: 0.7, hitR: 0.9, height: 2.2, reach: 3.2, stunP: 2.2, dieColor: '#ffb070' },
     model: knightModel(false),
+    // its blade parries the bullets: the sword's work
+    mult: (e, weak, stun) => (stun ? 1 : 0),
     sim: knightSim({ speed: 3.2, range: 6.5, tel: 0.75, len: 7.5, dash: 30, w: 0.9, dmg: 18, kb: 8, open: 1.2, cd: 2.4, fx: 'lunge' }),
     render: knightRender,
   });
   Enemies.define('bouclier', {
     stats: { hp: 90, speed: 2.4, radius: 0.85, hitR: 1.05, height: 2.5, reach: 3.4, stunP: 3.4, dieColor: '#ff5f8a' },
     model: knightModel(true),
-    // the shield turns bullets; a sword blow breaks the guard (the engine stuns it), then all hurts
+    // the shield turns bullets; a sword blow breaks the guard (the engine stuns it), then the
+    // rifle finishes it (the sword itself does not hurt it)
     mult(e, weak, stun) {
       if (stun) {
         if (!e.broke) bfx('break', e.pos);
         e.broke = true;
-        return 0.5;
+        return 0;
       }
       if (e.stun > 0) return 1.2;
       e.broke = false;
@@ -713,11 +722,11 @@
     model: bossModel,
     // His plates stop bullets. Sword blows crack his guard (4, then 5, within a few seconds); a
     // broken guard stuns him, the cage over his heart opens and the heart takes the rifle at 3x.
-    // One opening is worth at most 12% of his life.
+    // One opening is worth at most 12% of his life. The sword itself never hurts him.
     mult(e, weak, stun) {
       if (stun) {
-        if (e.stun > 0) return 1;
-        if (e.cool > 0) return 0.3;
+        if (e.stun > 0) return 0;
+        if (e.cool > 0) return 0;
         e.guard = (e.guard || 0) + 1;
         e.guardT = 4;
         if (e.guard >= GUARD[e.ph || 1]) {
@@ -727,7 +736,7 @@
           e.st = 6;
           bfx('stun', e.pos);
         } else bfx('crack', e.pos);
-        return 0.3;
+        return 0;
       }
       if (e.stun > 0) {
         e.win = (e.win || 0) + (weak ? 27 : 9);
@@ -1163,7 +1172,7 @@
                 s.x.lockC = false;
               });
             else {
-              const comp = [null, ['lame', 'lame', 'lame', 'lame'], ['duelliste', 'duelliste', 'duelliste', 'lame', 'lame'], ['bouclier', 'bouclier', 'duelliste', 'duelliste', 'lame', 'lame']][w];
+              const comp = [null, ['lame', 'lame', 'lame', 'duelliste'], ['duelliste', 'duelliste', 'duelliste', 'lame', 'lame'], ['bouclier', 'bouclier', 'duelliste', 'duelliste', 'lame', 'lame']][w];
               const off = Math.floor(Math.random() * 8);
               const tok = ++local.waveTok;
               comp.forEach((type, k) => {
@@ -1284,10 +1293,21 @@
       const TT = local.T;
       // the shared clock, readable by the world (and by the test bots)
       W.T = TT;
+      // the runner may not take the watcher's stairs (stage 1: the Valet runs, stage 2: the Dame)
+      const lockA = x.stage === 1 && r === 'valet';
+      const lockB = x.stage <= 2 && r === 'dame';
+      W.lock(lockA, lockB);
       W.update(dt, t, x, r, TT);
       Enemies.render(dt, t);
       const body = Player.body;
       const q = W.rel(body.p);
+      if ((lockA && W.nearStairs(q, 'A')) || (lockB && W.nearStairs(q, 'B'))) {
+        const now = performance.now();
+        if (now - (local.said.notMine || 0) > 6000) {
+          local.said.notMine = now;
+          HUD.say(TX.notMine[r], T.master, 2400);
+        }
+      }
       local.inv = Math.max(0, local.inv - dt);
       // ---- the hall: the runner's own blades ----
       if ((x.stage === 1 || x.stage === 2) && local.inv <= 0 && W.inLane(q, x.stage)) {

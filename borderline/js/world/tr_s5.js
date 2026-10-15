@@ -583,6 +583,8 @@ const TrS5 = (() => {
   const trapViews = {}; // id -> { items: [...], lamps: [...] }
   const levers = {};
   const gates = {};
+  // the watcher's stairs, closed to the runner (switched on per client by the level)
+  const locks = {};
   let embers = [];
   let screen = null;
   let screen2 = null;
@@ -978,6 +980,11 @@ const TrS5 = (() => {
     // left wall of the lane, half B, and the seal behind the mid landing
     K.solid(-3.3, HALL_H / 2, -94, 0.6, HALL_H, 56, M.brick);
     K.solid(-5.8, HALL_H / 2, -66.3, 4.4, HALL_H, 0.6, M.brick);
+    // each gallery is the watcher's: both stair flights led a runner along the gallery, past the
+    // whole lane (invisible, camera-ignored; switched on for the runner by the level)
+    locks.A = K.collider(-5.65, 6, 6.1, 4.7, 12, 6.4, { dyn: true, tag: 'nocam' });
+    locks.B = K.collider(5.7, 6, -59.75, 4.6, 12, 5.7, { dyn: true, tag: 'nocam' });
+    locks.A.on = locks.B.on = false;
     // stairs down from gallery B into the antechamber
     for (let i = 0; i < 11; i++) {
       const top = GY - (i + 1) * 0.375;
@@ -1676,8 +1683,15 @@ const TrS5 = (() => {
       }
       return false;
     },
+    // the runner's side of the stairs: lock(aOn, bOn)
+    lock(a, b) {
+      if (locks.A) locks.A.on = !!a;
+      if (locks.B) locks.B.on = !!b;
+    },
+    nearStairs: (q, k) => (k === 'A' ? q.x < -2.6 && q.z > 2.2 && q.z < 10 : q.x > 2.7 && q.z < -56.2 && q.z > -63.2) && q.y < 5,
     sleep() {
       Object.values(gates).forEach((g) => (g.b.on = false));
+      Object.values(locks).forEach((b) => (b.on = false));
       group.visible = false;
     },
     wake() {
