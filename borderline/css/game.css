@@ -1013,6 +1013,138 @@ body.rec #cine .cskip {
   display: none;
 }
 
+#cut {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+}
+
+#cut .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: max(0px, calc((100vh - 100vw / 2.39) / 2));
+  background: #000;
+}
+
+#cut .bar.top {
+  top: 0;
+}
+
+#cut .bar.bottom {
+  bottom: 0;
+}
+
+#cut .csub {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(0px, (100vh - 100vw / 2.39) / 2) + 4vh);
+  transform: translateX(-50%);
+  width: min(900px, 86vw);
+  text-align: center;
+  font-family: var(--f-display);
+  font-style: italic;
+  font-size: clamp(1.1rem, 2.4vw, 2rem);
+  color: #fbefe6;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.01em;
+}
+
+#cut .ctitle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+#cut .ctitle .big {
+  font-family: var(--f-display);
+  font-size: clamp(3rem, 10vw, 8rem);
+  letter-spacing: 0.08em;
+  color: #fbefe6;
+  text-shadow: 0 0 40px rgba(255, 106, 150, 0.45);
+}
+
+#cut .ctitle .small {
+  font-family: var(--f-mono);
+  font-size: clamp(0.7rem, 1.2vw, 0.95rem);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #e8bd84;
+}
+
+#cut .cskip {
+  position: absolute;
+  right: 1.6rem;
+  bottom: calc(max(0px, (100vh - 100vw / 2.39) / 2) - 2.4rem);
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(251, 239, 230, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#cut .cskip i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: #ff5f8a;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+
+#cut .csub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+#cut .csub p {
+  margin: 0;
+}
+
+#cut .cwho {
+  font-family: var(--f-mono);
+  font-style: normal;
+  font-size: 0.68rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #e8bd84;
+}
+
+#cut .cwho:empty {
+  display: none;
+}
+
+#cut .ctitle {
+  transform: translate(-50%, -50%);
+}
+
+#cut .cwait {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(251, 239, 230, 0.6);
+}
+
 #loading {
   position: fixed;
   inset: 0;

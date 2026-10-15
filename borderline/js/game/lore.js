@@ -125,6 +125,8 @@ const Lore = (() => {
       ],
       'Sur l’île-cœur, levez les yeux : votre cœur est là, juste au-dessus des nuages. On pourrait presque le toucher.',
     ],
+    // the saucer (boss): its lines come with the new story
+    ufo: [[], ''],
     // Monde 3 · La Cité des Rouages
     d1: [
       [

@@ -69,7 +69,9 @@ const Story = (() => {
     final: 8,
   };
 
-  const checkpoint = (ph) => CHECKPOINTS.includes(ph) || !!Trials.byPhase[ph];
+  // a cinematic (phase cut) is a checkpoint too: reloading during it plays it again,
+  // once it is over the save has moved on and it never replays
+  const checkpoint = (ph) => CHECKPOINTS.includes(ph) || ph === 'cut' || !!Trials.byPhase[ph];
 
   const set = (fn) => {
     fn(S);
@@ -116,6 +118,13 @@ const Story = (() => {
       s.cards = [...new Set([...Trials.cardsOf(s.done), ...story])];
     }
     s.x = PH[s.phase] && PH[s.phase].init ? PH[s.phase].init(s) : {};
+    if (s.phase === 'cut') {
+      if (p && p.cut && PH[p.after]) Object.assign(s.x, { cut: p.cut, after: p.after });
+      else {
+        s.phase = 'city';
+        s.x = {};
+      }
+    }
     return s;
   };
 
@@ -183,6 +192,8 @@ const Story = (() => {
   };
 
   const setKit = (ph, announce) => {
+    // a cinematic keeps the kits of the épreuve before it: the next one announces its own
+    if (ph === 'cut') return;
     const was = role;
     role = kitOf(me, ph);
     other = role === 'dame' ? 'valet' : 'dame';
@@ -248,6 +259,7 @@ const Story = (() => {
             clues: S.clues,
             seen: S.seen,
             cards: S.cards,
+            ...(S.phase === 'cut' ? { cut: S.x.cut, after: S.x.after } : {}),
           },
         });
       apply(S);

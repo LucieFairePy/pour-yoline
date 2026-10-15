@@ -547,6 +547,17 @@ const Sound = (() => {
     get hasVoice() {
       return !!voice;
     },
+    // a cinematic's own score (js/cine/cut.js), on the master bus
+    score(fn) {
+      if (!ctx) init();
+      if (!ctx) return null;
+      return fn(ctx, master);
+    },
+    // the music of the game steps back while a cinematic plays
+    duck(on) {
+      if (!ctx) return;
+      music.gain.setTargetAtTime(on ? 0 : 0.32, ctx.currentTime, 0.35);
+    },
     cine(dur) {
       if (!ctx) init();
       if (!ctx || typeof IntroScore === 'undefined') return null;

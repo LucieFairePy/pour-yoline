@@ -252,10 +252,17 @@
     host(c) {
       Cards.award(c, Cards.rewardOf(c.S.x.card));
       const id = c.S.x.card;
+      // an épreuve may be followed by a cinematic (js/cine/cut.js: Cut.after), then straight
+      // into what comes next
+      const cut = typeof Cut !== 'undefined' ? Cut.after(id) : null;
       if (c.phaseT > 11)
-        c.goto('city', (s) => {
+        c.goto(cut ? 'cut' : 'city', (s) => {
           s.done = [...new Set([...(s.done || []), id])];
           s.chapter = s.done.length;
+          if (!cut) return;
+          const next = Trials.next(s.done);
+          s.x.cut = cut;
+          s.x.after = next ? next.phase : 'city';
         });
     },
   });

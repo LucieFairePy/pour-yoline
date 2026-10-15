@@ -21,6 +21,8 @@ const Trials = (() => {
     [2, 'c1', 'c3', 'tr_c1', 'Le Câble', true],
     [2, 'c3', 'c5', 'tr_c3', 'La Bascule', true],
     [2, 'h5', 'h6', 'tr_h5', 'La Chute', true],
+    // the end of the world: the heart was a lure, the saucer comes down (boss)
+    [2, 'ufo', 's10', 'tr_ufo', 'La Soucoupe', false],
     // Monde 3 · La Cité des Rouages
     [3, 'd1', 'd3', 'tr_d1', 'Les Interrupteurs', false],
     [3, 'c2', 'c4', 'tr_c2', 'Le Téléphone', false],
@@ -44,12 +46,11 @@ const Trials = (() => {
     [5, 's5', 's8', 'tr_s5', 'Les Lames', false],
     [5, 'cR', 'c7', 'raid', 'Le Caveau', false, 'cR'],
     [5, 's6', 's9', 'tr_s6', 'Le Sol de lave', true],
-    // Monde 6 · La Tempête: the storm over Terre 39, the four 10s at the doors of the Cour,
-    // then the Cour itself (the twelve faces: the Veilleurs in person)
+    // Monde 6 · La Tempête: the storm over Terre 39, three 10s at the doors of the Cour (♠ 10 is
+    // the saucer, at the end of world 2), then the Cour itself (the twelve faces: the Veilleurs)
     [6, 'h8', 'h9', 'tr_h8', 'L’Averse', true],
     [6, 'c7', 'c9', 'tr_c7', 'Le Pilote', true],
     [6, 'h10b', 'h10', 'tr_h10', 'Le Sacrifice', false],
-    [6, 's10', 's10', 'tr_s10', 'Le Colisée', false],
     [6, 'd10', 'd10', 'tr_d10', 'Le Lac gelé', true],
     [6, 'c10', 'c10', 'tr_c10', 'La Tour de Babel', false],
     [6, 'sV', 'sV', 'tr_sV', 'Le Valet de Pique', true],

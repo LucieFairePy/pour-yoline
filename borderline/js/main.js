@@ -82,7 +82,8 @@ const Game = (() => {
       fpsT = 0;
       status();
     }
-    R.render();
+    // a cinematic (js/cine/cut.js) draws its own scene instead of the game's
+    if (!Cut.render(dt)) R.render();
   };
 
   const start = async (r, progress) => {
@@ -111,7 +112,8 @@ const Game = (() => {
     requestAnimationFrame(loop);
   };
 
-  const overlay = () => !$('memory').hidden || !$('letter').hidden || !$('credits').hidden;
+  const overlay = () =>
+    !$('memory').hidden || !$('letter').hidden || !$('credits').hidden || Cut.on;
   $('gl').addEventListener('click', () => {
     if (running && !paused && !overlay()) Input.lock();
   });

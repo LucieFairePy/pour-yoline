@@ -120,7 +120,7 @@ const CineKit2 = (() => {
       vertexShader:
         'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: `
-        uniform float uTime, uCharge;
+        uniform float uTime, uCharge, uRage;
         varying vec2 vUv;
         ${HASH}
         void main() {
@@ -132,6 +132,7 @@ const CineKit2 = (() => {
           vec3 warm = vec3(1.0, 0.78, 0.55);
           vec3 cool = vec3(0.55, 0.9, 1.0);
           vec3 c = mix(cool, warm, step(0.7, h1(id)));
+          c = mix(c, vec3(1.0, 0.14, 0.2), uRage);
           float fl = 0.85 + 0.15 * sin(uTime * 3.0 + id);
           vec3 frame = vec3(0.06, 0.06, 0.09);
           vec3 col = mix(frame, c * (1.6 + uCharge * 2.0) * fl, win * lit);
@@ -144,7 +145,8 @@ const CineKit2 = (() => {
 
   const alienShip = () => {
     const g = new THREE.Group();
-    const U = { uTime: { value: 0 }, uCharge: { value: 0 } };
+    // uRage 0..1 turns every light of the ship red (the saucer of the boss, furious)
+    const U = { uTime: { value: 0 }, uCharge: { value: 0 }, uRage: { value: 0 } };
     const hull = panelHull({ glyph: 1, color: '#e6e4ee', metal: 0.72, rough: 0.3 });
     const hullDark = panelHull({ color: '#6c6f86', metal: 0.9, rough: 0.38, glyph: 1 });
     const V2 = (x, y) => new THREE.Vector2(x, y);
@@ -349,7 +351,7 @@ const CineKit2 = (() => {
       new THREE.TorusGeometry(13.6, 0.26, 24, 256).rotateX(Math.PI / 2),
       ringMat,
     );
-    const runeU = { uTime: U.uTime, uCharge: U.uCharge };
+    const runeU = { uTime: U.uTime, uCharge: U.uCharge, uRage: U.uRage };
     const runes = new THREE.Mesh(
       new THREE.TorusGeometry(13.6, 0.275, 8, 256, TAU).rotateX(Math.PI / 2),
       new THREE.ShaderMaterial({
@@ -361,7 +363,7 @@ const CineKit2 = (() => {
         vertexShader:
           'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
         fragmentShader: `
-          uniform float uTime, uCharge;
+          uniform float uTime, uCharge, uRage;
           varying vec2 vUv;
           ${HASH}
           void main() {
@@ -371,6 +373,7 @@ const CineKit2 = (() => {
             float on = step(0.45, h1(id)) * step(0.2, f) * step(f, 0.7);
             float band = smoothstep(0.42, 0.5, vUv.y) * smoothstep(0.58, 0.5, vUv.y);
             vec3 c = mix(vec3(1.0, 0.42, 0.65), vec3(0.5, 0.9, 1.0), step(0.75, h1(id + 9.0)));
+            c = mix(c, vec3(1.0, 0.12, 0.16), uRage);
             float k = on * band * (0.8 + uCharge * 2.5);
             gl_FragColor = vec4(c * k * 2.0, k);
           }
@@ -437,7 +440,7 @@ const CineKit2 = (() => {
       petals.push(pg);
     }
 
-    const BU = { uTime: U.uTime, uOn: { value: 0 } };
+    const BU = { uTime: U.uTime, uOn: { value: 0 }, uRage: U.uRage };
     const beam = new THREE.Mesh(
       new THREE.CylinderGeometry(2.5, 9.5, 40, 128, 24, true).translate(0, -20, 0),
       new THREE.ShaderMaterial({
@@ -458,7 +461,7 @@ const CineKit2 = (() => {
           }
         `,
         fragmentShader: `
-          uniform float uTime, uOn;
+          uniform float uTime, uOn, uRage;
           varying vec2 vUv;
           varying float vFres;
           ${HASH}
@@ -468,7 +471,7 @@ const CineKit2 = (() => {
             float streak = pow(abs(sin(vUv.x * 3.14159 * 24.0 + uTime * 0.6 + sin(y * 9.0 + uTime) * 0.4)), 10.0);
             float edge = pow(1.0 - vFres, 2.0);
             float a = (0.12 + edge * 0.45 + rings * 0.25 + streak * 0.18) * smoothstep(0.0, 0.3, y) * (0.55 + 0.45 * y) * (1.0 - smoothstep(0.8, 1.0, y) * 0.65) * uOn;
-            gl_FragColor = vec4(vec3(0.62, 0.95, 1.0) * a, a);
+            gl_FragColor = vec4(mix(vec3(0.62, 0.95, 1.0), vec3(1.0, 0.25, 0.3), uRage) * a, a);
           }
         `,
       }),
@@ -480,16 +483,27 @@ const CineKit2 = (() => {
     g.add(beamLight);
 
     const all = [hull, hullDark, petalMat];
+    const tints = [lc, lp, lw].map((m) => [m, m.color.clone()]);
+    const RED = new THREE.Color('#ff2a3a').multiplyScalar(3.4);
     return {
       group: g,
       lights,
       ring,
       beam,
+      beamLight,
+      hatchGlow,
+      petals,
+      core,
       BU,
       U,
-      update(t, { hatch = 0, charge = 0 } = {}) {
+      update(t, { hatch = 0, charge = 0, rage = 0 } = {}) {
         U.uTime.value = t;
         U.uCharge.value = charge;
+        if (rage !== U.uRage.value) {
+          U.uRage.value = rage;
+          tints.forEach(([m, c]) => m.color.copy(c).lerp(RED, rage));
+          beamLight.color.set('#9fefff').lerp(RED, rage);
+        }
         all.forEach((m) => (m.userData.U.uTime.value = t));
         core.rotation.set(t * 0.4, t * 0.7, 0);
         coreRing.rotation.set(Math.PI / 2 + Math.sin(t * 0.8) * 0.4, t * 0.9, 0);
@@ -503,7 +517,9 @@ const CineKit2 = (() => {
         });
         hatchGlow.visible = hatch > 0.02;
         engines.forEach((e) =>
-          e.material.color.setRGB(0.75, 0.95, 1).multiplyScalar(2 + charge * 4),
+          e.material.color
+            .setRGB(lerp(0.75, 1, rage), lerp(0.95, 0.2, rage), lerp(1, 0.25, rage))
+            .multiplyScalar(2 + charge * 4),
         );
         beamLight.intensity = BU.uOn.value * 3.5;
         tip.visible = Math.sin(t * 4) > -0.2;
