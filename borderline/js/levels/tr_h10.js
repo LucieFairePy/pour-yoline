@@ -104,7 +104,7 @@
     // the Joker's own lines (doubt, playful, never cruel; he never says yes)
     j: {
       hello: 'Bienvenue au Marché. Ici, tout se vend. Le temps, surtout.',
-      s1: 'Un raccourci : une seule porte, pour un seul. Elle mène tout droit à la Cour.',
+      s1: 'Un raccourci : une porte, tout droit à la Cour. Plus d’épreuves.',
       s1b: ['L’offre ne durera pas.', 'Un seul pas, et la partie est finie.', 'Pourquoi jouer, quand on peut gagner ?', 'C’est gratuit. Enfin… presque.'],
       took1: 'Tout droit… au début. Je n’ai jamais dit où.',
       no1: 'Non ? Comme vous voudrez. Le marché continue.',
@@ -128,7 +128,7 @@
     title: TITLE,
     sub: 'Épreuve ♥ · réussie',
     lines: [
-      'Le Joker vendait des raccourcis : une porte pour un seul, une carte gratuite, la réponse.',
+      'Le Joker vendait des raccourcis : une porte sans épreuve, une carte gratuite, la réponse.',
       'Il prouvait, il pressait, il mentait sur l’heure.',
       'On a dit non. Ensemble, et au même instant.',
     ],

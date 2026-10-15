@@ -2,7 +2,7 @@
 // the storm. A causeway of floating rock islands carrying an ivory market hall on a harlequin floor,
 // under iron arches and a torn glass roof; below, a sea of clouds lit from inside by the lightning;
 // above, the violet tear of the rift. Four stations, one shortcut each:
-//  1. Le Raccourci: the Joker's door « pour un seul », two « Non » plates, the gate behind
+//  1. Le Raccourci: the Joker's door « sans épreuve », two « Non » plates, the gate behind
 //  2. La Preuve: a round place, four curtained booths (one heart, three Joker boxes)
 //  3. Les Loges: two booths split by a wall, levers « Prendre » / « Non », a clock in each
 //  4. La Porte: the door of the Cour, three seals, a glitching wall between two « Non » lecterns
@@ -1170,7 +1170,7 @@ const H10 = (() => {
     stall(-6.2, 0, 54, -Math.PI / 2, 'Sauter la partie', 'pourquoi jouer', false, 15);
     stall(6.2, 0, 54, Math.PI / 2, 'Gagner sans jouer', 'garanti', true, 16);
     [-1, 1].forEach((s) => wall(s * 7.9, 0, 39.5, 0.3, 4, 43));
-    // the Joker's door: a dais, a frame, the swirl « pour un seul »
+    // the Joker's door: a dais, a frame, the swirl « sans épreuve »
     box('stone', 0, 0.15, 47.2, 6, 0.3, 3.6);
     K.collider(0, 0.15, 47.2, 6, 0.3, 3.6);
     [-1, 1].forEach((s) => {
@@ -1183,7 +1183,7 @@ const H10 = (() => {
     portal.rotation.y = Math.PI;
     portal.renderOrder = 3;
     root.add(portal);
-    sign('Une porte · un seul', 'tout droit à la Cour', 0, 5.0, 47.05, Math.PI, 3.2, true);
+    sign('Une porte · sans épreuve', 'tout droit à la Cour', 0, 5.0, 47.05, Math.PI, 3.2, true);
     makePlate('dame', PLATES1.dame[0], 0, PLATES1.dame[1]);
     makePlate('valet', PLATES1.valet[0], 0, PLATES1.valet[1]);
     LIGHTS.push({ p: P(0, 2.4, 45.8), c: new THREE.Color('#ff3a7a'), i: 1.6, d: 14, portal: true });
