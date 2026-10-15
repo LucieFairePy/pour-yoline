@@ -1283,6 +1283,9 @@ const D6W = (() => {
     // balustrade along the pit (open at the catwalk)
     box(-1.25, 0.52, zp - 0.2, 41.5, 1.04, 0.25, darkWood);
     box(-1.25, 1.08, zp - 0.2, 41.5, 0.08, 0.34, gold, false);
+    // and an unseen wall above it: a double jump from the stalls over the pit reached the low
+    // exit wing of the two lights without any shadow (the walker goes in by the catwalk)
+    K.collider(-1.25, 7, zp - 0.2, 41.5, 14, 0.3, { tag: 'nocam' });
     // doors
     door(id + 'out', -22.5, 0, zp - 3, 0.4, 3.2, 3, 'x');
     door(id + 'exit', -22.5, r.ew, zw - 1.2, 0.4, 3, 2.1, 'x');
