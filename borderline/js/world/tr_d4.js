@@ -1400,9 +1400,13 @@ const D4 = (() => {
       sf.lamp.material.color.set(opened ? '#3fe08a' : sf.shake > 0 ? '#ff3b55' : '#a8324a').multiplyScalar(1.3);
     });
     // clues: the ink only for the Dame, the paintings only from their spot
+    // each clue redraws on its own: a wrong code changes only that safe's
     if (x.codes && clues.hour !== x.codes.h) {
       clues.hour = x.codes.h;
       drawClock(x.codes.h);
+    }
+    if (x.codes && clues.inkN !== x.codes.c) {
+      clues.inkN = x.codes.c;
       clues.ink.material = numMat(x.codes.c, '#c9a6ff');
     }
     clues.ink.visible = role === 'dame' && x.stage === 1;

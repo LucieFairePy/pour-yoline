@@ -13,7 +13,7 @@
       dame: 'La galerie des coffres · Quatre coffres, quatre codes cachés dans la salle. Ton coffre ♦ est sur le balcon : grappin (F).',
       valet: 'La galerie des coffres · Quatre coffres, quatre codes cachés dans la salle. Le coffre ♠ est sur la corniche : double saut.',
     },
-    r1rule: 'Molette : E pour tourner. Maintiens E pour ouvrir. Un mauvais code brouille la molette.',
+    r1rule: 'Molette : E pour tourner. Maintiens E pour ouvrir. Un mauvais code change la combinaison du coffre.',
     r1clues: [
       'L’horloge s’est arrêtée sur l’heure du coffre ♥.',
       'Les tableaux ne montrent leur chiffre que vus du bon endroit.',
@@ -21,7 +21,7 @@
     inkHint: 'Sur le tapis, de l’encre invisible : un chiffre et un ♣. Toi seul{e} le vois.',
     anaS: 'Depuis ici, le tableau d’en face montre un chiffre ♠. C’est le code du coffre de {mate}.',
     anaD: 'Depuis ici, le tableau d’en face montre un chiffre ♦. C’est le code du coffre de {mate}.',
-    wrong: 'Mauvais code. La molette se brouille.',
+    wrong: 'Mauvais code. Le coffre change de combinaison : relisez son indice.',
     opened: { h: 'Le coffre ♥ s’ouvre.', d: 'Le coffre ♦ s’ouvre.', s: 'Le coffre ♠ s’ouvre.', c: 'Le coffre ♣ s’ouvre.' },
     r1done: 'Les quatre coffres sont ouverts. Chaque rouage porte un chiffre. La grille s’ouvre.',
     r2: {
@@ -65,7 +65,13 @@
   const SWEEP_WARN = 1.6;
   const SWEEP_DUR = 3.6;
   const SYNC = 0.9;
-  const local = {
+  const LOCK_T = 4; // a safe stays shut that long after a wrong code
+  // the safe on the balcony is the Dame's, the one on the ledge the Valet's; the floor ones are anyone's
+  const SAFE_OF = { d: 'dame', s: 'valet' };
+  // each side's cranks belong to whoever stands there (♥ Dame, ♠ Valet)
+  const CRANK_OF = { L: 'dame', R: 'valet' };
+  // per-run state, rebuilt on every enter()
+  const fresh = () => ({
     stage: 0,
     hold: 0,
     holdS: null,
@@ -79,7 +85,8 @@
     grace: 0,
     msgCd: {},
     tlShown: '',
-  };
+  });
+  const local = fresh();
 
   const rnd9 = () => 1 + ((Math.random() * 9) | 0);
   const scrambleRings = (target) => target.map((t) => (t + 1 + ((Math.random() * 3) | 0)) % 4);
@@ -210,10 +217,10 @@
       },
     },
     async enter(c, first) {
+      for (const k in local) delete local[k];
+      Object.assign(local, fresh());
       if (!first) await fadeTo(true);
       D4.build();
-      local.stage = 0;
-      local.msgCd = {};
       c.spawn(D4.spawn(c.S.x.stage, c.role), 0);
       Player.killY = D4.O.y - 20;
       Player.checkpoint = () => D4.spawn(Story.S.x.stage, c.role);
@@ -322,6 +329,7 @@
     },
     action(c, who, d) {
       const x = c.S.x;
+      if ((d.a === 'dial' || d.a === 'try') && SAFE_OF[d.s] && SAFE_OF[d.s] !== who) return;
       if (d.a === 'dial' && x.stage === 1 && !x.open[d.s] && !(local.lockT[d.s] > 0)) {
         c.set((s) => (s.x.dial = { ...s.x.dial, [d.s]: (s.x.dial[d.s] % 9) + 1 }));
         Sound.play('tile');
@@ -336,12 +344,20 @@
           c.send('d4say', [TXT.opened[d.s], 2000]);
           HUD.say(TXT.opened[d.s], T.master, 2000);
         } else {
-          local.lockT[d.s] = 2.2;
+          local.lockT[d.s] = LOCK_T;
           D4.safes[d.s].shake = 0.6;
           c.send('d4shake', d.s);
           both(c, 'bad', pos);
-          say(c, TXT.wrong, 2000);
-          c.set((s) => (s.x.dial = { ...s.x.dial, [d.s]: 1 + ((Math.random() * 9) | 0) }));
+          say(c, TXT.wrong, 2600);
+          // no trying the nine values alone: a wrong code draws a new one (its clue redraws with it)
+          let code = rnd9();
+          while (code === x.dial[d.s] || code === x.codes[d.s]) code = rnd9();
+          let dial = rnd9();
+          while (dial === code) dial = rnd9();
+          c.set((s) => {
+            s.x.codes = { ...s.x.codes, [d.s]: code };
+            s.x.dial = { ...s.x.dial, [d.s]: dial };
+          });
         }
       }
       if (d.a === 'zap' && x.stage === 2) {
@@ -392,7 +408,7 @@
           }, 1400);
         }
       }
-      if (d.a === 'crank' && x.stage === 3) {
+      if (d.a === 'crank' && x.stage === 3 && CRANK_OF[d.side] === who) {
         const now = Game.clock.t;
         const other = d.side === 'L' ? 'R' : 'L';
         const key = d.ring + other;
@@ -547,6 +563,7 @@
           c.act({ a: 'swept', side: q.x < 0 ? 'L' : 'R', pos });
         }
         const cr = D4.nearCrank(q);
+        if (cr && CRANK_OF[cr.side] !== r) return ['E', 'Cette manivelle est pour {mate}'];
         if (cr) {
           if (Input.pressed('interact')) {
             cr.pend = SYNC;
