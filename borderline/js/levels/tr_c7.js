@@ -54,6 +54,8 @@
       nav: 'La faille se referme encore : pousse {mate} jusqu’au bassin. Les rochers qui tombent, la tourelle peut les briser. Puis guide son atterrissage sur le cœur.',
     },
     fast: 'Trop vite pour se poser : freine.',
+    idle: 'Le manche lâché, le vaisseau perd sa poussée : tiens-le !',
+    idleMate: '{mate} a lâché le manche : le vaisseau ralentit.',
     landed: 'Posés. Le cœur s’illumine.',
     card: 'La carte ' + CARD + ' est au milieu du cœur. Allez-y ensemble.',
     cp: 'Point de passage.',
@@ -681,6 +683,17 @@
     }
     S.boost = boost ? 1 : 0;
     S.brake = brake ? 1 : 0;
+    // nobody at the stick: after a few seconds the skiff loses its thrust and its assistance (the
+    // navigator can't fly it alone)
+    const active = Math.abs(m.x) > 0.1 || Math.abs(m.z) > 0.1 || boost || brake || Math.abs(local.mdy) > 1e-3 || Math.abs(local.mdp) > 1e-3;
+    S.idle = active || S.take > 0 ? 0 : (S.idle || 0) + dt;
+    const idle = S.idle > 4;
+    if (idle && !S.idleSaid) {
+      S.idleSaid = true;
+      HUD.say(TXT.idle, T.master, 2600);
+      c.send('c7say', [TXT.idleMate]);
+    }
+    if (!idle) S.idleSaid = false;
     // landed: settle onto the heart and stay
     if (S.landed) {
       S.landT += dt;
@@ -718,17 +731,21 @@
     const free = Math.abs(steer) < 0.12;
     let assist = free ? clamp(dy * 1.6, -0.9, 0.9) * (storm ? 0.6 : 0.9) : clamp(dy * 0.5, -0.3, 0.3);
     if (x.stage === 5) assist *= 0.3;
+    if (idle) assist = 0;
     const y0 = S.p.y - W.O.y;
     const side = S.u >= 0 ? 1 : -1;
     const lim = W.face(st, y0, side, local.frontS) - SHIP_R;
     const room = lim - Math.abs(S.u);
-    if (room < 9 && x.stage < 5) assist += side * (1 - Math.max(0, room) / 9) * 0.9;
+    if (room < 9 && x.stage < 5 && !idle) assist += side * (1 - Math.max(0, room) / 9) * 0.9;
     S.yawRate = damp(S.yawRate, steer * 1.25 + assist, 3.2, dt);
     S.yaw = wrapA(S.yaw + S.yawRate * dt);
     if (S.take <= 0) {
       let spT = brake ? 0 : boost ? BOOST : CRUISE;
       // in the closing rift, never slower than the walls
       if ((x.stage === 4 || x.stage === 5) && local.frontS != null && S.s - local.frontS < 40) spT = Math.max(spT, 27);
+      // the storm's wind carries the skiff: no creeping through it at a walk
+      if (storm) spT = Math.max(spT, 15);
+      else if (idle) spT = 0;
       S.speed = damp(S.speed, spT, brake ? 1.6 : boost ? 0.8 : 0.6, dt);
       const ceil = W.ceilAt(st);
       let vyT = climb * 11;
@@ -922,6 +939,7 @@
     V.speed = lerp(A[7], Bb[7], k);
     V.boost = Bb[9] & 1;
     V.brake = (Bb[9] >> 1) & 1;
+    V.idle = (Bb[9] >> 2) & 1;
     V.gear = lerp(A[10], Bb[10], Math.min(1, k));
     V.s = lerp(A[11], Bb[11], k);
     return true;
@@ -1215,7 +1233,8 @@
     for (; dn < W.debris.length; dn++) W.debris[dn].m.visible = W.debris[dn].trail.visible = false;
     W.bolt3.forEach((o, n) => {
       const L = local.strikes[n];
-      o.col.visible = !!L && L.t < 2.2;
+      // where the rift's rocks will land, only the navigator sees (the pilot gets the warning, not the spot)
+      o.col.visible = !!L && L.t < 2.2 && !(L.k === 'r' && seatOf(x, c.role) === 'pilot');
       o.ring.visible = o.col.visible;
       if (!L) return;
       const f = W.at(L.s);
@@ -1282,7 +1301,20 @@
       if (y < W.FLOOR - 2) return tt;
       if (Math.abs(LOC2.u) > W.face(LOC2.s, y, LOC2.u >= 0 ? 1 : -1, local.frontS)) return tt;
       if (local.stage === 2 && W.SPIRES.some((sp) => Math.abs(sp.s - LOC2.s) < sp.r + 1 && Math.hypot(sp.s - LOC2.s, sp.u - LOC2.u) < sp.r)) return tt;
-      if (local.stage <= 1 && W.ROCKFALLS.some((rf) => Math.abs(rf.s - LOC2.s) < 4 && !(Math.abs(LOC2.u - rf.u) < rf.g && Math.abs(y - rf.y) < rf.g))) return tt;
+      if (local.stage <= 1) {
+        // the dust before each rockfall catches the flare (the pilot sees it there, on the dust)
+        const rf = W.ROCKFALLS.find((r) => LOC2.s > r.s - W.DUST_D && LOC2.s < r.s + 4);
+        if (rf) {
+          let k = tt;
+          while (k > tt - 4) {
+            k -= 0.25;
+            p.copy(o).addScaledVector(d, k);
+            W.locate(p.x, p.z, hint, LOC2);
+            if (LOC2.s <= rf.s - W.DUST_D) break;
+          }
+          return k + 1.2;
+        }
+      }
     }
     return max;
   };
@@ -1440,14 +1472,18 @@
           fxBoth(c, ['snap']);
           N.sendT = 1;
         } else {
-          if (Input.held('ability')) {
+          if (Input.held('ability') && local.view.idle) {
+            // nobody flies: the skiff drifts off and the cable can't pull
+            G.rel = 0;
+            prompt = ['F', Story.fmt(TXT.idleMate), true];
+          } else if (Input.held('ability')) {
             G.prog += dt / 2.4;
             G.rel = 0;
           } else {
             G.prog = Math.max(0, G.prog - dt * 0.35);
             G.rel += dt;
           }
-          prompt = ['F', 'Arracher le noyau (maintenir) · ' + Math.round(G.prog * 100) + ' %', true];
+          if (!local.view.idle) prompt = ['F', 'Arracher le noyau (maintenir) · ' + Math.round(G.prog * 100) + ' %', true];
           if (Math.random() < dt * 10) Fx.burst(tp, '#ffb0d0', 4, 5, 0.4, 0);
           if (G.rel > 1.2) N.g = null;
           if (G.prog >= 1) {
@@ -2413,10 +2449,11 @@
     if (V.s > W.END_S - 260) return;
     H.debT = (H.debT == null ? 2 : H.debT) - dt;
     if (H.debT > 0) return;
-    H.debT = 2.6 + Math.random() * 1.6;
-    const s = V.s + Math.max(10, V.speed) * 2.6 + (Math.random() - 0.3) * 16;
+    // the rocks fall on our way, often: the turret has to break them (dodging them all alone won't do)
+    H.debT = 1.7 + Math.random() * 0.9;
+    const s = V.s + Math.max(10, V.speed) * 2.4 + (Math.random() - 0.3) * 10;
     const f = W.at(s);
-    const u = clamp(V.u + (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 9), -(f.w - 5), f.w - 5);
+    const u = clamp(V.u + (Math.random() * 2 - 1) * 4.5, -(f.w - 5), f.w - 5);
     const L = [H.id++, +s.toFixed(1), +u.toFixed(1), 'r'];
     local.strikes.push({ id: L[0], s: L[1], u: L[2], k: 'r', t: 0 });
     c.send('c7l', L);
@@ -3026,7 +3063,7 @@
             +S.roll.toFixed(3),
             +S.speed.toFixed(2),
             x.rs,
-            S.boost | (S.brake << 1),
+            S.boost | (S.brake << 1) | ((S.idle || 0) > 4 ? 4 : 0),
             +S.gear.toFixed(2),
             +S.s.toFixed(2),
           ]);

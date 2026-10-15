@@ -876,8 +876,31 @@ const TrC7 = (() => {
     });
   };
   const rockfalls = [];
+  // the dust of each rockfall: the pilot sees a wall of it, never the gap (only the navigator's arch
+  // shows where to go); it stands DUST_D before the rock, where the navigator's flares stick
+  const DUST_D = 7.5;
+  const pilotOnly = new THREE.Group();
+  let dustTex = null;
   const buildRockfalls = () => {
     const mat = Tex.mat('rock', { color: '#c98c8e', scale: 4, rough: 0.95, bump: 1.2 });
+    group.add(pilotOnly);
+    dustTex = LvKit.tex(512, 512, (g, w, h) => {
+      g.fillStyle = '#d9a39f';
+      g.fillRect(0, 0, w, h);
+      const r = rng(77);
+      for (let k = 0; k < 260; k++) {
+        const x = r() * w;
+        const y = r() * h;
+        const rr = 20 + r() * 90;
+        const grd = g.createRadialGradient(x, y, 0, x, y, rr);
+        const c = r() < 0.5 ? '236,190,180' : '170,110,112';
+        grd.addColorStop(0, `rgba(${c},${0.16 + r() * 0.2})`);
+        grd.addColorStop(1, `rgba(${c},0)`);
+        g.fillStyle = grd;
+        g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+      }
+    });
+    dustTex.wrapS = dustTex.wrapT = THREE.RepeatWrapping;
     const bG = new THREE.DodecahedronGeometry(1, 0);
     ROCKFALLS.forEach((rf) => {
       const f = at(rf.s);
@@ -919,7 +942,18 @@ const TrC7 = (() => {
         g.add(b);
       }
       group.add(g);
-      rockfalls.push({ g, rf });
+      // the dust wall (pilot only)
+      const dm = new THREE.MeshLambertMaterial({ map: dustTex.clone(), color: '#f0d0cc', emissive: '#3a2026', side: THREE.DoubleSide });
+      dm.map.needsUpdate = true;
+      dm.map.repeat.set((W2 * 2) / 40, (top + 20) / 40);
+      const dust = new THREE.Mesh(new THREE.PlaneGeometry(W2 * 2, top + 20), dm);
+      const dg = new THREE.Group();
+      dg.position.copy(g.position);
+      dg.rotation.copy(g.rotation);
+      dust.position.set(0, (top - 20) / 2, -DUST_D);
+      dg.add(dust);
+      pilotOnly.add(dg);
+      rockfalls.push({ g, rf, dust });
     });
   };
   let spires = null;
@@ -1863,6 +1897,8 @@ const TrC7 = (() => {
     updateIslands(t);
     // arches (navigator only), passed ones fade to gold
     navOnly.visible = !!v.navView;
+    pilotOnly.visible = !v.navView && v.stage <= 1;
+    if (pilotOnly.visible) rockfalls.forEach((r, i) => (r.dust.material.map.offset.set(t * 0.012 + i * 0.3, -t * 0.02)));
     arches.forEach((a) => {
       const got = v.archGot && v.archGot[a.i];
       a.got = damp(a.got, got ? 1 : 0, 3, dt);
@@ -1983,6 +2019,7 @@ const TrC7 = (() => {
     W,
     ARCHES,
     ROCKFALLS,
+    DUST_D,
     SPIRES,
     HEARTS,
     GATES,
