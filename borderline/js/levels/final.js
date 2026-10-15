@@ -5,7 +5,9 @@
   const local = { step: null, letter: false, float: 0, credits: false, inside: -1 };
   const tm = { step: 0, ring: 0 };
 
-  const allClues = () => Story.S.clues.length >= TOTAL;
+  // old saves still hold the removed cassettes: count only the ones that exist
+  const got = () => Story.S.clues.filter((id) => T.clues[id]).length;
+  const allClues = () => got() >= TOTAL;
 
   Story.register('final', {
     init: () => ({ step: 'joker', done: [] }),
@@ -234,7 +236,7 @@
       Sound.mood('gold');
       HUD.credits(
         T.credits,
-        allClues() ? null : F.missing + ' (' + Story.S.clues.length + '/' + TOTAL + ')',
+        allClues() ? null : F.missing + ' (' + got() + '/' + TOTAL + ')',
       );
       // after the roll: the Joker card turns over
       await sleep(26000);

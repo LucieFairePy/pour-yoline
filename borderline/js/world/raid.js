@@ -44,7 +44,7 @@ const Raid = (() => {
   const PAD_TO = [P(7, 3.3, 7.9), P(7, 6.6, 12.6)];
   const padM = [];
   const rings = [];
-  const motes = [];
+  let crystals = null;
   const tiles = {};
   const seals = {};
   const lights = [];
@@ -290,16 +290,19 @@ const Raid = (() => {
       sp.position.copy(P(x, FLOOR + 0.03, z - 1));
       group.add(sp);
     });
-    // colonnade along the galerie
+    // colonnade along the galerie (merged: one mesh per material)
+    const colB = LvKit.batch();
+    const colT = LvKit.batch();
+    const colG = new THREE.CylinderGeometry(0.8, 1, 18, 16);
+    const capG = new THREE.BoxGeometry(2.4, 0.6, 2.4);
     for (let z = 70; z <= 124; z += 9)
       [-11, 11].forEach((x) => {
-        K.deco(new THREE.CylinderGeometry(0.8, 1, 18, 16), marble, x, FLOOR + 3, z);
-        K.deco(new THREE.BoxGeometry(2.4, 0.6, 2.4), trim, x, FLOOR + 12.2, z);
-        K.deco(new THREE.BoxGeometry(2.4, 0.6, 2.4), trim, x, FLOOR - 6, z);
+        colB.add(colG, P(x, FLOOR + 3, z));
+        colT.add(capG, P(x, FLOOR + 12.2, z));
+        colT.add(capG, P(x, FLOOR - 6, z));
       });
-    [-11, 11].forEach((x) =>
-      K.deco(new THREE.BoxGeometry(1.2, 1, 58), trim, x, FLOOR + 12.8, 97),
-    );
+    [-11, 11].forEach((x) => colT.add(new THREE.BoxGeometry(1.2, 1, 58), P(x, FLOOR + 12.8, 97)));
+    group.add(colB.mesh(marble), colT.mesh(trim));
     // the island's sentinel: an eye that sweeps the island when you both stand on it
     sentinel = new THREE.Group();
     const sEye = new THREE.Mesh(
@@ -386,19 +389,43 @@ const Raid = (() => {
       blending: THREE.AdditiveBlending,
       toneMapped: false,
     });
-    const segLen = ((TAU * AR) / SEG) * 1.04;
-    const wallG = new THREE.BoxGeometry(segLen, 1.1, 0.6);
-    const curtG = new THREE.PlaneGeometry(segLen, 3);
+    // the parapet drawn as one curved wall, open on the bridge (-z) side
+    const GAP = 0.166;
+    const arc = (r, h) => new THREE.CylinderGeometry(r, r, h, 160, 1, true, Math.PI + GAP, TAU - GAP * 2);
+    // the inner face looks inward: flip its triangles and normals
+    const inward = (g) => {
+      const ix = g.index.array;
+      for (let k = 0; k < ix.length; k += 3) [ix[k + 1], ix[k + 2]] = [ix[k + 2], ix[k + 1]];
+      const n = g.attributes.normal.array;
+      for (let k = 0; k < n.length; k++) n[k] = -n[k];
+      return g;
+    };
+    const para = LvKit.batch();
+    para.add(inward(arc(AR, 1.1)), P(0, FLOOR + 0.55, ARENA.z));
+    para.add(arc(AR + 0.6, 1.1), P(0, FLOOR + 0.55, ARENA.z));
+    para.add(
+      new THREE.RingGeometry(AR, AR + 0.6, 160, 1, Math.PI / 2 + GAP, TAU - GAP * 2).rotateX(-Math.PI / 2),
+      P(0, FLOOR + 1.1, ARENA.z),
+    );
+    group.add(para.mesh(stone));
+    K.deco(
+      new THREE.TorusGeometry(AR + 0.3, 0.07, 6, 160, TAU - GAP * 2)
+        .rotateX(Math.PI / 2)
+        .rotateY(Math.PI / 2 - GAP),
+      trim,
+      0,
+      FLOOR + 1.13,
+      ARENA.z,
+    );
+    const curt = new THREE.Mesh(arc(AR + 0.3, 3), curtain);
+    curt.position.copy(P(0, FLOOR + 2.6, ARENA.z));
+    group.add(curt);
     for (let i = 0; i < SEG; i++) {
       const a = (i / SEG) * TAU;
       const x = Math.sin(a) * (AR + 0.3);
       const z = -Math.cos(a) * (AR + 0.3);
       // bridge enters from -z (a = 0)
       if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.16) continue;
-      const w = K.deco(wallG, stone, x, FLOOR + 0.55, ARENA.z + z);
-      w.rotation.y = -a;
-      const c = K.deco(curtG, curtain, x, FLOOR + 2.6, ARENA.z + z);
-      c.rotation.y = -a;
       // collider boxes are axis aligned: a short column per segment
       K.collider(x, FLOOR + 2, ARENA.z + z, 2.6, 4, 2.6);
     }
@@ -475,31 +502,26 @@ const Raid = (() => {
     );
     dome.visible = false;
     R.scene.add(dome);
-    // floating motes
+    // distant rock spires rising from the abyss, stalactites hanging from the vault (merged)
     const r = rng(52);
-    for (let i = 0; i < 90; i++) {
-      const m = K.deco(
-        new THREE.OctahedronGeometry(0.08 + r() * 0.12),
-        LvKit.glow(r() < 0.5 ? '#7cf0c8' : '#ffcf8a', 2),
-        (r() - 0.5) * 60,
-        r() * 30,
-        r() * 190,
-      );
-      motes.push({ m, y0: m.position.y, ph: r() * 10 });
-    }
-    // distant monoliths
+    const spires = LvKit.batch();
+    const spire = new THREE.ConeGeometry(1, 1, 7);
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * TAU;
       const rr = 70 + r() * 30;
-      const h = 20 + r() * 40;
-      K.deco(
-        new THREE.BoxGeometry(4 + r() * 4, h, 4 + r() * 4),
-        dark,
-        Math.cos(a) * rr,
-        h / 2 - 20,
-        95 + Math.sin(a) * rr * 1.3,
-      );
+      const h = 30 + r() * 50;
+      const w = 4 + r() * 5;
+      spires.add(spire, P(Math.cos(a) * rr, h / 2 - 40, 95 + Math.sin(a) * rr * 1.3), [0, r() * 3, 0], [w, h, w]);
     }
+    for (let i = 0; i < 40; i++) {
+      const a = r() * TAU;
+      const rr = 40 + r() * 110;
+      const h = 20 + r() * 50;
+      const w = 3 + r() * 6;
+      spires.add(spire, P(Math.cos(a) * rr, 95 - h / 2 + r() * 20, 95 + Math.sin(a) * rr), [Math.PI, r() * 3, 0], [w, h, w]);
+    }
+    group.add(spires.mesh(dark));
+    dress();
     lights.push(LvKit.light(group, P(0, FLOOR + 6, 96), '#7cf0c8', 1.2, 30));
     lights.push(LvKit.light(group, P(0, FLOOR + 10, 140), '#ffcf8a', 1.2, 40));
     card = LvKit.trialCard('cR', false);
@@ -509,6 +531,79 @@ const Raid = (() => {
     screen.mesh.position.copy(P(0, FLOOR + 14, 66));
     screen.mesh.rotation.y = Math.PI;
     group.add(screen.mesh);
+  };
+
+  // ---------- set dressing: no colliders; under the floors, outside the arena, in the air ----------
+  const amb = { haze: new THREE.Color('#071210'), sky: null, motes: null };
+  const dress = () => {
+    const r = rng(907);
+    // glowing crystal clusters growing on the rock under the floors
+    const cr = LvKit.batch();
+    const shard = new THREE.OctahedronGeometry(1, 0);
+    [
+      [0, 0, 14, 12, 0], [-7, 27, 6, 14, 2.5], [7, 25, 4, 30, FLOOR], [0, 57, 26, 18, FLOOR],
+      [0, 72, 14, 8, FLOOR], [0, 96, 14, 8, FLOOR], [0, 120, 14, 8, FLOOR], [0, ARENA.z, 40, 40, FLOOR],
+    ].forEach(([cx, cz, w, d, y]) => {
+      for (let i = 0; i < Math.ceil((w * d) / 40) + 3; i++) {
+        const k = 0.3 + r() * 0.7;
+        cr.add(
+          shard,
+          P(cx + (r() - 0.5) * w * 0.7, y - 1.6 - r() * 2.5, cz + (r() - 0.5) * d * 0.7),
+          [r() * 0.8 - 0.4 + Math.PI, r() * 3, r() * 0.8 - 0.4],
+          [k * 0.35, k * 1.6, k * 0.35],
+        );
+      }
+    });
+    crystals = cr.mesh(LvKit.glow('#7cf0c8', 1.5));
+    group.add(crystals);
+    // obelisks with gold runes round the arena, outside its parapet
+    const ob = LvKit.batch();
+    const runeB = LvKit.batch();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU + TAU / 16;
+      const x = Math.sin(a) * (AR + 5);
+      const z = ARENA.z - Math.cos(a) * (AR + 5);
+      ob.add(new THREE.CylinderGeometry(0.9, 1.6, 16, 4), P(x, FLOOR + 4, z), [0, -a + Math.PI / 4, 0]);
+      ob.add(new THREE.ConeGeometry(1.1, 2.4, 4), P(x, FLOOR + 13.2, z), [0, -a + Math.PI / 4, 0]);
+      ob.add(new THREE.ConeGeometry(2, 10, 6), P(x, FLOOR - 9, z), [Math.PI, 0, 0]);
+      for (let k = 0; k < 5; k++)
+        runeB.add(new THREE.BoxGeometry(0.5, 0.12, 0.06), P(x - Math.sin(a) * 0.95, FLOOR + 2 + k * 1.6, z + Math.cos(a) * 0.95), [0, -a, 0]);
+    }
+    group.add(ob.mesh(stone), runeB.mesh(LvKit.glow('#ffcf8a', 2)));
+    // hanging chains of lanterns along the galerie's colonnade
+    const lan = LvKit.batch();
+    const lanG = LvKit.batch();
+    for (let z = 74.5; z <= 120; z += 9)
+      [-11, 11].forEach((x) => {
+        lan.add(new THREE.BoxGeometry(0.04, 5, 0.04), P(x * 0.86, FLOOR + 10.2, z));
+        lan.add(new THREE.CylinderGeometry(0.3, 0.22, 0.6, 6), P(x * 0.86, FLOOR + 7.4, z));
+        lanG.add(new THREE.SphereGeometry(0.18, 8, 6), P(x * 0.86, FLOOR + 7.35, z));
+      });
+    group.add(lan.mesh(trim), lanG.mesh(LvKit.glow('#ffd28a', 2.2)));
+    LvKit.light(group, P(0, 4, 2), '#7cf0c8', 1.0, 22);
+    LvKit.light(group, P(0, FLOOR + 6, 57), '#ffcf8a', 1.1, 24);
+    LvKit.light(group, P(-12, FLOOR + 5, ARENA.z + 8), '#7cf0c8', 1.0, 26);
+    LvKit.light(group, P(12, FLOOR + 5, ARENA.z - 8), '#7cf0c8', 1.0, 26);
+    amb.sky = LvKit.sky({
+      hor: '#041012',
+      zen: '#010203',
+      cloud: '#0a1e1c',
+      cloudK: 0.5,
+      stars: 0.25,
+      glow: '#082a22',
+      glowDir: V3(0, 0.1, 1),
+    });
+    amb.motes = LvKit.motes({
+      n: 520,
+      size: 2.2,
+      colors: ['#7cf0c8', '#ffcf8a'],
+      rise: [-0.1, 0.25],
+      sway: 1.2,
+      box: [50, 20],
+      alpha: 0.65,
+      below: 6,
+      seed: 52,
+    });
   };
 
   const glyphCache = [];
@@ -588,6 +683,20 @@ const Raid = (() => {
       return P(who === 'dame' ? -2.5 : 2.5, FLOOR, zz);
     },
     onSeal,
+    // the vault's own light: a teal cavern, a sky of its own, drifting sparks (restored on exit)
+    mood(on) {
+      if (!on || !built) return LvKit.mood(null);
+      LvKit.mood({
+        sky: '#c8dcd6',
+        ground: '#141c1a',
+        hemi: 0.45,
+        sun: '#fff4e0',
+        sunI: 0.55,
+        exposure: 1.3,
+        haze: amb.haze,
+        extras: [amb.sky, amb.motes],
+      });
+    },
     sealOf: (lane) => SEALS[lane],
     onDoor: (q) => q.z > 48.5 && q.z < 66 && Math.abs(q.x) < 13 && q.y > FLOOR - 0.6,
     onFar: (q) => inZ(q, GAL.far),
@@ -700,7 +809,8 @@ const Raid = (() => {
         p.glyph.rotation.y = t * 0.8 + p.i;
       });
       showSeq(x.seq || [], x.prog || 0, !!seer && x.ritual && x.stage === 4, t);
-      motes.forEach((mo) => (mo.m.position.y = mo.y0 + Math.sin(t * 0.6 + mo.ph) * 0.6));
+      LvKit.tick(t);
+      crystals.material.color.setRGB(0.49, 0.94, 0.78).multiplyScalar(1.5 + Math.sin(t * 1.3) * 0.25);
       card.visible = x.stage >= 5;
       card.rotation.y = t * 1.3;
       if (card.visible) card.position.y = O.y + FLOOR + 2.2 + Math.sin(t * 2) * 0.15;

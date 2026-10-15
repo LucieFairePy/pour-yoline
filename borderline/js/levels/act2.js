@@ -33,10 +33,13 @@
   const darkness = (c) => {
     const st = Story.S.x.stage;
     const dark = walker(st) === c.role;
+    Maze.mood(false);
     City.mood(dark ? { dark: 1 } : {});
-    c.fog(dark ? 0.09 : 0.006);
+    c.fog(dark ? 0.09 : 0.012);
     R.hemi.intensity = dark ? 0.04 : 0.5;
     R.moon.intensity = dark ? 0 : 0.75;
+    // the night sky, lanterns and fireflies are for the one who can see
+    if (!dark) Maze.mood(true);
   };
 
   const stageEnter = (c, st) => {
@@ -113,6 +116,7 @@
     },
     exit(c) {
       HUD.manual(null);
+      Maze.mood(false);
       Maze.lampAt(null, false);
       City.mood({});
       R.hemi.intensity = 0.5;
@@ -193,6 +197,7 @@
       else Maze.lampAt(null, false);
       Maze.screen.update(dt, t);
       Maze.bombScreen.update(dt, t);
+      Maze.tick(t);
       Maze.showCard(x.stage === 4, t);
       let prompt = null;
       // a guide who somehow left the deck goes back up to it

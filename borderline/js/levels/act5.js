@@ -88,11 +88,13 @@
     init: () => {
       const lights = Array(9).fill(true);
       let n = 0;
-      while (lights.every(Boolean) || n < 4) {
+      while (lights.every(Boolean) || n < 6) {
         press(lights, (Math.random() * 9) | 0);
         n++;
       }
+      // the four symbols in a random order, then one of them again (never twice in a row)
       const seq = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
+      seq.push(seq[(Math.random() * 3) | 0]);
       return {
         stage: 'worlds',
         lights,
@@ -203,7 +205,7 @@
             s.x.input = [];
             c.send('pedfail');
             Sound.play('trap');
-          } else if (s.x.input.length === 4) s.x.p2 = true;
+          } else if (s.x.input.length === s.x.seq.length) s.x.p2 = true;
         });
       }
       if (d.a === 'switch' && who === 'valet') {

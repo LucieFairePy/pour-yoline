@@ -127,7 +127,7 @@
   };
 
   Story.register('tr_c1', {
-    init: () => ({ stage: 1, bridge: false, cr: [0, 0, 0, 0, 0, 0], front: null, fspd: 4.4, rn: 0 }),
+    init: () => ({ stage: 1, bridge: false, cr: [0, 0, 0, 0, 0, 0], front: null, fspd: 4, rn: 0 }),
     voice: () => 1,
     net: {
       c1t: (c, d) => {
@@ -208,7 +208,7 @@
               changed = true;
             } else {
               h.t += dt;
-              if (h.t > 1.15) {
+              if (h.t > 1.5) {
                 next[i] = 2;
                 h.r = 0;
                 changed = true;
@@ -282,7 +282,7 @@
       if (x.stage === 2 && TrC1.inAlcove(q)) {
         say('alcove', x.bridge ? TX.s2wait : TX.s2in);
         local.alcT = (local.alcT || 0) + dt;
-        if (local.alcT > 25) say('alcStuck', TX.s2stuck, 4200);
+        if (local.alcT > 15) say('alcStuck', TX.s2stuck, 4200);
       } else local.alcT = 0;
       if (x.stage === 2 && x.bridge && has && TrC1.inAlcove(TrC1.rel(Remote.pos))) say('alcoveUp', TX.s2up);
 
@@ -397,8 +397,8 @@
         else if (b.grounded && !mateG) share = 0.12;
         else share = 0.5;
         TrC1.dbg = { e: +excess.toFixed(2), s: share, L: +Leff.toFixed(2), g: b.grounded, mg: mateG };
-        // beyond 9 m of excess it is a respawn or a teleport, not a rope
-        if (excess > 0.15 && excess < (pulley ? 60 : 9) && share > 0) {
+        // beyond 12 m of excess it is a respawn or a teleport, not a rope
+        if (excess > 0.15 && excess < (pulley ? 60 : 12) && share > 0) {
           // velocity only (never move the body by hand: physics keeps it out of the walls,
           // so a hoisted player slides up the wall face and over the edge)
           const corr = (excess - 0.15) * share;
@@ -458,7 +458,7 @@
         if (local.front == null || Math.abs(local.front - x.front) > 3) local.front = x.front;
         else if (x.front !== local.lastFront) local.front = lerp(local.front, x.front, 0.5);
         local.lastFront = x.front;
-        local.front += (x.fspd || 4.4) * dt;
+        local.front += (x.fspd || 4) * dt;
       } else local.front = null;
       TrC1.front = local.front;
       // dust and splinters where the bridge gives way
@@ -476,7 +476,7 @@
         }
         if (ph > 3.4 && ph < 4.7) gust = dir;
         if (gust && q.z > 147 && q.z < 175 && !local.an && b.p.y > TrC1.O.y + TrC1.TOP - 0.5)
-          b.p.x += gust * 2.4 * dt;
+          b.p.x += gust * 1.7 * dt;
       }
       TrC1.gust = damp(TrC1.gust, gust, 6, dt);
       TrC1.update(dt, t, { ...x, wheelV: 0 });
@@ -495,6 +495,8 @@
           ? ['E', 'Ancré·e']
           : ['Maj', 'Maintenir : remonter ' + Story.name(c.other), true];
       if (!b.grounded && x.stage === 4 && q.y < TrC1.UP) return ['E', 'Maintenir : te lester', true];
+      // held by the cable under an edge: say how to climb onto it
+      if (held && !b.grounded && x.stage !== 4) return ['Z', 'Pousser vers le bord : te hisser', true];
       // only when the cable matters: taut, or where anchoring is the puzzle
       const tight = TrC1.dbg && TrC1.dbg.e > -2.5;
       if (b.grounded && (tight || x.stage === 3 || (has && Remote.pos.y < b.p.y - 1.5)))

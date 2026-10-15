@@ -307,7 +307,8 @@
       Player.checkpoint = () => local.cp || Raid.spawn(Story.S.x.stage, c.role);
       Player.targets = () => (c.role === 'dame' && Story.S.x.stage === 1 ? Raid.rings() : []);
       City.mood({ dark: 0.35 });
-      c.fog(0.006);
+      c.fog(0.009);
+      Raid.mood(true);
       Combat.enable(true);
       Combat.noCloak = true;
       const lab = $('vAbil').querySelector('span');
@@ -323,6 +324,7 @@
       this.apply(c);
     },
     exit() {
+      Raid.mood(false);
       Combat.enable(false);
       Combat.noCloak = false;
       Combat.abil = null;

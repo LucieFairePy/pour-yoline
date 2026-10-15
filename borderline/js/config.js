@@ -179,7 +179,7 @@ const CONFIG = {
         'Ton épée : clic gauche. Le Voile : clic droit. Les spectres, seul{pe} {mate} les voit.',
     },
     room1: 'L’Antichambre : nettoyez la salle.',
-    levers: 'Deux leviers, deux mains. Tenez-les en même temps (E).',
+    levers: 'Deux plaques, une chacun. Restez dessus en même temps.',
     room2: 'La Nef : les Cavaliers chargent en ligne droite. Esquivez sur le côté.',
     room3: {
       dame: 'L’Ossuaire : des spectres. Toi seul{e} les vois. Tire dessus pour les révéler, {mate} les achève.',
@@ -407,7 +407,13 @@ const CONFIG = {
   },
   act4: {
     lines: ['Quelle jolie vue.', 'Ce monde était trop parfait.', 'Prouvez qu’il mérite d’exister.'],
-    after: 'Visa : 0 jour.',
+    // a few more words from the Joker, in his voice (doubt, the game, never cruel)
+    doubt: 'Un tout petit doute. Rien de plus.',
+    rule: 'Nouvelle règle : chacun son monde. Pour un temps.',
+    // the visa drops hard, but never to nothing
+    after: 'Visa : 3 heures.',
+    visa: 'Visa · 3 h',
+    end: 'On verra bien.',
   },
   act5: {
     title: 'Deux mondes',
@@ -529,9 +535,9 @@ const CONFIG = {
     },
   },
   clues: {
-    c4: 'Cassette 4 · « Ce toit, c’est là que je voulais lui montrer la vue. »',
-    c5: 'Cassette 5 · « Le Joker n’est pas de moi. Il est arrivé avec la peur. »',
-    c6: 'Cassette 6 · Un graffiti : « Y. » — la même signature que dans le voyage.',
+    c4: 'Cassette 1 · « Ce toit, c’est là que je voulais lui montrer la vue. »',
+    c5: 'Cassette 2 · « Le Joker n’est pas de moi. Il est arrivé avec le doute. »',
+    c6: 'Cassette 3 · Un graffiti : « Y. » — la même signature que dans le voyage.',
   },
   places: [
     {

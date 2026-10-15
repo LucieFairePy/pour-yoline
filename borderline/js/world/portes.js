@@ -4,10 +4,10 @@ const Portes = (() => {
   const group = new THREE.Group();
   group.visible = false;
   R.scene.add(group);
-  // test-chamber look: concrete walls, tiled floors, metal steps, white portal panels
-  const wall = Tex.mat('concrete', { color: '#6e6878', scale: 3 });
-  const floor = Tex.mat('pavement', { color: '#5e5a68', scale: 4 });
-  const steel = Tex.mat('metal', { color: '#8b8796', scale: 2, metal: 0.5, rough: 0.9 });
+  // test-chamber look: cool concrete walls, tiled floors, metal steps, white portal panels
+  const wall = Tex.mat('concrete', { color: '#5c6068', scale: 3 });
+  const floor = Tex.mat('pavement', { color: '#50545c', scale: 4 });
+  const steel = Tex.mat('metal', { color: '#7a808a', scale: 2, metal: 0.5, rough: 0.9 });
   const panelMat = Tex.mat('plaster', {
     color: '#ffffff',
     scale: 2,
@@ -36,6 +36,7 @@ const Portes = (() => {
   let screen = null;
   const portals = {};
   const pdCache = {};
+  let ledgeTop = 0;
 
   const solid = (x, y, z, sx, sy, sz, mat = wall, opt) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
@@ -184,6 +185,7 @@ const Portes = (() => {
     glassWall(-4.25, land + 2, 38.7, 0.1, 4, 3);
     const ledge = land + RISE * 11;
     solid(-1.15, ledge - 0.3, 29.3, 6.3, 0.6, 3.4, floor);
+    ledgeTop = ledge;
     // railings at the back and on the far side; the front edge is where you drop
     solid(-1.15, ledge + 0.5, 27.7, 6.3, 1, 0.2, steel);
     solid(2.1, ledge + 0.5, 29.3, 0.2, 1, 3.4, steel);
@@ -238,6 +240,283 @@ const Portes = (() => {
     group.add(screen.mesh);
     portals.a = portalMesh('#4fb4ff');
     portals.b = portalMesh('#ff9a3a');
+    dress();
+  };
+
+  // ---------- set dressing: no colliders, off the walk lanes, away from the portal panels ----------
+  const amb = { haze: new THREE.Color('#1e262f'), sky: null, dust: null };
+  const lamps = [];
+  const dress = () => {
+    const B = LvKit.batch;
+    const box = (sx, sy, sz) => new THREE.BoxGeometry(sx, sy, sz);
+    const cool = B();
+    const warm = B();
+    const iron = B();
+    const under = B();
+    // light strips: cool along the wall tops, the portal orange along the wall feet
+    const strip = (x, z, len, alongZ, side) => {
+      const ix = alongZ ? x - side * 0.31 : x;
+      const iz = alongZ ? z : z - side * 0.31;
+      cool.add(alongZ ? box(0.05, 0.1, len) : box(len, 0.1, 0.05), P(ix, 5.6, iz));
+      warm.add(alongZ ? box(0.05, 0.05, len) : box(len, 0.05, 0.05), P(ix, 0.05, iz));
+    };
+    strip(-10.3, 7, 13.6, true, -1);
+    strip(10.3, 7, 13.6, true, 1);
+    strip(-10.3, 34.3, 15, true, -1);
+    strip(10.3, 34.3, 15, true, 1);
+    strip(-5.5, 14.3, 8.6, false, 1);
+    strip(-3, 26.3, 13.6, false, 1);
+    // overhead gantries with light tubes over rooms 1 and 2 (room 3 stays open above its ledge)
+    [3.5, 10.5, 18, 23].forEach((z) => {
+      iron.add(box(21.2, 0.34, 0.5), P(0, 6.75, z));
+      iron.add(box(0.5, 0.9, 0.5), P(-10.3, 6.35, z));
+      iron.add(box(0.5, 0.9, 0.5), P(10.3, 6.35, z));
+      cool.add(box(16, 0.06, 0.16), P(0, 6.55, z));
+    });
+    // floodlight heads on room 3's wall tops, tilted inward
+    [29, 35, 41].forEach((z) =>
+      [-1, 1].forEach((s) => {
+        iron.add(box(0.9, 0.5, 0.7), P(s * 10.1, 6.35, z), [0, 0, s * 0.5]);
+        cool.add(box(0.06, 0.36, 0.5), P(s * 9.66, 6.2, z), [0, 0, s * 0.5]);
+      }),
+    );
+    // the slabs stand on columns going down into the void, tied by cross beams
+    const col = box(1.3, 44, 1.3);
+    [
+      [-9, 1], [9, 1], [-9, 13], [9, 13], [-9, 25], [9, 25], [-9, 33], [9, 33], [-9, 41], [9, 41],
+    ].forEach(([x, z]) => under.add(col, P(x, -23, z)));
+    [
+      [-7, 54], [7, 54], [-7, 68], [7, 68], [-14, 73], [14, 73], [-14, 88], [14, 88], [-14, 103],
+      [14, 103], [0, 103],
+    ].forEach(([x, z]) => under.add(col, P(x, -21, z)));
+    // light masts rising from below, just outside the open floors of rooms 4 and 5
+    [
+      [-9.6, 56, 1], [9.6, 66, 1], [-16.6, 78, 1], [16.6, 78, 1], [-16.6, 98, 1], [16.6, 98, 1],
+    ].forEach(([x, z]) => {
+      const s = Math.sign(x);
+      iron.add(box(0.36, 32, 0.36), P(x, -6, z));
+      iron.add(box(1.6, 0.22, 0.3), P(x - s * 0.7, 10, z));
+      iron.add(box(0.7, 0.3, 0.9), P(x - s * 1.4, 9.85, z));
+      cool.add(box(0.5, 0.05, 0.7), P(x - s * 1.4, 9.68, z));
+    });
+    // inset floor light lines along room 5's open sides, and the goal's ring
+    [-14.3, 14.3].forEach((x) => cool.add(box(0.12, 0.02, 32), P(x, 2.005, 88)));
+    cool.add(box(28, 0.02, 0.12), P(0, 2.005, 104.3));
+    [7, 20, 34].forEach((z) => under.add(box(19, 0.8, 0.8), P(0, -1.6, z)));
+    [61, 80, 96].forEach((z) => under.add(box(z > 70 ? 29 : 15, 0.8, 0.8), P(0, 0.4, z)));
+    group.add(
+      cool.mesh(LvKit.glow('#cfe8ff', 1.5)),
+      warm.mesh(LvKit.glow('#ff8a2a', 1.15)),
+      iron.mesh(steel),
+      under.mesh(wall),
+    );
+
+    // the facility around: far towers with panel seams and a few lit windows
+    const towerTex = LvKit.tex(256, 1024, (g, w, h) => {
+      LvKit.grain(g, w, h, '#3a3f48', 0.08, 6000);
+      g.strokeStyle = 'rgba(0,0,0,0.45)';
+      g.lineWidth = 2;
+      for (let y = 0; y < h; y += 32) g.strokeRect(-4, y, w + 8, 32);
+      for (let x = 0; x < w; x += 64) g.strokeRect(x, -4, 64, h + 8);
+    });
+    const towerLit = LvKit.tex(256, 1024, (g, w, h) => {
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, w, h);
+      const r = rng(31);
+      for (let y = 8; y < h; y += 32)
+        for (let x = 8; x < w; x += 64)
+          if (r() < 0.16) {
+            g.fillStyle = r() < 0.75 ? '#bfdcff' : '#ffb070';
+            g.fillRect(x, y + 10, 48, 6);
+          }
+    });
+    const towers = B();
+    const r = rng(907);
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * TAU + r() * 0.15;
+      const rad = 140 + r() * 90;
+      const h = 90 + r() * 120;
+      const w = 10 + r() * 12;
+      towers.add(
+        box(w, h, w * (0.6 + r() * 0.8)),
+        P(Math.cos(a) * rad, h / 2 - 110 + r() * 30, 50 + Math.sin(a) * rad),
+        [0, r() * TAU, 0],
+      );
+    }
+    group.add(
+      towers.mesh(
+        new THREE.MeshStandardMaterial({
+          map: towerTex,
+          emissiveMap: towerLit,
+          emissive: '#ffffff',
+          emissiveIntensity: 1.3,
+          roughness: 0.9,
+          metalness: 0.2,
+        }),
+      ),
+    );
+
+    // painted floor marks: hazard stripes along the edges over the void, room numbers
+    const hazTex = LvKit.tex(512, 64, (g, w, h) => {
+      g.fillStyle = '#e8b830';
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = '#16161a';
+      for (let x = -h; x < w + h; x += 48) {
+        g.beginPath();
+        g.moveTo(x, h);
+        g.lineTo(x + 24, h);
+        g.lineTo(x + 24 + h, 0);
+        g.lineTo(x + h, 0);
+        g.closePath();
+        g.fill();
+      }
+      for (let i = 0; i < 900; i++) {
+        g.fillStyle = `rgba(90,90,96,${Math.random() * 0.5})`;
+        g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 1 + Math.random() * 3);
+      }
+    });
+    const decal = (map, opt = {}) =>
+      new THREE.MeshStandardMaterial({
+        map,
+        transparent: true,
+        roughness: 0.8,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        ...opt,
+      });
+    const haz = B();
+    const hz = (x, y, z, len, alongZ) => {
+      const g = new THREE.PlaneGeometry(len, 0.5).rotateX(-Math.PI / 2);
+      const uv = g.attributes.uv;
+      for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * (len / 4));
+      haz.add(g, P(x, y + 0.012, z), [0, alongZ ? Math.PI / 2 : 0, 0]);
+    };
+    hz(0, 0, 0.35, 20, false);
+    hz(0, 0, 41.65, 20, false);
+    hz(0, 2, 52.35, 16, false);
+    hz(-11.5, 2, 71.35, 7, false);
+    hz(11.5, 2, 71.35, 7, false);
+    hz(0, 2, 104.65, 30, false);
+    hz(-14.65, 2, 88, 34, true);
+    hz(14.65, 2, 88, 34, true);
+    hz(-1.15, ledgeTop, 30.75, 6.3, false);
+    group.add(haz.mesh(decal(hazTex)));
+    const num = (n, x, y, z) => {
+      const t = LvKit.tex(256, 256, (g) => {
+        g.fillStyle = 'rgba(236,240,246,0.85)';
+        g.font = 'bold 150px "Courier New", monospace';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(n, 128, 140);
+        g.globalCompositeOperation = 'destination-out';
+        for (let i = 0; i < 1400; i++)
+          g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 3, 1 + Math.random() * 2);
+      });
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2).rotateY(Math.PI),
+        decal(t, { opacity: 0.8 }),
+      );
+      m.position.copy(P(x, y + 0.014, z));
+      group.add(m);
+    };
+    num('01', -6.5, 0, 3.2);
+    num('02', -6, 0, 17);
+    num('03', 4, 0, 29.5);
+    num('04', -4, 2, 55);
+    num('05', 5, 2, 75);
+    // the goal: a painted target, half blue half orange, round the card's spot
+    const tgt = LvKit.tex(512, 512, (g) => {
+      [
+        ['rgba(60,150,255,0.75)', Math.PI / 2, (Math.PI * 3) / 2],
+        ['rgba(255,140,50,0.75)', -Math.PI / 2, Math.PI / 2],
+      ].forEach(([c, a0, a1]) => {
+        g.strokeStyle = c;
+        g.lineWidth = 22;
+        g.beginPath();
+        g.arc(256, 256, 220, a0, a1);
+        g.stroke();
+        g.lineWidth = 8;
+        g.beginPath();
+        g.arc(256, 256, 160, a0, a1);
+        g.stroke();
+      });
+      g.globalCompositeOperation = 'destination-out';
+      for (let i = 0; i < 2500; i++) g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+    });
+    const goal = new THREE.Mesh(new THREE.PlaneGeometry(6, 6).rotateX(-Math.PI / 2), decal(tgt));
+    goal.position.copy(P(0, 2.016, 100));
+    group.add(goal);
+    // chamber signs on the walls: number, a figure, the two portal colours
+    const sign = (n, x, z, ry) => {
+      const t = LvKit.tex(512, 320, (g, w) => {
+        g.fillStyle = '#e9ecef';
+        g.fillRect(0, 0, w, 320);
+        g.fillStyle = '#1c2026';
+        g.font = 'bold 120px "Courier New", monospace';
+        g.textBaseline = 'top';
+        g.fillText(n, 28, 24);
+        g.fillRect(28, 160, w - 56, 6);
+        g.font = 'bold 30px "Courier New", monospace';
+        g.fillText('CHAMBRE D’ESSAI', 28, 184);
+        [
+          ['#2f8fff', 60],
+          ['#ff8a2a', 140],
+        ].forEach(([c, cx]) => {
+          g.strokeStyle = c;
+          g.lineWidth = 12;
+          g.beginPath();
+          g.ellipse(cx, 270, 22, 30, 0, 0, TAU);
+          g.stroke();
+        });
+        g.beginPath();
+        g.arc(300, 222, 16, 0, TAU);
+        g.fill();
+        g.fillRect(288, 242, 24, 52);
+      });
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.2, 1.375),
+        new THREE.MeshStandardMaterial({
+          map: t,
+          roughness: 0.6,
+          emissive: '#ffffff',
+          emissiveMap: t,
+          emissiveIntensity: 0.12,
+        }),
+      );
+      m.position.copy(P(x, 3.6, z));
+      m.rotation.y = ry;
+      group.add(m);
+    };
+    sign('01', -9.98, 5, Math.PI / 2);
+    sign('03', 9.98, 31, -Math.PI / 2);
+    // real lights, cool white, one per room (no shadows); a warm one over the void
+    [
+      [0, 5.2, 7, 22],
+      [-3, 5.2, 20, 18],
+      [0, 7, 34, 24],
+      [0, 7, 61, 22],
+      [0, 8, 88, 30],
+    ].forEach(([x, y, z, d]) => lamps.push(LvKit.light(group, P(x, y, z), '#e4f0ff', 1.0, d)));
+    lamps.push(LvKit.light(group, P(6, 3, 47), '#ffb070', 0, 14));
+    amb.sky = LvKit.sky({
+      hor: '#26303b',
+      zen: '#06080c',
+      cloud: '#3c4654',
+      cloudK: 0.45,
+      stars: 0.35,
+      glow: '#3a200c',
+      glowDir: V3(0.6, 0, 1),
+    });
+    amb.dust = LvKit.motes({
+      n: 500,
+      size: 1.6,
+      colors: ['#dfeaff', '#ffd2a8'],
+      rise: [-0.05, 0.12],
+      box: [40, 14],
+      alpha: 0.35,
+      seed: 41,
+    });
   };
 
   const placeOn = (pnl, hit) => {
@@ -317,9 +596,26 @@ const Portes = (() => {
         Math.abs(q.y - (b.pos.y - O.y)) < 1.2
       );
     },
+    // the chamber's own light and sky while it is played (restored by mood(false))
+    mood(on) {
+      if (!on || !built) return LvKit.mood(null);
+      LvKit.mood({
+        sky: '#cfdcec',
+        ground: '#2c2f36',
+        hemi: 0.42,
+        sun: '#fff1e0',
+        sunI: 0.7,
+        exposure: 1.2,
+        haze: amb.haze,
+        extras: [amb.sky, amb.dust],
+      });
+    },
     update(dt, t, x) {
       if (!built) return;
       screen.update(dt, t);
+      LvKit.tick(t);
+      // the light over the void warms up with the bridge
+      lamps[5].intensity = damp(lamps[5].intensity, x.bridge ? 1.6 : 0, 2, dt);
       Object.entries(buttons).forEach(([id, b]) => {
         const on = x.pressed && x.pressed.includes(id);
         b.top.material.color.set(on ? '#4fd1b5' : '#ff4f6a').multiplyScalar(on ? 2.2 : 1.4);

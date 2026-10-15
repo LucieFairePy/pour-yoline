@@ -535,6 +535,11 @@
       local.sub = {};
       local.can = 1;
       local.hitT = 0;
+      // the rest of an earlier visit (sun, gusts, ice, timers) does not carry over; same object, the
+      // test harness holds H6.local
+      Object.assign(local, { aimSent: 0, sunA: Math.PI, gustT: 4, wind: 0, spot: null, mateSpot: null, spotSent: 0, mateCan: 1 });
+      Object.assign(local, { canSent: 0, canWarn: 0, burnCd: 0, meltCd: 0, iceHp: [0, 0, 0, 0, 0, 0], send: 0, sendS: 0, sendI: 0 });
+      Object.assign(local, { atkT: 3, ringHit: false, patchCd: 0, objT: 0, pourSnd: 0, aloneT: 0, aloneCd: 0, wallK: 0 });
       c.spawn(respawnPos(c), 0);
       Player.killY = H6.O.y - 1.6;
       Player.checkpoint = () => {

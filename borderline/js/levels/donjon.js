@@ -125,6 +125,7 @@
       Player.grappleLand = () => Donjon.plates.dame && Donjon.plates.dame.pos;
       City.mood({ dark: 0.8 });
       c.fog(0.018);
+      Donjon.mood(true);
       Combat.enable(true);
       HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
@@ -135,6 +136,7 @@
       this.apply(c);
     },
     exit() {
+      Donjon.mood(false);
       Combat.enable(false);
       Enemies.clear();
       HUD.boss(null);

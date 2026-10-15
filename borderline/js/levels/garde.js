@@ -93,12 +93,16 @@
       Enemies.clear();
       Boss.reset();
       local.stage = 0;
+      local.win = 0;
+      local.phase = 0;
+      local.wipe = 0;
       c.spawn(Garde.spawn(c.S.x.stage, c.role), 0);
       Player.killY = Garde.O.y - 25;
       Player.checkpoint = () => Garde.spawn(Story.S.x.stage, c.role);
       Player.targets = null;
       City.mood({});
-      c.fog(0.009);
+      c.fog(0.011);
+      Garde.mood(true);
       Combat.enable(true);
       HUD.visa(CARD + ' · ' + G.title);
       if (!first) {
@@ -109,6 +113,7 @@
       this.apply(c);
     },
     exit() {
+      Garde.mood(false);
       Combat.enable(false);
       Enemies.clear();
       HUD.boss(null);
@@ -152,13 +157,19 @@
           if (local.wipe > 2.2) {
             local.wipe = 0;
             const bossFight = x.stage === 5;
+            // a wipe against the Captain starts his current phase again, not the whole fight
+            const was = Enemies.boss();
+            const ph = (was && was.phase) || 1;
             Enemies.clear();
             Boss.reset();
             Combat.reset();
             c.spawn(Garde.spawn(x.stage, c.role), 0);
             HUD.say(G.wipe, T.master, 2600);
             c.send('wipe');
-            if (bossFight) Enemies.spawn('roi', Garde.bossPos(), { phase: 1 });
+            if (bossFight) {
+              const e = Enemies.spawn('roi', Garde.bossPos(), { phase: ph });
+              if (ph > 1) e.hp = e.max * (ph === 2 ? 0.66 : 0.33) - 1;
+            }
             else {
               c.set((s) => (s.x.stage = 2));
               Garde.wave(1).forEach((p) => Enemies.spawn('pion', p));

@@ -703,7 +703,7 @@
       if (B.t >= B.dur) {
         B.st = 2;
         B.t = 0;
-        B.exp = ph === 3 ? 2.4 : ph === 2 ? 2.7 : 3.0;
+        B.exp = ph === 3 ? 2.1 : ph === 2 ? 2.4 : 2.7;
       }
     } else if (B.st === 2) {
       if (B.t >= B.exp) {
@@ -1200,6 +1200,8 @@
       }
       flash(0);
       HUD.boss(null);
+      if (local.ducked) Sound.duck(false);
+      local.ducked = false;
       W.hide();
     },
     apply(c) {
@@ -1281,6 +1283,11 @@
     },
     update(c, dt, t) {
       if (!W.built) return null;
+      // the game's own music steps back under the gardens' crystal music (once the sound is up)
+      if (!local.ducked && Sound.ready) {
+        local.ducked = true;
+        Sound.duck(true);
+      }
       const x = c.S.x;
       const r = c.role;
       const p = Player.body.p;

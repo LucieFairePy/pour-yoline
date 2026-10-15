@@ -96,7 +96,8 @@
       Player.checkpoint = () => Portes.spawn(Story.S.x.stage, c.role);
       Player.targets = null;
       City.mood({});
-      c.fog(0.006);
+      c.fog(0.009);
+      Portes.mood(true);
       Sound.mood('calm');
       HUD.visa(CARD + ' · ' + A.title);
       if (!first) {
@@ -106,6 +107,9 @@
       HUD.say(A.intro, T.master, 3200);
       HUD.say(A.hint[c.role], T.master, 4200);
       this.apply(c);
+    },
+    exit() {
+      Portes.mood(false);
     },
     apply(c) {
       if (!Portes.built) return;

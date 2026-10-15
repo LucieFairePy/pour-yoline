@@ -119,7 +119,7 @@
     sim.mb.vx = 0;
     sim.mb.vz = 0;
     sim.mb.on = false;
-    sim.mb.wait = 1.4;
+    sim.mb.wait = 0.8;
   };
   const marbleStep = (c, dt) => {
     const x = c.S.x;
@@ -207,7 +207,7 @@
     for (let j = 0; j < 3; j++) {
       if (j < x.mi) continue;
       const h = W.HOLES[j];
-      if (Math.hypot(mb.x - h.x, mb.z - h.z) < 0.48 && sp < 7.5) {
+      if (Math.hypot(mb.x - h.x, mb.z - h.z) < 0.6 && sp < 8.5) {
         if (j === x.mi) {
           c.set((s) => (s.x.mi = s.x.mi + 1));
           c.send('c3fx', ['hole', j]);
@@ -222,7 +222,7 @@
       }
     }
     for (const [tx, tz] of W.TRAPS)
-      if (Math.hypot(mb.x - tx, mb.z - tz) < 0.42) {
+      if (Math.hypot(mb.x - tx, mb.z - tz) < 0.32) {
         c.send('c3fx', ['trap']);
         fxTrap();
         resetMarble();
@@ -403,7 +403,7 @@
       const sx = tbl.reduce((a, p) => a + p.q.x, 0);
       // one player at the very edge only gets half the tilt: steering a marble takes both
       const k = W.TBL.max / (W.TBL.half * 2 * 0.85);
-      const rate = 0.2 * dt;
+      const rate = 0.3 * dt;
       // once the three marbles are home (or outside the puzzle) the table settles flat
       const free = x.stage === 3 && x.mi < 3;
       sim.tx += clamp((free ? clamp(-sz * k, -W.TBL.max, W.TBL.max) : 0) - sim.tx, -rate, rate);
@@ -444,7 +444,7 @@
         const pl = ps.map((p) => W.onPlate(p.q));
         const level = Math.abs(sim.dx) < 0.05 && Math.abs(sim.dz) < 0.05;
         const ok = pl[0] && pl[1] && pl[0] !== pl[1] && level;
-        sim.bal = clamp(sim.bal + (ok ? dt / 4 : -dt / 5), 0, 1);
+        sim.bal = clamp(sim.bal + (ok ? dt / 3 : -dt / 5), 0, 1);
         if (sim.bal >= 1) c.set((s) => ((s.x.card = true), (s.x.stage = 6)));
       }
 

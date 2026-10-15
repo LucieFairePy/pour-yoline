@@ -284,10 +284,22 @@
   const A = V3();
   const D = V3();
   const tmp = V3();
-  const SPEED = 1.55;
-  const GRACE = 9;
+  const SPEED = 1.4;
+  const GRACE = 10;
   const FRONT0 = 279;
   const FRONT_END = 368;
+  // run checkpoints: the start of each strip roof (a fall resumes from the last roof both reached)
+  const RUN_CP = [
+    { z: 282, spawn: null },
+    { z: 321.5, spawn: [0, 323.5] },
+    { z: 350, spawn: [1.2, 352] },
+  ];
+  const runCp = (x) => RUN_CP[Math.min(RUN_CP.length - 1, x.cp || 0)];
+  const runSpawn = (x, role) => {
+    const cp = runCp(x);
+    if (!cp.spawn) return W.spawn(3, role);
+    return W.P(role === 'dame' ? -2.5 : 2.5, cp.spawn[0], cp.spawn[1]);
+  };
 
   const spots = [];
   const makeSpot = () => {
@@ -330,10 +342,10 @@
     [-2, 1.2, 358],
     [2.5, 1.2, 373],
   ];
-  const spawnDrones = () => {
+  const spawnDrones = (minZ = 0) => {
     Enemies.clear();
-    GUARDS.forEach((p) => Enemies.spawn('gardeToit', W.P(...p), { shield: true, yaw: Math.PI }));
-    DRONES.forEach((d) =>
+    GUARDS.filter((p) => p[2] > minZ).forEach((p) => Enemies.spawn('gardeToit', W.P(...p), { shield: true, yaw: Math.PI }));
+    DRONES.filter((d) => d.home[2] > minZ).forEach((d) =>
       Enemies.spawn('drone', W.P(...d.home), {
         span: d.span,
         spanZ: d.spanZ,
@@ -355,16 +367,19 @@
   const resetSec3 = (c, msg) => {
     local.front = -1;
     local.frontT = 0;
+    const cpZ = runCp(c.S.x).z;
     c.set((s) => {
       const a = (s.x.tl || '').padEnd(W.pieces.length, '0').split('');
       W.pieces.forEach((p) => {
-        if (p.kind === 's' || p.z > 280) a[p.id] = '0';
+        // the roofs behind the checkpoint stay down
+        if (p.kind === 's' && cpZ > 282 && p.z < cpZ) a[p.id] = '2';
+        else if (p.kind === 's' || p.z > 280) a[p.id] = '0';
       });
       s.x.tl = a.join('');
       s.x.reset = (s.x.reset || 0) + 1;
       s.x.msg = msg;
     });
-    spawnDrones();
+    spawnDrones(cpZ > 282 ? cpZ : 0);
   };
 
   const objectiveFor = (c, q) => {
@@ -383,7 +398,7 @@
   };
 
   Story.register('tr_s2', {
-    init: () => ({ sec: 1, tl: '', ladder: false, plank: false, hold: [], reach: false, catch: 0, reset: 0 }),
+    init: () => ({ sec: 1, cp: 0, tl: '', ladder: false, plank: false, hold: [], reach: false, catch: 0, reset: 0 }),
     voice: () => 1,
     net: {
       en: (c, d) => !Net.isHost && Enemies.unpack(d),
@@ -413,14 +428,14 @@
       local.catchSeen = c.S.x.catch || 0;
       local.ladderSeen = !!c.S.x.ladder;
       local.plankSeen = !!c.S.x.plank;
-      c.spawn(W.spawn(c.S.x.sec, c.role), 0);
+      c.spawn(c.S.x.sec === 3 ? runSpawn(c.S.x, c.role) : W.spawn(c.S.x.sec, c.role), 0);
       Player.killY = W.O.y - 12;
       Player.checkpoint = () => {
         const x = Story.S.x;
         if (x.sec === 3) {
-          // a fall in the run: the whole run starts again, for both
+          // a fall in the run: the run starts again from the last roof both reached, for both
           Story.ctx.act({ a: 'fell' });
-          return W.spawn(3, Story.role);
+          return runSpawn(x, Story.role);
         }
         if (x.sec >= 4) return W.P(Story.role === 'dame' ? -1.5 : 1.5, 1.2, 380);
         return W.checkpoint(local.maxZ, Story.role);
@@ -497,7 +512,7 @@
       if ((x.reset || 0) !== local.reset) {
         local.reset = x.reset || 0;
         Combat.reset();
-        c.spawn(W.spawn(3, c.role), 0);
+        c.spawn(runSpawn(x, c.role), 0);
         HUD.say(x.msg === 'wipe' ? TXT.wipe : TXT.reset, T.master, 3000);
         Sound.play('glitch');
       }
@@ -535,6 +550,11 @@
         spawnDrones();
         local.front = -1;
         local.frontT = 0;
+      }
+      // run checkpoints: both on the next strip roof
+      if (x.sec === 3) {
+        const nx = RUN_CP[(x.cp || 0) + 1];
+        if (nx && qs.every((q) => q.z > nx.z + 1 && q.y > nx.spawn[0] - 0.6)) c.set((s) => (s.x.cp = (s.x.cp || 0) + 1));
       }
       if (x.sec === 3 && qs.every((q) => q.z > 373 && q.y > 0.6)) {
         c.set((s) => (s.x.sec = 4));
@@ -585,7 +605,7 @@
         // the front waits while someone is down: the partner gets the time to come back for you
         const anyDown = ps[0].down || ps[1].down;
         if (local.frontT > GRACE && !anyDown) {
-          if (local.front < 0) local.front = FRONT0;
+          if (local.front < 0) local.front = (x.cp || 0) ? runCp(x).z - 3 : FRONT0;
           local.front = Math.min(FRONT_END, local.front + SPEED * dt);
         }
         Enemies.simulate(dt, ps);

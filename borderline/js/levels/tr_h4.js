@@ -358,6 +358,9 @@
       local.dawn = 0;
       local.fly = null;
       local.lastKey = '';
+      // the timers and cooldowns of an earlier visit do not carry over
+      Object.assign(local, { atkT: 3, kindle: 0, kindleI: -1, scaredT: 0, sendW: 0, sendC: 0, msgCd: 0, hitT: 0, lowCd: 0, objT: 0 });
+      Object.assign(local, { steps: null, downCd: 0, hopT: 0, nearCd: 0, warned: false });
       c.spawn(H4.spawn(c.S.x.stage, c.role, sub(c, c.role)), 0);
       Player.killY = H4.O.y - 18;
       Player.checkpoint = () => H4.spawn(Story.S.x.stage, c.role, sub(c, c.role));
