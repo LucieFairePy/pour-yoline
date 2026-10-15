@@ -75,6 +75,7 @@ set's `_SOURCE_ET_LICENCE.json` / `License.txt` was checked).
 | `textures/h10_floor_alb.webp`, `h10_floor_nrm.jpg` | "Floor Tiles 08", https://polyhaven.com/a/floor_tiles_08 | Poly Haven | CC0 | Tiled 2 × 2 and recoloured into an ivory / wine-black checker along its own grout lines (each stone keeps its grain), AO baked; normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `textures/h10_plaster_alb.webp`, `h10_plaster_nrm.jpg` | "Plastered Wall", https://polyhaven.com/a/plastered_wall | Poly Haven | CC0 | AO baked, 65 % desaturated, brightness normalised; normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `textures/cc_marble_alb.webp`, `cc_marble_nrm.jpg` | "Marble Tiles", https://polyhaven.com/a/marble_tiles | Poly Haven | CC0 | AO baked, recoloured into a green (verde antico) mosaic; normal (OpenGL) and roughness packed in one JPEG; 1K. |
+| `textures/dcour_mosaic_alb.webp`, `dcour_mosaic_nrm.jpg` | "Marble Tiles", https://polyhaven.com/a/marble_tiles | Poly Haven | CC0 | AO baked, recoloured into a warm honey-cream mosaic; normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `fx/lamp_cone.png` | "Light Masks" (`cone_d_blur`), https://kenney.nl/assets/light-masks | Kenney | CC0 | Luminance only, flipped, 128×256. |
 
 ## Sounds (`sounds/kenney/`) — Look pass

@@ -53,6 +53,10 @@ const Assets = (() => {
     // mosaic, made from the Poly Haven marble tiles
     'tex.ccmarble.alb': { type: 'tex', url: 'textures/cc_marble_alb.webp', repeat: true },
     'tex.ccmarble.nrm': { type: 'tex', url: 'textures/cc_marble_nrm.jpg', repeat: true, data: true },
+    // ♦ table of the Cour (js/world/cour_d.js binds it to its own materials only): Poly Haven
+    // marble tiles, recoloured as a warm mosaic for the floors of the observatory
+    'tex.dcour.mosaic.alb': { type: 'tex', url: 'textures/dcour_mosaic_alb.webp', repeat: true },
+    'tex.dcour.mosaic.nrm': { type: 'tex', url: 'textures/dcour_mosaic_nrm.jpg', repeat: true, data: true },
     // sounds (Kenney RPG Audio / Impact Sounds / Sci-fi Sounds, CC0)
     'snd.swing1': { type: 'sound', url: 'sounds/swing1.mp3' },
     'snd.swing2': { type: 'sound', url: 'sounds/swing2.mp3' },
