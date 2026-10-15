@@ -24,6 +24,7 @@
     reachMate: '{mate} a traversé ! Un pont de lumière se déploie.',
     fall: 'Tu es tombé{e} dans les nuages. Retour au bord.',
     fallMate: '{mate} est tombé{pe} dans les nuages. Retour au bord.',
+    moved: 'Les nuages porteurs ont glissé ailleurs. Le chemin d’avant ne vaut plus.',
     lift: 'Un courant d’air chaud te soulève.',
     s3: {
       intro: 'Le Filet. L’un saute à travers les anneaux, l’autre le rattrape sur le radeau-nuage. Sous la brume, on ne voit rien.',
@@ -106,6 +107,7 @@
     env: null,
     seen: {},
     lastRing: 0,
+    lay: {},
   };
   const mateRole = (r) => (r === 'dame' ? 'valet' : 'dame');
   const jumperOf = (stage) => (stage === 1 ? 'dame' : 'valet');
@@ -222,10 +224,13 @@
     s.x.diveN = (s.x.diveN || 0) + 1;
   };
   const DR = () => [0, 1, 2, 3, 4, 5, 6, 7].map(() => ({}));
+  // a seed for the hidden clouds' layout (H5.setLayout), drawn again each time the jumper falls
+  const seed = () => 1 + ((Math.random() * 1e9) | 0);
 
   Story.register('tr_h5', {
     init: () => ({
       stage: 1,
+      lay: { A: seed(), B: seed() },
       bridgeA: false,
       bridgeB: false,
       ring: 0,
@@ -270,6 +275,7 @@
       local.diveN = x.diveN || 0;
       local.caughtSent = false;
       local.seen = {};
+      local.lay = {};
       const d = H5.DOCKS[Math.min(x.dock || 0, 4)];
       local.raft.set(d[0], 0, d[1]);
       local.raftT.copy(local.raft);
@@ -339,6 +345,13 @@
     apply(c) {
       if (!H5.built) return;
       const x = c.S.x;
+      // the hidden clouds move between attempts: re-lay them when the host draws a new seed
+      const lay = x.lay || {};
+      ['A', 'B'].forEach((k) => {
+        if (local.lay[k] === lay[k]) return;
+        local.lay[k] = lay[k];
+        H5.setLayout(k, lay[k] || 0);
+      });
       if (x.stage !== local.stage) {
         const prev = local.stage;
         local.stage = x.stage;
@@ -464,6 +477,12 @@
     },
     action(c, who, d) {
       const x = c.S.x;
+      // the jumper fell: the clouds of that leap take a new layout for the next try
+      if (d.a === 'refall' && (x.stage === 1 || x.stage === 2) && who === jumperOf(x.stage)) {
+        const k = x.stage === 1 ? 'A' : 'B';
+        c.set((s) => (s.x.lay = { ...(s.x.lay || {}), [k]: seed() }));
+        sayBoth(c, TXT.moved, TXT.moved, 2600);
+      }
       if (d.a === 'pass' && x.stage === 3 && who === fallerOf(x.ring) && d.i === x.ring && x.raft === 'down') {
         c.set((s) => (s.x.passed = d.i));
       }
@@ -735,6 +754,7 @@
           HUD.say(TXT.fall, T.master, 2400);
           c.send('h5say', [TXT.fallMate, 2400]);
           respawn(c);
+          if (r === jumperOf(x.stage)) c.act({ a: 'refall' });
         }
       }
 

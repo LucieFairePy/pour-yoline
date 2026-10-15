@@ -66,7 +66,8 @@
     return l.map((v, i) => [v, r[i]]);
   };
   const local = { round: 0, alarm: 0, ring: 0, dn: 0, tm: 0, said: '', near: 0 };
-  const tm = { near: 0, beat: 0 };
+  // r3 / r3ref / r3s: the host's clock for the current call, committed to the shared state twice a second
+  const tm = { near: 0, beat: 0, r3: 0, r3ref: null, r3s: 0 };
   const q = V3();
   const qo = V3();
   const hl = V3();
@@ -297,11 +298,13 @@
     }
     const caller = r3.caller === who;
     const lim = R3[r3.sub][2];
-    // the timer runs locally from the moment this call appeared (the host decides the timeout)
+    // the timer runs locally from the shared clock (the host decides the timeout); a guest that
+    // drifted (reconnect, missed reset) snaps back to it
     const ck = r3.sub + '|' + r3.seq.join('');
-    if (local.ck !== ck) {
+    const ref = Net.isHost ? tm.r3 : r3.t;
+    if (local.ck !== ck || Math.abs(t - local.t0 - ref) > 1) {
       local.ck = ck;
-      local.t0 = t - (Net.isHost ? r3.t : 0);
+      local.t0 = t - ref;
     }
     const left = Math.max(0, lim - (t - local.t0));
     const k = `${r3.sub}|${r3.seq.join('')}|${r3.prog}|${Math.ceil(left * 2)}|${caller}`;
@@ -421,6 +424,7 @@
     exit() {
       Player.targets = null;
       local.close = false;
+      W.hide();
     },
     apply(c, first) {
       if (!W.built) return;
@@ -454,8 +458,19 @@
       if (x.round === 3) {
         const r3 = x.r3;
         if (!r3.final) {
-          r3.t += dt;
-          if (r3.t > R3[r3.sub][2]) {
+          if (tm.r3ref !== r3) {
+            tm.r3ref = r3;
+            tm.r3 = r3.t;
+            tm.r3s = 0;
+          }
+          tm.r3 += dt;
+          tm.r3s += dt;
+          if (tm.r3s > 0.5) {
+            tm.r3s = 0;
+            const v = tm.r3;
+            c.set((s) => (s.x.r3.t = v));
+          }
+          if (tm.r3 > R3[r3.sub][2]) {
             c.set((s) => newR3(s, s.x.r3.sub));
             alarm(c, TX.timeout);
           }
@@ -571,6 +586,7 @@
             s.x.r3.prog = 0;
             s.x.r3.seq = seq(R3[s.x.r3.sub][1]);
             s.x.r3.t = 0;
+            tm.r3 = 0;
           });
           alarm(c);
           return;

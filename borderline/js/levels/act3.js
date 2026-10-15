@@ -10,7 +10,9 @@
     moment: false,
     lantern: 0,
   };
-  const tm = { lift: 0, empty: 0 };
+  // host only: ly is the cabin's live height (streamed at 15 Hz, committed to the shared state
+  // by c.set a few times a second); req is when each one last reached out a hand
+  const tm = { lift: 0, empty: 0, ly: 0, lref: null, sync: 0, req: {} };
 
   Clues.add('c4', V3(City.TOWER.x + 4, City.TOWER.y + 0.9, City.TOWER.z - 5));
 
@@ -44,7 +46,6 @@
       found: [],
       lift: { y: 0.05, used: false },
       hand: false,
-      req: {},
       moment: false,
     }),
     net: {
@@ -63,6 +64,12 @@
       HUD.objective(objective(c));
       local.lift = local.liftTo = c.S.x.lift.y;
       City.setLift(local.lift);
+      local.found = new Set(c.S.x.found);
+      local.tower = false;
+      local.moment = false;
+      local.momentT = 0;
+      tm.lref = null;
+      tm.req = {};
     },
     exit() {
       Avatar.together(0, false);
@@ -102,7 +109,11 @@
       const x = c.S.x;
       const pd = c.pos('dame');
       const pv = c.pos('valet');
-      const ly = x.lift.y;
+      if (tm.lref !== x.lift) {
+        tm.lref = x.lift;
+        tm.ly = x.lift.y;
+      }
+      const ly = tm.ly;
       const onD = City.onLift(pd, ly);
       const onV = City.onLift(pv, ly);
       // someone waiting at the top landing calls the cabin back up
@@ -122,15 +133,25 @@
       } else target = x.lift.going || LIFT_TOP;
       if (target !== ly) {
         if (!x.lift.used && target === LIFT_TOP) Sound.play('lift');
-        x.lift.used = x.lift.used || target === LIFT_TOP;
-        x.lift.going = target;
-        x.lift.y = target > ly ? Math.min(target, ly + dt * 4) : Math.max(target, ly - dt * 4);
-        local.liftTo = x.lift.y;
+        if (x.lift.going !== target || (!x.lift.used && target === LIFT_TOP))
+          c.set((s) => {
+            s.x.lift.used = s.x.lift.used || target === LIFT_TOP;
+            s.x.lift.going = target;
+          });
+        tm.ly = target > ly ? Math.min(target, ly + dt * 4) : Math.max(target, ly - dt * 4);
+        local.liftTo = tm.ly;
         tm.lift += dt;
         if (tm.lift > 1 / 15) {
           tm.lift = 0;
-          c.send('lift', x.lift.y);
+          c.send('lift', tm.ly);
         }
+      }
+      // the shared state follows the cabin a few times a second, and exactly where it stops
+      tm.sync += dt;
+      if (tm.ly !== x.lift.y && (tm.sync > 0.25 || tm.ly === target)) {
+        tm.sync = 0;
+        const v = tm.ly;
+        c.set((s) => (s.x.lift.y = v));
       }
       if (x.hand && Math.hypot(pd.x - pv.x, pd.z - pv.z) > 6) c.set((s) => (s.x.hand = false));
       const b = City.roofBench;
@@ -157,9 +178,9 @@
       if (d.a === 'hand') {
         const now = performance.now();
         if (x.hand) return c.set((s) => (s.x.hand = false));
-        x.req[who] = now;
+        tm.req[who] = now;
         const o = who === 'dame' ? 'valet' : 'dame';
-        if (x.req[o] && now - x.req[o] < 2500) c.set((s) => (s.x.hand = true));
+        if (tm.req[o] && now - tm.req[o] < 2500) c.set((s) => (s.x.hand = true));
       }
     },
     update(c, dt, t) {

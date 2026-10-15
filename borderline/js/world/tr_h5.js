@@ -484,8 +484,9 @@ const H5 = (() => {
     g.add(halo);
     g.position.copy(P(x, y, z));
     group.add(g);
-    const b = K.collider(x, y - 0.3, z, s, 0.6, s, { dyn: !!drift });
-    const c = { g, b, x, y, z, s, drift, leap, off: 0, top };
+    // dynamic: the layout shifts sideways between attempts (setLayout)
+    const b = K.collider(x, y - 0.3, z, s, 0.6, s, { dyn: true });
+    const c = { g, b, x, y, z, s, drift, leap, off: 0, top, ox: 0 };
     hidden.push(c);
     return c;
   };
@@ -669,7 +670,7 @@ const H5 = (() => {
       const swirl = sprite(haloTex, '#ffd0a0', 4, 0.3);
       swirl.position.copy(P(u.x, u.y1 - 0.5, u.z));
       group.add(swirl);
-      updrafts.push({ ...u, m, swirl });
+      updrafts.push({ ...u, x0: u.x, m, swirl });
     });
     Object.entries(BRIDGES).forEach(([k, b]) => {
       const len = b.z1 - b.z0;
@@ -1053,6 +1054,61 @@ const H5 = (() => {
     });
   };
 
+  // ---------- the hidden clouds' layout, new for each attempt ----------
+  // Every fixed cloud slides sideways by up to 2 m (the drifting ones stay put; the updraft moves
+  // with the high cloud it feeds), from a seed the host draws on each fall. No hop gets longer
+  // than it was in the base layout (or than 4.4 m, well under the base layout's long hops), so
+  // every layout stays a fair, reachable path; the one who jumps cannot learn it alone.
+  const setLayout = (leap, seed) => {
+    const cl = hidden.filter((c) => c.leap === leap);
+    const ud = updrafts.find((u) => u.leap === leap);
+    // the path, hop by hop: each point slides with cloud v (-1: stays put); the updraft sits
+    // between the last low cloud and the high cloud it feeds, and slides with that one
+    const feed = ud ? cl.findIndex((c) => c.y > ud.y1 - 3) : -1;
+    // (a: how far a cloud drifting sideways sweeps; a hop to it counts at half that sweep closer)
+    const pts = cl.map((c, i) => ({ x: c.x, z: c.z, v: c.drift ? -1 : i, a: c.drift && c.drift[0] === 'x' ? c.drift[1] : 0 }));
+    if (ud) pts.splice(feed, 0, { x: ud.x0, z: ud.z, v: feed, a: 0 });
+    const ox = cl.map(() => 0);
+    const at = (j, o) => pts[j].x + (pts[j].v < 0 ? 0 : o[pts[j].v]);
+    const len = (j, o) => Math.hypot(Math.max(0, Math.abs(at(j, o) - at(j - 1, o)) - (pts[j].a + pts[j - 1].a) / 2), pts[j].z - pts[j - 1].z);
+    const lim = pts.map((a, j) => (j ? Math.max(4.4, len(j, ox)) + 1e-6 : 0));
+    const hop = (j, o) => len(j, o) <= lim[j];
+    if (seed) {
+      const r = rng(seed);
+      // cloud after cloud, each one picked among the slides that keep its hops fair
+      for (let t = 0; t < 60; t++) {
+        const o = cl.map(() => 0);
+        const set = {};
+        let good = true;
+        for (let j = 0; j < pts.length && good; j++) {
+          const v = pts[j].v;
+          if (v < 0 || set[v]) {
+            good = j === 0 || hop(j, o);
+            continue;
+          }
+          good = false;
+          for (let k = 0; k < 40 && !good; k++) {
+            o[v] = (r() * 2 - 1) * 2;
+            good = j === 0 || hop(j, o);
+            // the next point will not slide on its own (a drifting cloud, or the same cloud): check it now
+            if (good && j + 1 < pts.length && (pts[j + 1].v < 0 || pts[j + 1].v === v)) good = hop(j + 1, o);
+          }
+          set[v] = true;
+        }
+        if (good) {
+          o.forEach((a, i) => (ox[i] = a));
+          break;
+        }
+      }
+    }
+    cl.forEach((c, i) => (c.ox = ox[i]));
+    if (ud) {
+      ud.x = ud.x0 + ox[feed];
+      ud.m.position.x = O.x + ud.x;
+      ud.swirl.position.x = O.x + ud.x;
+    }
+  };
+
   // ---------- per-frame ----------
   // clock: the shared time base (sent by the host), so drifting clouds and rings agree
   const driftOff = (c, clock) => {
@@ -1094,7 +1150,7 @@ const H5 = (() => {
     // hidden clouds: seen by the guide only, solid for the jumper only
     hidden.forEach((c) => {
       const off = driftOff(c, st.clock);
-      const x = c.drift && c.drift[0] === 'x' ? c.x + off : c.x;
+      const x = (c.drift && c.drift[0] === 'x' ? c.x + off : c.x) + c.ox;
       const z = c.drift && c.drift[0] === 'z' ? c.z + off : c.z;
       c.dx = x - (c.cx == null ? x : c.cx);
       c.dz = z - (c.cz == null ? z : c.cz);
@@ -1105,7 +1161,7 @@ const H5 = (() => {
       c.g.position.set(O.x + x, O.y + c.y + Math.sin(t * 1.2 + c.z) * 0.03, O.z + z);
       c.top.material.opacity = 0.75 + Math.sin(t * 2 + c.z) * 0.2;
       c.b.on = st.solid[c.leap];
-      if (c.drift) setBox(c.b, x, c.y - 0.3, z, c.s, 0.6, c.s);
+      setBox(c.b, x, c.y - 0.3, z, c.s, 0.6, c.s);
     });
     updrafts.forEach((u) => {
       u.m.visible = st.seer[u.leap];
@@ -1275,6 +1331,7 @@ const H5 = (() => {
     },
     hidden,
     updrafts,
+    setLayout,
     rings,
     diveRings,
     PLANKS,

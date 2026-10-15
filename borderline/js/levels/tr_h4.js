@@ -576,6 +576,8 @@
         c.set((s) => (s.x.lan = { who, post: null }));
       }
       if (d.a === 'place' && L.who === who && H4.posts[d.post]) {
+        // same reach as taking it: the host checks the bearer is at that post
+        if (pos(who).distanceTo(H4.posts[d.post].pos) > 3.2) return;
         c.set((s) => (s.x.lan = { who: null, post: d.post }));
       }
       if (d.a === 'give' && L.who === who) {

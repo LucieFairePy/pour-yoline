@@ -14,7 +14,8 @@
     zoneSeen: -1,
     expT: 0,
   };
-  const tm = { d: 0, win: 0 };
+  // touch: when each one last touched the doll (host only, never part of the shared state)
+  const tm = { d: 0, win: 0, touch: {} };
   const now = () => performance.now() / 1000;
 
   // doll timings per zone: [sing min, sing max, watch min, watch max, fake chance]
@@ -144,7 +145,7 @@
   };
 
   Story.register('soleil', {
-    init: () => ({ stage: 1, d: { ph: 'sing', dur: 4, real: true, n: 0 }, touch: {} }),
+    init: () => ({ stage: 1, d: { ph: 'sing', dur: 4, real: true, n: 0 } }),
     voice: () => 1,
     net: {
       scaught: (c) => {
@@ -158,6 +159,7 @@
       local.n = -1;
       local.line = 0;
       local.zoneSeen = -1;
+      tm.touch = {};
       const st = c.S.x.stage;
       c.spawn(st >= 2 ? Soleil.P(c.role === 'dame' ? -3 : 3, 0, 88) : Soleil.spawn(0, c.role), 0);
       Player.killY = Soleil.O.y - 25;
@@ -230,9 +232,9 @@
     action(c, who, d) {
       const x = c.S.x;
       if (d.a === 'touch' && x.stage === 2) {
-        x.touch[who] = performance.now();
+        tm.touch[who] = performance.now();
         const o = who === 'dame' ? 'valet' : 'dame';
-        if (x.touch[o] && performance.now() - x.touch[o] < 3000)
+        if (tm.touch[o] && performance.now() - tm.touch[o] < 3000)
           c.set((s) => {
             s.x.stage = 3;
             s.x.d = { ph: 'sleep', dur: 99, n: (s.x.d.n || 0) + 1 };

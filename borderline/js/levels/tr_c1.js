@@ -61,8 +61,10 @@
     said: {},
     wheelPrev: null,
     gustSaid: 0,
+    gw: null,
+    gw0: -99,
   };
-  const hostL = { cr: [], held: 0, front: null, fT: 0 };
+  const hostL = { cr: [], held: 0, front: null, fT: 0, gT: 0 };
   const me = V3();
   const mate = V3();
   const n = V3();
@@ -146,6 +148,8 @@
       local.pulley = false;
       local.said = {};
       local.rn = c.S.x.rn || 0;
+      local.gw = null;
+      hostL.gT = 0;
       hostL.cr = [0, 0, 0, 0, 0, 0].map(() => ({ t: 0, r: 0 }));
       c.spawn(TrC1.spawn(c.S.x.stage, c.role), 0);
       Player.killY = TrC1.O.y - 40;
@@ -228,6 +232,12 @@
       if (x.stage === 4 && both((q) => q.y > TrC1.TOP - 0.6 && q.z > 116.4))
         c.set((s) => (s.x.stage = 5));
       if (x.stage === 5) {
+        // the host calls each gust (every 5.5 s): both screens blow at the same time
+        hostL.gT += dt;
+        if (hostL.gT > 5.5) {
+          hostL.gT = 0;
+          c.set((s) => (s.x.gw = (s.x.gw || 0) + 1));
+        }
         if (x.front == null) {
           if (qd.z > TrC1.BR0 + 1.5 || qv.z > TrC1.BR0 + 1.5) {
             hostL.front = TrC1.BR0 - 3;
@@ -464,11 +474,16 @@
       // dust and splinters where the bridge gives way
       if (local.front != null && local.front < TrC1.BR1 && Math.random() < dt * 5)
         Fx.burst(TrC1.P((Math.random() - 0.5) * 3, TrC1.TOP - 0.3, local.front), '#5e4636', 5, 1.6, 0.7, -9);
-      // gusts over the middle of the bridge (local timing, each pushes its own body)
+      // gusts over the middle of the bridge (called by the host, each pushes its own body)
+      if (x.gw !== local.gw) {
+        // one already blowing when this screen arrived is not replayed
+        local.gw0 = local.gw === null ? -99 : t;
+        local.gw = x.gw;
+      }
       let gust = 0;
       if (x.stage === 5) {
-        const ph = t % 5.5;
-        const dir = Math.floor(t / 5.5) % 2 ? 1 : -1;
+        const ph = 3.0 + (t - local.gw0);
+        const dir = (x.gw || 0) % 2 ? 1 : -1;
         if (ph > 3.0 && ph < 3.4 && q.z > 140 && q.z < 180 && t - local.gustSaid > 5) {
           local.gustSaid = t;
           Sound.play('rumble', 1);

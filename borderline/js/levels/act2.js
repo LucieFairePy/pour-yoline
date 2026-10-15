@@ -4,7 +4,9 @@
   // this épreuve's card, from the plan (js/game/trials.js)
   const CARD = Cards.tagOf('c4');
   const SYMS = ['♥', '♠', '♦', '♣'];
-  const local = { stage: 0, round: -1, boom: 0, manual: false, card: false, scr: '' };
+  // bt / bRef: the host's bomb clock (committed to the shared state by c.set); gt / gSeen: the
+  // guest's copy, run on locally between two updates
+  const local = { stage: 0, round: -1, boom: 0, manual: false, card: false, scr: '', bt: 0, bRef: null, gt: 0, gSeen: null };
   // reused every frame
   const qd = V3();
   const qv = V3();
@@ -97,6 +99,8 @@
       Maze.build(c.role, c.S.seed);
       local.stage = 0;
       local.round = -1;
+      local.bRef = null;
+      local.gSeen = null;
       c.spawn(Maze.spawn(c.S.x.stage, c.role), Maze.yaw(c.S.x.stage, c.role));
       lookDown(c, c.S.x.stage);
       Player.killY = Maze.O.y - 25;
@@ -142,13 +146,18 @@
       Maze.rel(c.pos('valet'), qv);
       if (x.stage === 1 && Maze.exited(qv, 'm1')) c.set((s) => (s.x.stage = 2));
       if (x.stage === 2) {
-        x.bomb.t += dt;
+        if (local.bRef !== x.bomb) {
+          local.bRef = x.bomb;
+          local.bt = x.bomb.t;
+        }
+        local.bt += dt;
         local.boom += dt;
         if (local.boom > 0.5) {
           local.boom = 0;
-          c.touch();
+          const v = local.bt;
+          c.set((s) => (s.x.bomb.t = v));
         }
-        if (x.bomb.t > 45) {
+        if (local.bt > 45) {
           c.send('boom');
           onBoom(c);
           // a boom sends the bomb back to its first module: guessing wires blind never adds up
@@ -212,8 +221,11 @@
         Player.teleport(Player.checkpoint(), 0);
       }
       if (x.stage === 2) {
-        const left = Math.max(0, Math.ceil(45 - x.bomb.t));
-        if (!Net.isHost) x.bomb.t += dt;
+        if (x.bomb.t !== local.gSeen) {
+          local.gSeen = x.bomb.t;
+          local.gt = x.bomb.t;
+        } else local.gt += dt;
+        const left = Math.max(0, Math.ceil(45 - (Net.isHost && local.bRef === x.bomb ? local.bt : local.gt)));
         const key = x.bomb.sym + x.bomb.num + x.bomb.round + '/' + left;
         if (key !== local.scr) {
           local.scr = key;
