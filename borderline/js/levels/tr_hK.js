@@ -595,6 +595,7 @@
           if (press) {
             local.aiming = true;
             local.held = false;
+            sayOnce('leave', TXT.leave, 60);
             Player.body.v.set(0, 0, 0);
             Player.yaw = 0;
             Cam.yaw = 0;
