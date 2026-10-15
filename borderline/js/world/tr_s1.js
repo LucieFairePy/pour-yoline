@@ -249,6 +249,8 @@ const TrS1 = (() => {
   // ---------- 2 · chasm, drawbridge, lever, card-block, overhang wall ----------
   let bridge = null;
   let lever = null;
+  let winch = null;
+  let veil = null;
   let block = null;
   let ringA = null;
   let ringB = null;
@@ -342,6 +344,38 @@ const TrS1 = (() => {
         K.collider(x, 0.6, z, 0.16, 1.2, 0.16);
       });
 
+    // the veil between the lanes: a shimmering curtain over the void, too tall to jump, so
+    // nobody hops across to press the other lane's plates alone (a relay needs two)
+    const veilTex = LvKit.tex(256, 64, (g) => {
+      g.clearRect(0, 0, 256, 64);
+      for (let i = 0; i < 256; i += 8) {
+        const a = 0.25 + 0.75 * Math.abs(Math.sin(i * 0.37));
+        g.fillStyle = 'rgba(200,170,255,' + (0.18 * a).toFixed(3) + ')';
+        g.fillRect(i, 0, 2, 64);
+      }
+      const gr = g.createLinearGradient(0, 0, 0, 64);
+      gr.addColorStop(0, 'rgba(0,0,0,0.9)');
+      gr.addColorStop(0.3, 'rgba(0,0,0,0)');
+      g.globalCompositeOperation = 'destination-out';
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 256, 64);
+    }, 6, 1);
+    veil = K.deco(
+      new THREE.PlaneGeometry(50.8, 9).rotateY(Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        map: veilTex,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      }),
+      0,
+      2.5,
+      33,
+    );
+    veil.material.color.set('#b9a6ff');
+    K.collider(0, 2.5, 33, 0.3, 9, 50.8, { tag: 'nocam' });
     // plaza 2 (both lanes meet)
     slab(0, 0, 64, 18, 12, { th: 1.2, mat: M.plaza });
     // chasm far side
@@ -392,6 +426,29 @@ const TrS1 = (() => {
     group.add(lever);
     K.collider(5.5, 0.25, 89.5, 0.9, 0.5, 0.7);
     lever.userData = { arm, knob, k: 0 };
+    // the winch on the near side: the drawbridge comes down only while it is cranked AND the
+    // lever on the far side is pulled (one player each side)
+    winch = new THREE.Group();
+    [-0.7, 0.7].forEach((x) => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.3, 0.5), M.iron);
+      post.position.set(x, 0.65, 0);
+      winch.add(post);
+    });
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.2, 20).rotateZ(Math.PI / 2), M.wood);
+    drum.position.y = 1.0;
+    const crank = new THREE.Group();
+    const crankArm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 0.1), M.gold);
+    crankArm.position.y = 0.3;
+    const crankKnob = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 10), glow('#ff5f8a', 1.6));
+    crankKnob.position.set(0.12, 0.62, 0);
+    crank.add(crankArm, crankKnob);
+    crank.position.set(0.86, 1.0, 0);
+    drum.add(new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.04, 6, 24).rotateY(Math.PI / 2), M.iron));
+    winch.add(drum, crank);
+    winch.position.copy(P(-5.5, 0, 68.4));
+    group.add(winch);
+    K.collider(-5.5, 0.65, 68.4, 1.6, 1.3, 0.6);
+    winch.userData = { drum, crank, knob: crankKnob, k: 0 };
 
     // the wall: a 5.6 m parapet nobody can climb, with one notch down to 4 m. The double-jump
     // kit sees an illusion of wall over the notch; the grapple kit sees through it.
@@ -478,6 +535,12 @@ const TrS1 = (() => {
     // the double gate
     slab(0, 6.2, 169, 14, 10, { th: 1 });
     [-6.2, 6.2].forEach((x) => K.solid(x, 9.7, 172.5, 1.2, 7, 1.2, M.stone));
+    // the pillars stand flush with the edges, and the gate's frame goes on over the void (no
+    // walking round a pillar along the rim, nor hopping round it through the air)
+    [-1, 1].forEach((sd) => {
+      K.solid(sd * 7.05, 9.7, 172.5, 0.7, 7, 1.0, M.stone);
+      K.collider(sd * 12.5, 9, 172.5, 11, 24, 1.2, { tag: 'nocam' });
+    });
     K.solid(0, 13.4, 172.5, 13.6, 0.8, 1.2, M.stone);
     gate = new THREE.Group();
     for (let i = -5; i <= 5; i++) {
@@ -762,6 +825,14 @@ const TrS1 = (() => {
     lever.userData.arm.rotation.x = 0.6 - lk * 1.2;
     lever.userData.knob.material.color.set(x.bridge ? '#7cf0c8' : '#ff5f8a').multiplyScalar(1.6);
     // rings
+    const wk = damp(winch.userData.k, x.winch && !x.bridge ? 1 : 0, 8, dt);
+    winch.userData.k = wk;
+    winch.userData.drum.rotation.x -= wk * dt * 2.2;
+    winch.userData.crank.rotation.x = winch.userData.drum.rotation.x;
+    winch.userData.knob.material.color.set(x.bridge ? '#7cf0c8' : x.winch ? '#ffcf8a' : '#ff5f8a').multiplyScalar(1.6);
+    veil.visible = x.stage === 1;
+    veil.material.opacity = 0.7 + 0.3 * Math.sin(t * 1.3);
+    veil.material.map.offset.x = t * 0.01;
     const showA = role === 'dame' && x.stage === 2 && !x.bridge;
     ringA.visible = showA || (x.stage === 2 && role !== 'dame' && !x.bridge);
     ringA.material.color.set(role === 'dame' ? '#ff5f8a' : '#7a4a5a').multiplyScalar(role === 'dame' ? 2.2 : 0.8);
@@ -793,7 +864,7 @@ const TrS1 = (() => {
     }
     block.position.copy(bd.cur);
     // well placed: a soft sparkle under the notch, on both screens
-    if (!bx.c && x.stage === 3 && Math.abs(bx.p[0] - NOTCH_X) < 0.9 && bx.p[2] > WALL_Z - 1.9 && Math.random() < dt * 6)
+    if (role === 'dame' && !bx.c && x.stage === 3 && Math.abs(bx.p[0] - NOTCH_X) < 0.9 && bx.p[2] > WALL_Z - 1.9 && Math.random() < dt * 6)
       Fx.burst(P(NOTCH_X + (Math.random() - 0.5) * 1.4, 1.7, WALL_Z - 0.9), '#ffcf8a', 3, 1, 0.6, 1);
     // tiles
     tiles.forEach((tl) => {
@@ -919,6 +990,7 @@ const TrS1 = (() => {
     ringB: () => P(0, 9.6, 138.6),
     blockPos: () => block.position,
     nearLever: (q) => near2(q, 5.5, 89.5, 2) && Math.abs(q.y) < 1.5,
+    nearWinch: (q) => near2(q, -5.5, 68.4, 2) && Math.abs(q.y) < 1.5,
     onGatePad: (q, id) => near2(q, gatePads[id].x, gatePads[id].z, 1.1) && Math.abs(q.y - 6.2) < 0.7,
     onAltarPad: (q, id) => near2(q, altarPads[id].x, altarPads[id].z, 1.1) && Math.abs(q.y - 6.2) < 0.7,
     endLanes: (q) => q.z > 58 && q.z < 70 && Math.abs(q.y) < 1.5,

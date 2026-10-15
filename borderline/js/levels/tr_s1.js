@@ -14,8 +14,8 @@
         'Les dalles jumelles. Monte sur ta plaque : elle rend solide la dalle de {mate}. Puis attends qu’{il} tienne la tienne.',
     },
     chasm: {
-      dame: 'Le gouffre. Vise l’anneau et lance ton grappin (F), puis abaisse le pont-levis pour {mate} (maintiens E sur le levier).',
-      valet: 'Le gouffre. Toi, tu ne passeras pas seul{e} : {mate} va t’abaisser le pont-levis.',
+      dame: 'Le gouffre. Vise l’anneau et lance ton grappin (F), puis tire le levier (maintiens E) pendant que {mate} tient le treuil.',
+      valet: 'Le gouffre. {mate} passe par l’anneau. Toi, tiens le treuil (maintiens E) : le pont ne descend que si vous tirez ensemble.',
     },
     wall: {
       dame: 'Le mur. Tu vois l’encoche que {mate} ne voit pas : guide-{le} pour qu’{il} pose la carte-bloc juste dessous.',
@@ -31,10 +31,13 @@
     won: 'Premiers pas réussis. Vous savez marcher ensemble.',
     hint1: 'Astuce : une dalle reste solide tant que quelqu’un est dessus.',
     leverP: 'Abaisser le pont-levis',
+    leverWait: 'Le levier est bloqué : {mate} doit tenir le treuil',
+    winchP: 'Tenir le treuil',
     take: 'Porter la carte-bloc',
     drop: 'Poser la carte-bloc',
     blockNo: 'Pas là : il faut la poser sous le passage, contre le mur.',
     blockOk: 'Là ! Juste sous l’encoche.',
+    blockPut: 'Carte-bloc posée. {mate} te dira si c’est le bon endroit.',
   };
   CONFIG.cards.s1 = {
     title: 'Premiers pas',
@@ -95,6 +98,7 @@
       pressed: [],
       bridge: false,
       leverHold: 0,
+      winch: false,
       block: { p: [-5, 0.8, 95], c: null },
       fell: [],
       gate: false,
@@ -119,6 +123,8 @@
       if (!first) await fadeTo(true);
       W.build();
       local.stage = 0;
+      local.lastBlk = null;
+      local.winchOn = false;
       c.spawn(W.spawn(c.S.x.stage, c.role), 0);
       Player.killY = W.O.y - 22;
       Player.checkpoint = () => W.spawn(Story.S.x.stage, c.role);
@@ -288,7 +294,8 @@
     },
     action(c, who, d) {
       const x = c.S.x;
-      if (d.a === 'lever' && x.stage === 2 && who === 'dame') c.set((s) => (s.x.bridge = true));
+      if (d.a === 'lever' && x.stage === 2 && who === 'dame' && x.winch) c.set((s) => (s.x.bridge = true));
+      if (d.a === 'winch' && x.stage === 2 && who === 'valet' && !!d.v !== !!x.winch) c.set((s) => (s.x.winch = !!d.v));
       if (d.a === 'lh' && x.stage === 2 && !x.bridge) c.set((s) => (s.x.leverHold = d.v));
       if (d.a === 'take' && x.stage === 3 && !x.block.c) c.set((s) => (s.x.block = { p: s.x.block.p, c: who }));
       if (d.a === 'drop' && x.stage === 3 && x.block.c === who)
@@ -301,8 +308,16 @@
       W.update(dt, t, x, r);
       const q = W.rel(Player.body.p);
       // the lever (grapple kit, far side of the chasm)
+      // the winch (near side): held by the double-jump kit while the lever is pulled
+      const winching = x.stage === 2 && !x.bridge && r === 'valet' && W.nearWinch(q) && Input.held('interact');
+      if (winching !== !!local.winchOn) {
+        local.winchOn = winching;
+        c.act({ a: 'winch', v: winching ? 1 : 0 });
+        if (winching) Sound.play('creak', W.P(-5.5, 0, 68.4));
+      }
+      if (x.stage === 2 && !x.bridge && r === 'valet' && W.nearWinch(q)) return ['E', TX.winchP, true];
       if (x.stage === 2 && !x.bridge && r === 'dame' && W.nearLever(q)) {
-        if (Input.held('interact')) local.hold += dt;
+        if (Input.held('interact') && x.winch) local.hold += dt;
         else local.hold = Math.max(0, local.hold - dt * 2);
         const v = +clamp(local.hold / 1.1, 0, 1).toFixed(1);
         if (v !== local.lhSent) {
@@ -315,16 +330,23 @@
           c.act({ a: 'lever' });
           Sound.play('switch');
         }
-        return ['E', TX.leverP, true];
+        return ['E', x.winch ? TX.leverP : TX.leverWait, true];
       }
       if (x.stage === 2 && !x.bridge && r === 'valet' && !local.waitSaid && q.z > 66) {
         local.waitSaid = true;
-        HUD.say('Attends : {mate} va passer par l’anneau et t’abaisser le pont.', T.master, 2600);
+        HUD.say('Va au treuil : {mate} passe par l’anneau, puis vous abaissez le pont ensemble.', T.master, 2600);
       }
       // section 1: a fall teaches the rule
       if (x.stage === 1 && Player.body.p.y < W.O.y - 3 && !local.tipSaid) {
         local.tipSaid = true;
         HUD.say(TX.hint1, T.master, 3000);
+      }
+      // the guide (grapple kit) is the one who sees whether the drop is under the notch
+      if (x.stage === 3 && r === 'dame' && x.block && !x.block.c) {
+        const key = x.block.p.join();
+        if (local.lastBlk != null && key !== local.lastBlk)
+          HUD.say(W.blockOk(x.block.p) ? TX.blockOk : TX.blockNo, T.master, 1800);
+        local.lastBlk = key;
       }
       // the card-block (double-jump kit carries it)
       if (x.stage === 3 && r === 'valet') {
@@ -343,7 +365,7 @@
             const p = [+px.toFixed(2), +(Math.max(gy, -1) + 0.8).toFixed(2), +pz.toFixed(2)];
             c.act({ a: 'drop', p });
             Sound.play('thud', W.P(px, 0, pz));
-            HUD.say(W.blockOk(p) ? TX.blockOk : TX.blockNo, T.master, 1800);
+            HUD.say(TX.blockPut, T.master, 1800);
           }
           return ['E', TX.drop];
         }
