@@ -78,6 +78,8 @@ set's `_SOURCE_ET_LICENCE.json` / `License.txt` was checked).
 | `textures/s_iron_alb.webp`, `s_iron_nrm.jpg` | "Green Metal Rust", https://polyhaven.com/a/green_metal_rust | Poly Haven | CC0 | AO baked, turned into blackened iron (luminance only, the rust runs darkened, a cold cast); normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `textures/cc_marble_alb.webp`, `cc_marble_nrm.jpg` | "Marble Tiles", https://polyhaven.com/a/marble_tiles | Poly Haven | CC0 | AO baked, recoloured into a green (verde antico) mosaic; normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `textures/dcour_mosaic_alb.webp`, `dcour_mosaic_nrm.jpg` | "Marble Tiles", https://polyhaven.com/a/marble_tiles | Poly Haven | CC0 | AO baked, recoloured into a warm honey-cream mosaic; normal (OpenGL) and roughness packed in one JPEG; 1K. |
+| `textures/hcour_marble_alb.webp`, `hcour_marble_nrm.jpg` | "Marble Tiles", https://polyhaven.com/a/marble_tiles | Poly Haven | CC0 | AO baked, recoloured into a blush-rose mosaic; normal (OpenGL) and roughness packed in one JPEG; 1K. |
+| `textures/hcour_velvet_alb.webp`, `hcour_velvet_nrm.jpg` | "Denim Fabric", https://polyhaven.com/a/denim_fabric | Poly Haven | CC0 | AO baked, turned into rose velvet (the weave's luminance kept, tinted deep rose); normal (OpenGL) and roughness packed in one JPEG; 1K. |
 | `fx/lamp_cone.png` | "Light Masks" (`cone_d_blur`), https://kenney.nl/assets/light-masks | Kenney | CC0 | Luminance only, flipped, 128×256. |
 
 ## Sounds (`sounds/kenney/`) — Look pass
