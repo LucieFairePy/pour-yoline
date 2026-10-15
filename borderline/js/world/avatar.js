@@ -419,18 +419,27 @@ const Avatar = (() => {
     const gunE = new THREE.Euler(0, 0, 0, 'YXZ');
     let gunK = 0;
     let gunAim = 0;
+    // recoil of the last shot (1 = just fired), set by kick()
+    let gunKick = 0;
     const holdGun = (dt, s) => {
       gunK = damp(gunK, s.gun && s.mode !== 'sit' ? 1 : 0, 10, dt);
       gunAim = damp(gunAim, s.gun && s.aim ? 1 : 0, 14, dt);
+      gunKick = Math.max(0, gunKick - dt * 9);
       if (gunK < 0.01) return;
       const a = gunAim;
-      gunMount.position.set(lerp(-0.12, -0.08, a), lerp(0.0, 0.31, a), lerp(0.25, 0.3, a));
-      gunE.set(lerp(0.55, s.pitch || 0, a), lerp(0.5, 0, a), lerp(-0.2, 0, a));
+      // body space: -x is the right side. Aiming, the stock sits in the right shoulder pocket and
+      // the barrel runs straight ahead; at rest it is held low, muzzle down and across to the left.
+      gunMount.position.set(
+        lerp(-0.14, -0.17, a),
+        lerp(0.0, 0.31, a),
+        lerp(0.25, 0.26, a) - 0.05 * gunKick,
+      );
+      gunE.set(lerp(0.55, s.pitch || 0, a) - 0.14 * gunKick, lerp(0.5, 0.03, a), lerp(-0.2, 0, a));
       gunMount.quaternion.setFromEuler(gunE);
       gunMount.scale.setScalar(GUN_S);
       [
         [1, 0, -0.02, 0, 0.9],
-        [0, 0, 0, 0.2, 0.85],
+        [0, 0, 0, 0.14, 0.85],
       ].forEach(([arm, x, y, z, g]) => {
         ikT.set(x, y, z).multiplyScalar(GUN_S).applyQuaternion(gunMount.quaternion);
         ikT.add(gunMount.position);
@@ -507,6 +516,9 @@ const Avatar = (() => {
       hq: true,
       rig,
       gunMount,
+      kick() {
+        gunKick = 1;
+      },
       ghost: ghostable(root),
       hand(out = V3()) {
         return rig.handWorld(0, out);

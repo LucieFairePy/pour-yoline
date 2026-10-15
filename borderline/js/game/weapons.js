@@ -26,6 +26,72 @@ const Weapons = (() => {
       toneMapped: false,
     });
 
+  // muzzle flash: a four-point star seen from the side, a cone, a flash of light; smoke puffs drift
+  // up from the muzzle afterwards
+  const starTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,250,235,1)');
+    gr.addColorStop(0.18, 'rgba(255,214,140,0.95)');
+    gr.addColorStop(0.5, 'rgba(255,150,60,0.35)');
+    gr.addColorStop(1, 'rgba(255,120,40,0)');
+    g.fillStyle = gr;
+    g.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r = i % 2 ? 16 : 64;
+      g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r);
+    }
+    g.fill();
+    return new THREE.CanvasTexture(c);
+  })();
+  const smokeTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(210,205,215,0.55)');
+    gr.addColorStop(1, 'rgba(210,205,215,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })();
+  const puffs = [];
+  let puffClock = 0;
+  const puff = (pos) => {
+    let p = puffs.find((x) => x.t <= 0);
+    if (!p) {
+      if (puffs.length >= 18) p = puffs[0];
+      else {
+        const m = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false }),
+        );
+        R.scene.add(m);
+        p = { m, t: 0 };
+        puffs.push(p);
+      }
+    }
+    p.m.position.copy(pos);
+    p.t = p.life = 0.55 + Math.random() * 0.2;
+    p.m.visible = true;
+  };
+  const tickPuffs = (dt) => {
+    const now = performance.now();
+    if (now - puffClock < 5) return;
+    puffClock = now;
+    for (const p of puffs) {
+      if (p.t <= 0) continue;
+      p.t -= dt;
+      const k = 1 - p.t / p.life;
+      p.m.position.y += dt * 0.6;
+      p.m.scale.setScalar(0.15 + k * 0.55);
+      p.m.material.opacity = Math.max(0, (1 - k) * 0.6);
+      if (p.t <= 0) p.m.visible = false;
+    }
+  };
+
   const box = (g, mat, sx, sy, sz, x, y, z, rx = 0) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat);
     m.position.set(x, y, z);
@@ -69,8 +135,31 @@ const Weapons = (() => {
     );
     flash.position.set(0, 0.06, 0.86);
     flash.visible = false;
+    // the star of the blast, two crossed planes so it reads from any side, and its light
+    const starMat = new THREE.MeshBasicMaterial({
+      map: starTex,
+      color: new THREE.Color('#ffd8a0').multiplyScalar(0.85),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
+    [0, Math.PI / 2].forEach((r) => {
+      const st = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), starMat);
+      st.rotation.z = r;
+      st.rotation.y = Math.PI / 2;
+      flash.add(st);
+    });
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), starMat);
+    face.position.z = 0.04;
+    flash.add(face);
+    const light = new THREE.PointLight('#ffb36b', 0, 7, 2);
+    light.position.set(0, 0.06, 0.95);
+    g.add(light);
     g.add(flash);
     g.userData.flash = flash;
+    g.userData.light = light;
     return g;
   };
 
@@ -119,7 +208,16 @@ const Weapons = (() => {
     let pitchK = 0;
     return {
       fire() {
-        flashT = 0.05;
+        flashT = 0.07;
+        if (kind !== 'rifle') return;
+        const f = models.rifle.userData.flash;
+        f.rotation.z = Math.random() * Math.PI;
+        f.scale.setScalar(0.85 + Math.random() * 0.5);
+        avatar.root.updateMatrixWorld(true);
+        const m = f.getWorldPosition(V3());
+        puff(m);
+        if (typeof Fx !== 'undefined') Fx.burst(m, '#ffc070', 5, 2.2, 0.12, 0);
+        if (avatar.kick) avatar.kick();
       },
       // world position of the rifle muzzle (tracers start there)
       muzzle(out) {
@@ -135,11 +233,12 @@ const Weapons = (() => {
         }
         holder.visible = !!k && avatar.root.visible;
         if (!k) return;
+        tickPuffs(dt);
         if (k === 'rifle' && mount) {
           flashT -= dt;
           const f = models.rifle.userData.flash;
           f.visible = flashT > 0;
-          if (f.visible) f.rotation.z = Math.random() * 6;
+          models.rifle.userData.light.intensity = flashT > 0 ? (flashT / 0.07) * 1.6 : 0;
           return;
         }
         avatar.root.updateMatrixWorld(true);
@@ -153,7 +252,7 @@ const Weapons = (() => {
           flashT -= dt;
           const f = models.rifle.userData.flash;
           f.visible = flashT > 0;
-          if (f.visible) f.rotation.z = Math.random() * 6;
+          models.rifle.userData.light.intensity = flashT > 0 ? (flashT / 0.07) * 1.6 : 0;
         } else {
           // rest: blade raised forward; swing: arc down and across
           const s = clamp(swing / 0.25, 0, 1);

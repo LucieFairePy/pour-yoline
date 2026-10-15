@@ -98,8 +98,10 @@ const Player = (() => {
     const fz = Math.cos(camYaw);
     dir.set(fx * m.z - fz * m.x, 0, fz * m.z + fx * m.x);
     const mag = Math.min(1, dir.length());
-    const sprint = !frozen && Input.held('sprint');
-    const top = (sprint ? 8.6 : 5.2) * mag;
+    // aiming down the sights: no sprint, a slower step, the body keeps facing the crosshair
+    const ads = typeof Combat !== 'undefined' && Combat.ads;
+    const sprint = !frozen && !ads && Input.held('sprint');
+    const top = (ads ? 3.4 : sprint ? 8.6 : 5.2) * mag;
     if (mag > 0.01) dir.normalize();
 
     if (P.mode === 'grapple') {
@@ -187,7 +189,8 @@ const Player = (() => {
 
     const hs = Math.hypot(v.x, v.z);
     P.speed = body.grounded ? hs : P.speed;
-    if (hs > 0.5 && P.mode !== 'grapple') P.yaw = angleDamp(P.yaw, Math.atan2(v.x, v.z), 12, dt);
+    if (hs > 0.5 && P.mode !== 'grapple' && !ads)
+      P.yaw = angleDamp(P.yaw, Math.atan2(v.x, v.z), 12, dt);
     if (P.mode === 'grapple') P.yaw = angleDamp(P.yaw, Math.atan2(v.x, v.z), 8, dt);
 
     if (body.grounded && hs > 1) {

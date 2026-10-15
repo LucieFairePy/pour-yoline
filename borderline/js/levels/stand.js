@@ -39,6 +39,8 @@
         }
       }
       Enemies.simulate(dt, [me, me]);
+      // the range does not hurt: the pions only walk up to be shot
+      Combat.hp = Combat.max;
       if (Combat.down) Combat.revived();
     },
     action(c, who, d) {
