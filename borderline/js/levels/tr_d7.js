@@ -48,6 +48,7 @@
     r2: 'L’Écho · F enregistre dix secondes de toi. Puis F lance l’écho : un fantôme doré refait ton trajet, et reste là où tu t’es arrêté{e}.',
     rule2: 'Une dalle n’agit que tant qu’on s’y tient. Le pont veut ses deux dalles en même temps ; la dalle rose, en face, le fixe pour de bon.',
     latched: 'Le pont est fixé.',
+    twoOfYou: 'Le pont veut vos deux présences : un écho compte pour celui ou celle qui l’a enregistré.',
     lane: 'La galerie : chaque grille ne s’ouvre que si la dalle de même rang, sur le balcon, est tenue. L’écho peut courir pour vous.',
     recStart: 'Enregistrement : dix secondes.',
     echoReady: 'Écho prêt. F pour le lancer.',
@@ -666,11 +667,23 @@
       // ----- part 2: plates, bridge, gates, echo -----
       if (x.stage === 2 || x.stage === 3) {
         const ep = echoNow(x);
-        const bodies = [qd, qv];
-        if (ep && !ep.wait) bodies.push(ep);
+        const bodies = [
+          { p: qd, who: 'dame' },
+          { p: qv, who: 'valet' },
+        ];
+        if (ep && !ep.wait) bodies.push({ p: ep, who: ep.who });
         const pl = [...W7.PL_A, W7.PL_F, ...W7.PL_B];
-        local.plates = pl.map((p) => (bodies.some((b) => Math.hypot(b.x - p.x, b.z - p.z) < 1.2 && Math.abs(b.y - p.y) < 1.0) ? 1 : 0));
-        const want = x.s2.latch || (local.plates[0] && local.plates[1]) ? 1 : 0;
+        const on = pl.map((p) => bodies.filter(({ p: b }) => Math.hypot(b.x - p.x, b.z - p.z) < 1.2 && Math.abs(b.y - p.y) < 1.0).map((b) => b.who));
+        local.plates = on.map((w) => (w.length ? 1 : 0));
+        // the two bridge plates want both of you: an echo counts as the one who recorded it, so
+        // nobody holds both alone (the echo still helps: on one plate, or down the gallery)
+        const pair = on[0].some((a) => on[1].some((b) => b !== a));
+        if (local.plates[0] && local.plates[1] && !pair && !x.s2.latch) {
+          if (!local.twoSaid) both(c, 'note', null, TXT.twoOfYou);
+          local.twoSaid = 12;
+        }
+        local.twoSaid = Math.max(0, (local.twoSaid || 0) - dt);
+        const want = x.s2.latch || pair ? 1 : 0;
         local.bridge = clamp(local.bridge + (want ? dt / 1.3 : -dt / 0.9), 0, 1);
         if (!x.s2.latch && local.plates[2] && local.bridge > 0.95) {
           c.set((s) => (s.x.s2.latch = true));
