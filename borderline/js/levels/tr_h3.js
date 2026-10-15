@@ -69,8 +69,13 @@
     if (!ov) overlay();
     ov.style.display = k > 0.01 ? 'block' : 'none';
     if (k <= 0.01) return;
-    const W = (ov.width = Math.round(innerWidth * 0.5));
-    const H = (ov.height = Math.round(innerHeight * 0.5));
+    // resizing a canvas reallocates it: only when the window changed
+    const W = Math.round(innerWidth * 0.5);
+    const H = Math.round(innerHeight * 0.5);
+    if (ov.width !== W || ov.height !== H) {
+      ov.width = W;
+      ov.height = H;
+    } else og.clearRect(0, 0, W, H);
     og.globalCompositeOperation = 'source-over';
     og.fillStyle = `rgba(4,2,7,${0.985 * k})`;
     og.fillRect(0, 0, W, H);
@@ -127,7 +132,14 @@
       Sound.play('rune', true);
       if (p) Fx.burst(p.clone().add(V3(0, 0.4, 0)), '#ff9ec4', 24, 3, 0.5, 0);
     }
-    if (k === 'bad') Sound.play('rune', false);
+    if (k === 'bad') {
+      Sound.play('rune', false);
+      // missed beats come every few seconds: say it once in a while, not every time
+      if (!(local.missCd > performance.now())) {
+        local.missCd = performance.now() + 9000;
+        say(null, TXT.miss, 2000);
+      }
+    }
     if (k === 'splash') {
       Sound.play('fall');
       if (p) Fx.burst(p.clone().add(V3(0, 0.1, 0)), '#8fc8ff', 40, 4, 0.6, -6);
@@ -220,8 +232,9 @@
     async enter(c, first) {
       if (!first) await fadeTo(true);
       H3.build(c.S.x.seed);
-      local.stage = 0;
-      local.beatN = -1;
+      // a fresh run (or a resume): nothing carried over from an earlier visit
+      Object.assign(local, { stage: 0, beatN: -1, beatT: 0, chimeT: 0, plateCd: 0, blindK: 0, rustle: 0, waitT: 0 });
+      Object.assign(local, { final: false, cardT: 0, cardShown: 0, clock: 0, sayCd: 0, wantWas: 0, offT: 0, missCd: 0 });
       c.spawn(sp(c.S.x.stage, c.role, c.S.x), 0);
       Player.killY = H3.O.y - 4;
       Player.checkpoint = () => {
@@ -261,9 +274,10 @@
       if (d && d.beat !== local.beatN) {
         local.beatN = d.beat;
         local.beatT = 0;
-        // each beat, the blind one hears where their tile is
-        if ((x.stage === 3 || x.stage === 4) && d.ph === 'run' && BLIND[x.stage] === c.role) {
-          const tg = targetsFor(d, x.stage)[c.role];
+        // each beat, the guide hears where the blind one's tile is (the blind one only hears the beat:
+        // finding the tile is the guide's job)
+        if ((x.stage === 3 || x.stage === 4) && d.ph === 'run' && BLIND[x.stage] !== c.role) {
+          const tg = targetsFor(d, x.stage)[BLIND[x.stage]];
           if (tg) Sound.play('beacon', H3.tileCenter(tg[0], tg[1]).add(V3(0, 0.3, 0)), 'dame');
         }
         if (d.ph === 'run') Sound.play('tile');
