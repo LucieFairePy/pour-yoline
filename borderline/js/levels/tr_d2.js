@@ -313,7 +313,7 @@
       if (x.stage === 3 && W.inArena(qd) && W.inArena(qv)) {
         tm.atk = 3;
         tm.wave = 8;
-        tm.scr = 9;
+        tm.scr = 14;
         tm.gapT = 0;
         tm.acc = 0;
         tm.rest = 0;
@@ -519,12 +519,12 @@
     // shards: a red strip toward a player, then the shard flies along it
     tm.atk -= dt;
     if (tm.atk <= 0) {
-      tm.atk = bs.phase === 1 ? 5.5 : bs.phase === 2 ? 4.6 : 3.6;
+      tm.atk = bs.phase === 1 ? 5.5 : bs.phase === 2 ? 4.6 : 4.2;
       const who = bs.phase === 1 ? [Math.random() < 0.5 ? qd : qv] : [qd, qv];
       who.forEach((q) => {
         if (nb.atk.length >= 4) return;
         const id = ((Math.random() * 1e6) | 0) + '';
-        nb.atk.push({ id, h0: now, ang: Math.atan2(-(q.z - 100), q.x), wind: bs.phase === 3 ? 1.0 : 1.25 });
+        nb.atk.push({ id, h0: now, ang: Math.atan2(-(q.z - 100), q.x), wind: bs.phase === 3 ? 1.15 : 1.25 });
       });
       dirty = true;
     }
@@ -540,7 +540,7 @@
     if (bs.phase === 3) {
       tm.scr -= dt;
       if (tm.scr <= 0) {
-        tm.scr = 9;
+        tm.scr = 14;
         c.set((s) => {
           for (let k = 0; k < 2; k++) {
             const id = 'a' + ((Math.random() * 6) | 0);
