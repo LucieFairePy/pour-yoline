@@ -235,6 +235,19 @@ const Lore = (() => {
       ['Une tour plus haute que les nuages, au cœur de la tempête. Tout en haut, la Cour.'],
       'Au sommet, l’orage se tait. Douze figures vous attendent, autour de quatre tables : la Cour.',
     ],
+    // the ♣ table of the Cour (the Roi's trial id is cK: cR is Le Caveau)
+    cV: [
+      ['La table de Trèfle, dans une salle de cordes et de poulies. Ici, rien ne se fait seul.'],
+      'Le Valet a lâché ses cordes. Derrière lui, la galerie des poulies : la Dame vous attend.',
+    ],
+    cD: [
+      ['La galerie des poulies. La Dame de Trèfle y fait tout monter et descendre au bout d’une corde.'],
+      'Au bout de la galerie, une rotonde ouverte sur l’orage : le trône du Roi de Trèfle.',
+    ],
+    cK: [
+      ['La rotonde du Roi de Trèfle. Il ne se bat pas, il pèse.'],
+      'Les trois figures de Trèfle ont posé leurs cartes. Une table de la Cour est à vous.',
+    ],
   };
 
   // a few lines during the épreuves, each said once per visit (Lore.during(trial, key))
