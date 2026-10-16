@@ -53,13 +53,17 @@ const Life = (() => {
     const G = new Set();
     const M = new Set();
     const X = new Set();
+    // extra may be arrays and plain objects of resources (a world's M and T tables)
+    const seen = new Set();
     const add = (x) => {
-      if (!x) return;
+      if (!x || typeof x !== 'object' || seen.has(x)) return;
+      seen.add(x);
       if (Array.isArray(x)) x.forEach(add);
       else if (x.isObject3D) x.traverse((o) => use(o, G, M));
       else if (x.isBufferGeometry) G.add(x);
       else if (x.isMaterial) M.add(x);
       else if (x.isTexture) X.add(x);
+      else if (Object.getPrototypeOf(x) === Object.prototype) Object.values(x).forEach(add);
     };
     roots.forEach(add);
     extra.forEach(add);
