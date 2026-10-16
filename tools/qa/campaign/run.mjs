@@ -90,7 +90,7 @@ const flush = () => {
     L.push(`| ${e.t} | ${e.s} | ${e.phase} | ${esc(e.step)} | ${e.who} | ${e.how === 'raccourci' ? '**raccourci**' : HOW[e.how] || e.how} | ${esc(e.detail)} | ${esc(e.result)} |`);
   if (J.errors.length) {
     L.push('', '## Erreurs de page', '');
-    J.errors.forEach((e) => L.push(`- ${e.t} [${e.phase}] ${e.page} ${e.kind}: ${esc(e.text).slice(0, 300)}`));
+    J.errors.forEach((e) => L.push(`- ${e.t} [${e.phase}] ${e.page} ${e.kind}${e.count > 1 ? ` (×${e.count}, jusqu’à ${e.last})` : ''}: ${esc(e.text).slice(0, 400)}`));
   }
   writeFileSync(join(OUT, 'journal.md'), L.join('\n') + '\n');
 };
@@ -111,10 +111,17 @@ const G = () => P()[GUEST];
 const both = () => [Y, W];
 const nm = (p) => (p === Y ? 'Yoline' : 'William');
 let errSeen = 0;
+// the same error thrown every frame is one entry with a count
 const pullErrors = () => {
   for (const e of chrome.errors.slice(errSeen)) {
     const page = e.page === 'Y' ? 'Yoline' : e.page === 'W' ? 'William' : e.page;
-    J.errors.push({ t: clock(), phase: curPhase, page, kind: e.kind, text: e.text });
+    const same = J.errors.find((o) => o.page === page && o.text === e.text);
+    if (same) {
+      same.count = (same.count || 1) + 1;
+      same.last = clock();
+      continue;
+    }
+    J.errors.push({ t: clock(), phase: curPhase, page, kind: e.kind, text: e.text, count: 1 });
     console.log('PAGE ERROR', page, e.kind, e.text.slice(0, 200));
   }
   errSeen = chrome.errors.length;
@@ -247,6 +254,8 @@ const resumeCheck = async (label) => {
   await closePages();
   pullErrors();
   const ok = await openPages();
+  await H().ev('window.__test = true; 1');
+  await G().ev('window.__test = true; 1');
   const ph = await waitPhase([sp], 60000);
   await bothIn(sp, 30000);
   await sleep(2500);
@@ -565,7 +574,15 @@ try {
     if (ph === 'reward') {
       if (!(await reward())) {
         await block('récompense', 'l’écran de récompense ne se termine pas');
-        break;
+        // shortcut: both pages reloaded (a save made during the reward resumes it once more)
+        jot('récompense', 'les deux', 'raccourci', 'rechargement des deux pages pour sortir de l’écran bloqué');
+        await closePages();
+        await openPages();
+        await H().ev('window.__test = true; 1');
+        await G().ev('window.__test = true; 1');
+        const nx = await waitPhase(['city', 'cut'], 90000);
+        jot('récompense', 'hôte', 'attente', 'après rechargement', nx ? '→ ' + nx : 'TOUJOURS BLOQUÉ');
+        if (!nx) break;
       }
       continue;
     }

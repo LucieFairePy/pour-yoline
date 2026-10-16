@@ -224,7 +224,9 @@ window.CL = {
           const ez = wp[1] - m.z;
           if (Math.hypot(ex, ez) < 0.45 && wi < R.length - 1) wi++;
           const ctl = (e, v) => {
-            const dv = clamp(e * 0.6, -1.2, 1.2) - (v || 0);
+            // the last marble's long way passes close to a trap: slower
+            const vmax = mi === 2 ? 0.8 : 1.2;
+            const dv = clamp(e * 0.6, -vmax, vmax) - (v || 0);
             return dv > 0.3 ? 1 : dv < -0.3 ? -1 : 0;
           };
           px = ctl(ex, m.vx);

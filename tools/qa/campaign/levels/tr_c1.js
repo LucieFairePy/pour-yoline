@@ -206,7 +206,28 @@ window.CL = {
         await until(() => mq().y > W.TOP - 0.6, 25000);
         release();
         L('partenaire en haut, attend d’être remontée');
-        await pushWhile(() => !(q().y > W.TOP - 0.6 && q().z > 116.4 && Player.body.grounded), 0, W.TOP - 2.5, 60000);
+        // standing still at the bottom of the well, the feet stay planted (the cable cannot lift a
+        // player who does not move): hop now and then so the reel takes her
+        {
+          const t2 = performance.now();
+          let hopT = 0;
+          while (performance.now() - t2 < 60000 && !ab() && !(q().y > W.TOP - 0.6 && q().z > 116.4 && Player.body.grounded)) {
+            const b = Player.body;
+            if (b.grounded && q().y < W.TOP - 2.5 && performance.now() - hopT > 1200) {
+              hopT = performance.now();
+              await B.tap('jump');
+            } else if (!b.grounded && q().y > W.TOP - 2.5) {
+              Cam.yaw = 0;
+              S.x = 0;
+              S.z = 1;
+            } else {
+              S.x = 0;
+              S.z = 0;
+            }
+            await B.sl(30);
+          }
+          B.stop();
+        }
         await B.sl(500);
         await B.walk([-1, W.TOP, 119], 0.5, 8000);
       } else {
