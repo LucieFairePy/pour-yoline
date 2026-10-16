@@ -103,7 +103,8 @@ const D3 = (() => {
   const blocks = [];
   const homes = {};
   const shelves = [];
-  const lift = { A: null, B: null, yB: 0, wheel: null, chains: [] };
+  const LIFT0 = () => ({ A: null, B: null, yB: 0, wheel: null, chains: [] });
+  const lift = LIFT0();
   const levers = {};
   const orbs = [];
   const sockets = [];
@@ -462,6 +463,7 @@ const D3 = (() => {
     });
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = (who) => {
     role = who || role;
     group.visible = true;
@@ -469,6 +471,14 @@ const D3 = (() => {
       refreshDecals();
       return;
     }
+    Phys.owner('tr_d3');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
 
     // ---------- entrance hall · the observatory porch ----------
@@ -1007,10 +1017,32 @@ const D3 = (() => {
     refreshDecals();
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the observatory's own geometry, materials and canvas textures (the brass, iron and dial
+  // made at script load stay as objects: three sends them to the GPU again at the next build),
+  // takes its colliders out (the pans, lifts and gates included) and empties the tables the level
+  // reads (blocks, homes, scales, levers, lift, socketXZ) in place. The weights come back with
+  // the level's setWeights after the next build.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [mBrass, mIron, glass, weightGeo, handleGeo, rodGeo, dialTex, brassTex, ironTex, treadTex, numCache]);
+    r.world = 'tr_d3';
+    r.colliders = Phys.drop('tr_d3');
+    built = false;
+    [gates, scales, homes, levers, numCache, lift].forEach(clear);
+    Object.assign(lift, LIFT0());
+    [gears, blocks, shelves, orbs, sockets, socketXZ, lamps3].forEach((a) => (a.length = 0));
+    screen = great = ceiling = altar = card = heart = dial3 = yankLine = null;
+    role = 'dame';
+    return r;
+  };
+
   return {
     O,
     P,
     build,
+    unbuild,
     setWeights,
     setFixed,
     get built() {

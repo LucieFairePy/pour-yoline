@@ -531,9 +531,18 @@ const D4 = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     group.visible = true;
     if (built) return;
+    Phys.owner('tr_d4');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
 
     // ===== entrance hall =====
@@ -1210,6 +1219,28 @@ const D4 = (() => {
     D4.doorCol = doorCol;
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the vault's own geometry, materials and canvas textures (the painted metals and the dial
+  // faces made at script load stay as objects: three sends them to the GPU again at the next
+  // build), takes its colliders out and empties the tables the level reads (safes, keys, cranks,
+  // rings, clues, targets) in place. The number caches go with them (their materials are freed).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [wood, brass, steel, iron, velvet, glass, dialFace, doorFace, numCache, anaCache]);
+    r.world = 'tr_d4';
+    r.colliders = Phys.drop('tr_d4');
+    built = false;
+    [safes, clues, gates, tokens, numCache, anaCache].forEach(clear);
+    [lasers, emitters, keys, cranks, rings, targets, bolts, steamVents, gears, chandeliers].forEach((a) => (a.length = 0));
+    screen = timer = monitor = keyDisplay = lever = doorG = sweep = sweepWarn = heart = card = catwalkRing = balconyRing = null;
+    lastMon = lastKeys = null;
+    // the door's collider and its opening, hung on the module by build() and update()
+    delete D4.doorCol;
+    delete D4.openK;
+    return r;
+  };
+
   // ---------- dynamic canvases ----------
   const drawClock = (hour) =>
     redraw(clues.clock, (g, w, h) => {
@@ -1557,6 +1588,7 @@ const D4 = (() => {
     SWEEP,
     openLane,
     build,
+    unbuild,
     update,
     steam,
     get built() {

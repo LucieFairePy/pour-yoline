@@ -256,6 +256,7 @@
   };
 
   Story.register('tr_c3', {
+    world: TrC3,
     init: () => ({
       stage: 1,
       lock: false,

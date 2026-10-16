@@ -615,8 +615,18 @@ const TrS2 = (() => {
   let joker = [];
   const trolleys = [];
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild), the tiles',
+  // the crane's and the billboard's moving boxes included
   const build = () => {
     if (built) return;
+    Phys.owner('tr_s2');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     makeTextures();
@@ -1065,6 +1075,33 @@ const TrS2 = (() => {
     return gratingMat;
   }
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the rooftops' own geometry, materials and canvas textures (the glass and the facade
+  // shader made at script load stay as objects: three sends them to the GPU again at the next
+  // build), takes its colliders out and forgets every reference build() made. The tables the
+  // level reads (pieces) are emptied in place; cols too, or a rebuild would double the facades.
+  // TrS2.beam, hung on the module by the level, stays.
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [glassM, facadeMat, gratingMat, clayMat, gratingTex, plankTex, crackTex, boardTex, crackMats]);
+    r.world = 'tr_s2';
+    r.colliders = Phys.drop('tr_s2');
+    built = false;
+    [cols, blinkers, fans, smokes, laundry, neons, pieces, crackMats, trolleys].forEach((a) => (a.length = 0));
+    ladderB = [];
+    boardB = [];
+    flags = [];
+    joker = [];
+    lev = {};
+    ladder = plank = plankB = winchArm = leverArm = rope = heartTube = zipCable = crane = craneB = board = null;
+    ring1 = ring2 = card = screen = catchGlow = padGlow = sky = null;
+    gratingTex = plankTex = crackTex = boardTex = clayMat = gratingMat = null;
+    cranePrev = V3();
+    boardX = BB.x0;
+    facadeMat.uniforms.uTime.value = 0;
+    return r;
+  };
+
   // ---------- crane: deterministic pendulum from a phase shared by the host ----------
   const craneAt = (phase, out) => {
     const a = Math.sin(phase) * (CRANE.amp / CRANE.len);
@@ -1261,6 +1298,7 @@ const TrS2 = (() => {
     O,
     P,
     build,
+    unbuild,
     update,
     get built() {
       return built;

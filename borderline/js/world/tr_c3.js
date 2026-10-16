@@ -61,7 +61,7 @@ const TrC3 = (() => {
   let built = false;
   let mats = null;
   let screen = null;
-  const st = {
+  const ST0 = () => ({
     tA: 0,
     tB: 0,
     tx: 0,
@@ -81,7 +81,8 @@ const TrC3 = (() => {
     storm: 0,
     bal: 0,
     card: false,
-  };
+  });
+  const st = ST0();
   const M = {}; // moving meshes
   let rain = null;
   let flash = null;
@@ -555,11 +556,21 @@ const TrC3 = (() => {
     R.scene.add(windFx);
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild), the lift's
+  // moving box included
   const build = () => {
     if (built) {
       group.visible = true;
       return;
     }
+    Phys.owner('tr_c3');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     mats = mk();
@@ -815,6 +826,26 @@ const TrC3 = (() => {
     buildStorm();
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the islands' own geometry, materials and canvas textures, and the rain and wind
+  // streaks build() put straight in the scene; takes its colliders out (the lift's moving box
+  // too; the level's own patch box is not the world's and stays) and puts the display state st
+  // back as after a page load, in place (the level writes it every frame).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    [rain, windFx].forEach((o) => o && R.scene.remove(o));
+    const r = Life.free([group], [rain, windFx, suitCache]);
+    r.world = 'tr_c3';
+    r.colliders = Phys.drop('tr_c3');
+    built = false;
+    [M, suitCache, st].forEach(clear);
+    Object.assign(st, ST0());
+    mats = screen = rain = flash = cloudTex = heart = card = windFx = null;
+    flashT = 0;
+    return r;
+  };
+
   // ---------- surfaces (height under a point, relative coords) ----------
   const plankH = (piv, t, q) => piv.y + (q.z - piv.z) * Math.sin(t);
   const inPlank = (piv, q) => Math.abs(q.x) <= PLANK_W / 2 + 0.05 && Math.abs(q.z - piv.z) <= PLANK_L / 2;
@@ -1033,8 +1064,10 @@ const TrC3 = (() => {
   return {
     O,
     P,
+    group,
     st,
     build,
+    unbuild,
     update,
     surfaces,
     tableH,

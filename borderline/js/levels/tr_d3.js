@@ -265,6 +265,7 @@
   };
 
   Story.register('tr_d3', {
+    world: D3,
     init: () => {
       const p = newPuzzle();
       return {
