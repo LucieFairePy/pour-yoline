@@ -44,7 +44,10 @@ window.CL = {
     // ---------------- stage 1: into the salon ----------------
     const stage1 = async () => {
       once('s1', 'reelle', 'entre dans le salon de valse');
-      await B.walk([side * 1.5, 0, -18], 0.6, 12000);
+      // the doorway is 3.6 m wide: through its middle, then to our side
+      await B.walk([side * 0.7, 0, -12.5], 0.4, 12000);
+      await B.walk([side * 0.7, 0, -16], 0.4, 6000);
+      await B.walk([side * 1.5, 0, -18], 0.6, 6000);
       await B.until(() => over() || x().stage !== 1, 15000);
     };
 
@@ -220,8 +223,9 @@ window.CL = {
           let ok = false;
           let ax = tl.x;
           let az = tl.z;
+          B.aim([ax, 0, az]);
           for (let i = 0; i < 40 && !over(); i++) {
-            B.aim([ax, 0, az]);
+            B.aimFine([ax, 0, az]);
             await B.sl(35);
             if (L.aim === nextId) {
               ok = true;

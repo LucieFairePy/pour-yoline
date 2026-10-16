@@ -181,6 +181,21 @@ window.B = window.CB = (() => {
     Cam.yaw = Math.atan2(p.x - c.x, p.z - c.z);
     Cam.pitch = clamp(-Math.atan2(p.y - c.y, Math.hypot(p.x - c.x, p.z - c.z)), -0.95, 1.2);
   };
+  // closed-loop aim, like a mouse: turn the camera by the angle between where it really looks
+  // (its forward vector, which B.aim's formula only approximates: the orbit camera looks at a
+  // point beside and above the player) and the target. Call it every frame or so; it converges.
+  B.aimFine = (p, gain = 1) => {
+    p = B.abs(p);
+    const cam = R.camera;
+    const f = V3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const w = p.clone().sub(cam.position).normalize();
+    let dy = Math.atan2(w.x, w.z) - Math.atan2(f.x, f.z);
+    dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    const dp = Math.asin(clamp(-w.y, -1, 1)) - Math.asin(clamp(-f.y, -1, 1));
+    Cam.yaw += dy * gain;
+    Cam.pitch = clamp(Cam.pitch + dp * gain, -0.95, 1.2);
+    return Math.hypot(dy, dp);
+  };
   // an action exactly as the level's update() sends it, from this page (the right kit)
   B.act = (d, why) => {
     Story.ctx.act(d);
