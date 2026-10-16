@@ -92,6 +92,7 @@
   const cab0 = () => ({ phase: 'open', t: 0, who: null, y: 0, fails: 0 });
 
   Story.register('act1', {
+    world: Arena,
     init: () => ({ stage: 1, hold: false, att: false, lit: false, gen: { valet: 0, dame: 0 }, h: { t: 0 }, cab: cab0() }),
     voice: () => 1,
     net: {

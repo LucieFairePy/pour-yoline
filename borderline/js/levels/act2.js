@@ -87,6 +87,7 @@
   };
 
   Story.register('act2', {
+    world: Maze,
     init: () => ({ stage: 1, bomb: { round: 0, ...combo() }, booms: 0 }),
     voice: () => 1,
     net: {
