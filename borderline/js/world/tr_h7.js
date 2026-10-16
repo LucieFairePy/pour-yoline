@@ -110,7 +110,8 @@ const H7 = (() => {
   const bowers = [];
   const waltz = {};
   const signs = {};
-  const gallery = { tiles: {}, glow: {}, mark: {}, refl: [] };
+  const gallery0 = () => ({ tiles: {}, glow: {}, mark: {}, refl: [] });
+  const gallery = gallery0();
   const boss = {};
   let screen = null;
   let card = null;
@@ -1685,11 +1686,20 @@ const H7 = (() => {
     6: [[0, 6, -182], [-8, 4, -190], [8, 4, -174], [0, 4, -160]],
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       return;
     }
+    Phys.owner('tr_h7');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     makeTextures();
@@ -1755,6 +1765,25 @@ const H7 = (() => {
       lights.push(l);
     }
     tileMatrices();
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the palace's own geometry, materials and canvas textures (the zone groups and the
+  // gallery's groups that its mirrors copy), takes its colliders out and forgets every reference
+  // build() made; the tables the level reads (doors, crowd, gallery, boss...) are emptied in place.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([root, ...Object.values(zg), galStatic, galWall[-1], galWall[1], galEnds], [M, T, skirtGeo]);
+    Object.values(zg).forEach((g) => root.add(g));
+    r.world = 'tr_h7';
+    r.colliders = Phys.drop('tr_h7');
+    built = false;
+    [M, T, doors, waltz, signs, boss, gallery].forEach(clear);
+    Object.assign(gallery, gallery0());
+    [flames, dust, petals, lights, ghosts, crowd, wanderers, bowers].forEach((a) => (a.length = 0));
+    screen = card = proxy = thread = mySign = null;
+    return r;
   };
 
   // ---------- per frame ----------
@@ -2359,6 +2388,7 @@ const H7 = (() => {
     MIRX,
     reflX,
     build,
+    unbuild,
     get built() {
       return built;
     },

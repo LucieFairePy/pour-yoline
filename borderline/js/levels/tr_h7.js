@@ -1085,6 +1085,7 @@
   };
 
   Story.register('tr_h7', {
+    world: H7,
     init: () => ({
       stage: 1,
       fig: 0,
