@@ -23,10 +23,15 @@ const Remote = (() => {
   const tgt = V3();
   const handV = V3();
   const dbg = new URLSearchParams(location.search).has('netdebug')
-    ? (window.__netdbg = { under: 0, snaps: 0, late: 0, delay: 0, jit: 0, iv: 0 })
+    ? Object.assign((window.__netdbg = window.__netdbg || {}), { under: 0, snaps: 0, late: 0, delay: 0, jit: 0, iv: 0 })
     : null;
 
+  // the clocks of the last snapshots received (copies are told apart by it)
+  const seen = new Set();
+  const seenQ = [];
   const reset = () => {
+    seen.clear();
+    seenQ.length = 0;
     buf.length = 0;
     off = null;
     base = null;
@@ -101,6 +106,13 @@ const Remote = (() => {
       const st = s[19] != null ? s[19] : now;
       // the other page reloaded (its clock restarted): start over
       if (lastSt >= 0 && st < lastSt - 2000) reset();
+      // a copy of a snapshot we have (the relay repeats each one in the next two packets, and
+      // both brokers deliver them) says nothing about the network's jitter: counting it made
+      // the jitter, and so the playback delay, look up to ~250 ms larger than it is
+      if (seen.has(st)) return;
+      seen.add(st);
+      seenQ.push(st);
+      if (seenQ.length > 120) seen.delete(seenQ.shift());
       const o = now - st;
       if (off === null || o < off) off = o;
       else off += (o - off) * 0.002; // follows clock drift / a slower route, slowly
@@ -111,8 +123,7 @@ const Remote = (() => {
         jit = q[Math.floor(q.length * 0.95)];
       }
       if (st <= lastSt) {
-        // a late or duplicate packet: slot it in if it is still ahead of playback
-        if (buf.some((x) => x.st === st)) return;
+        // a late packet: slot it in if it is still ahead of playback
         if (dbg) dbg.late++;
         const i = buf.findIndex((x) => x.st > st);
         if (i > 0) buf.splice(i, 0, { st, s, cut: false });
