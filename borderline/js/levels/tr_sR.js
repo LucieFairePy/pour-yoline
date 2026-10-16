@@ -516,6 +516,8 @@
   Story.register('tr_sR', {
     world: CourS,
     init: () => ({ stage: 1, fight: 0, focus: 'valet', ph: 1, turns: 0, wipes: 0, seen: [], hp: 1 }),
+    // won: a reload goes on with the film of the table, then the reward
+    resume: (x) => (x.stage >= 2 ? { cut: 'cour_s', after: 'reward', card: 'sR' } : null),
     voice: () => 1,
     net: {
       sRsay: (c, d) => (d[1] ? rsay(d[0]) : say(d[0], 2600)),

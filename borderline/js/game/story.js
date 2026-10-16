@@ -126,8 +126,10 @@ const Story = (() => {
     if (p && p.phase === s.phase && s.x)
       ['seed', 'gseed'].forEach((k) => Number.isInteger(p.x && p.x[k]) && Number.isInteger(s.x[k]) && (s.x[k] = p.x[k]));
     if (s.phase === 'cut') {
-      if (p && p.cut && PH[p.after]) Object.assign(s.x, { cut: p.cut, after: p.after });
-      else {
+      if (p && p.cut && PH[p.after]) {
+        Object.assign(s.x, { cut: p.cut, after: p.after });
+        if (Trials.byId[p.card]) s.x.card = p.card;
+      } else {
         s.phase = 'city';
         s.x = {};
       }
@@ -343,11 +345,14 @@ const Story = (() => {
       dirty = false;
       timers.sync = 0;
       Net.send('S', S);
+      // a level already won and playing its film (def.resume) is saved as that film: a reload
+      // plays it again and goes on after it, instead of starting the level over
+      const film = PH[S.phase] && PH[S.phase].resume ? PH[S.phase].resume(S.x) : null;
       if (checkpoint(S.phase) && S.phase !== 'prologue')
         save.set({
           progress: {
             v: 5,
-            phase: S.phase,
+            phase: film ? 'cut' : S.phase,
             chapter: S.chapter,
             done: S.done,
             clues: S.clues,
@@ -355,7 +360,7 @@ const Story = (() => {
             cards: S.cards,
             seed: S.seed,
             ...(S.x && (Number.isInteger(S.x.seed) || Number.isInteger(S.x.gseed)) ? { x: { seed: S.x.seed, gseed: S.x.gseed } } : {}),
-            ...(S.phase === 'cut' ? { cut: S.x.cut, after: S.x.after } : {}),
+            ...(film || (S.phase === 'cut' ? { cut: S.x.cut, after: S.x.after, card: S.x.card } : {})),
             ...(S.phase === 'reward' ? { card: S.x.card } : {}),
           },
         });
