@@ -103,7 +103,13 @@
     lastCp: '',
     under: [false, false],
     passedSaid: [false, false],
+    // the shared clock of the maces and the pistons (seconds): the host's runs, the guest's
+    // follows it (sent in S.x.T, as in tr_s5)
+    T: 0,
+    sync: 0,
+    seenT: null,
   };
+  const lat = () => Math.min(0.25, (Net.rtt || 80) / 2000);
   const after = (sec, fn) => local.pend.push({ t: sec, fn });
 
   // ---------- HUD of the épreuve ----------
@@ -300,6 +306,9 @@
         under: [false, false],
         passedSaid: [false, false],
         waitT: 0,
+        T: c.S.x.T || 0,
+        sync: 0,
+        seenT: null,
       });
       c.spawn(W.spawn(cpKey(c.S.x, c.role), c.role), 0);
       Player.killY = W.O.y - 5;
@@ -393,6 +402,11 @@
       const x = c.S.x;
       const qd = rel(c, 'dame');
       const qv = rel(c, 'valet');
+      local.sync += dt;
+      if (local.sync > 1) {
+        local.sync = 0;
+        c.set((s) => (s.x.T = +local.T.toFixed(2)));
+      }
       if (x.stage === 1) {
         // ---- checkpoints, each lane its own (never back) ----
         const pv = padOf(qv);
@@ -485,6 +499,20 @@
       local.knockCd = Math.max(0, local.knockCd - dt);
       local.strikeCd = Math.max(0, local.strikeCd - dt);
       local.vT = Math.max(0, local.vT - dt);
+      // the shared clock: on the guest, extrapolated from the host's last value and eased toward it
+      local.T += dt;
+      if (!Net.isHost) {
+        const ms = performance.now();
+        const s = (local.seenT = local.seenT || { v: null, t: ms });
+        if (s.v !== x.T) {
+          s.v = x.T;
+          s.t = ms;
+        }
+        const want = (x.T || 0) + lat() + Math.min(1, (ms - s.t) / 1000);
+        local.T += (want - local.T) * Math.min(1, dt * 3);
+        if (Math.abs(want - local.T) > 1.5) local.T = want;
+      }
+      const T = local.T;
       let prompt = null;
       let want = null;
       const pressed = Input.pressed('interact');
@@ -495,7 +523,7 @@
         // ---------- the low lane ----------
         if (r === 'valet') {
           // the maces knock you off the pillars
-          const kv = local.knockCd ? null : W.maceHit(q, t);
+          const kv = local.knockCd ? null : W.maceHit(q, T);
           if (kv) {
             local.knockCd = 1.2;
             Player.body.v.set(kv.x, kv.y, kv.z);
@@ -620,7 +648,8 @@
       W.ST.figOn = { V: true, D: false, R: false };
 
       // ---------- the world ----------
-      W.update(dt, t, p);
+      // the maces and the pistons on the shared clock: where they are is the same on both screens
+      W.update(dt, T, p);
       local.objT -= dt;
       if (local.objT <= 0) {
         local.objT = 0.5;

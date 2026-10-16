@@ -4,6 +4,7 @@
 // In the game a cinematic is a story phase, 'cut' (S.x.cut = id, S.x.after = the next phase):
 // each player watches on their own screen, says when they are done (end or skip), and the host
 // moves both on only once both are done; the one who finished first waits on a black screen.
+// S.x.card (optional): the card handed to the next phase when it is the reward.
 // A clip is { dur, build(K) → { seek(t, dt) }, subs: [[a, b, text, who?]], titles: [[a, b, big,
 // small]], score?(A) }; K is the kit below (scene, camera, HQ astronauts, the saucer, easing).
 const Cut = (() => {
@@ -508,7 +509,8 @@ const Cut = (() => {
       // both done; or alone (the other one left); or something went wrong: never stuck here
       const alone = n >= 1 && !Remote.fresh && c.phaseT > 3;
       const late = c.phaseT > 240;
-      if (n >= 2 || alone || late || !Cut.has(x.cut)) c.goto(Story.has(x.after) ? x.after : 'city');
+      if (n >= 2 || alone || late || !Cut.has(x.cut))
+        c.goto(Story.has(x.after) ? x.after : 'city', (s) => x.card && (s.x.card = x.card));
     },
     update() {
       return null;

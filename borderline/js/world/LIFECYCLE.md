@@ -99,9 +99,10 @@ Points relevés en passant :
   points du chemin de tr_d2) : vidées dans `unbuild()`.
 - Les mondes dont le `build()` tire au hasard le font sur une graine : tr_c2 (dalles) et le
   labyrinthe (fissures) n'utilisent plus `Math.random` au build, la reconstruction est identique.
-- La graine partagée `S.seed` (arène, labyrinthe) ne fait pas partie de la sauvegarde : après un
-  rechargement, l'arène et le labyrinthe sont tirés à nouveau (les deux joueurs voient le même).
-  Comportement antérieur, indépendant du déchargement.
+- La graine partagée `S.seed` (arène, labyrinthe, mondes de l'acte 5) est sauvegardée, ainsi que
+  la graine propre d'un niveau (`S.x.seed`, `S.x.gseed` : la donne des tables) : après un
+  rechargement, les mêmes énigmes reviennent. Une sauvegarde plus ancienne, sans graine, en tire
+  une nouvelle.
 - `Life.keep` en plus : la texture du dos des cartes (`Cards.backTexture`, prise par tr_s1 et
   tr_h10) et le cœur des galaxies (`Heart`, ciel et plusieurs mondes).
 
