@@ -5,13 +5,15 @@ Avant : un monde est construit à la première entrée (`build()`), puis seuleme
 ×5, 28 000 meshes dans la scène, framerate de la ville divisé par deux.
 
 Maintenant : un niveau qui déclare son monde (`world: C10` dans `Story.register`) le décharge dès
-qu'on entre dans une autre phase. Les niveaux sans `world` se comportent comme avant.
+qu'on entre dans une autre phase (une table de la Cour attend jusqu'à la prochaine épreuve, voir
+la politique). Les niveaux sans `world` se comportent comme avant.
 
 ## Trois catégories de ressources
 
 **PARTAGÉES : jamais libérées par un monde.**
 - `Tex` (`js/world/textures.js`) : cartes procédurales par matière (`Tex.build`), cache de
-  matériaux `Tex.mat`, textures des cartes `Tex.card`. Marquées par `Life.keep` à leur création.
+  matériaux `Tex.mat`, textures des cartes `Tex.card`, scans installés pour une matière
+  (`Tex.external`, ex. bois et pierre de la ville). Marqués par `Life.keep` à leur création.
 - Le cache `Assets` (`js/core/assets.js`) : l'objet chargé (image décodée, GLTF) reste en cache,
   on ne re-télécharge jamais. Voir plus bas pour la copie GPU d'un scan propre à un niveau.
 - Tout ce qui vit dans la scène hors du groupe du monde : la ville, les autres mondes encore
@@ -51,23 +53,47 @@ ré-envoyée au GPU (pas de plantage) : l'erreur coûterait un à-coup, pas un b
 
 ## Le contrat d'un monde
 
-- `build()` : idempotent comme avant, colliders marqués à son nom.
+- `build()` : idempotent comme avant, colliders marqués à son nom (`Phys.owner`).
 - `unbuild()` : `Life.free([groupes], extra)`, `Phys.drop(nom)`, `built = false`, puis remise à
   zéro de chaque variable de module que `build()` remplit (tableaux, objets, pools, lumières,
-  `ST`). Un `build()` suivant refait le monde à l'identique.
-- Les fonctions appelables par un message réseau tardif (ex. `bolt`) vérifient `built`.
-- Les groupes restent dans la scène, vides et cachés.
+  état d'affichage `ST`, éléments DOM ajoutés à la page). Un `build()` suivant refait le monde à
+  l'identique. Les tables lues par le niveau (`W.doors`, `W.buds`…) sont vidées sur place, jamais
+  remplacées : le niveau garde la même référence.
+- Ce qui est créé au chargement du script (matériaux de module, caches de géométrie) reste comme
+  objet : sa copie GPU est libérée, three la ré-envoie au `build()` suivant.
+- Un matériau `Tex.mat` (partagé, en cache) qu'un monde enveloppe (`onBeforeCompile` de scans,
+  `envify`) ne l'est qu'une fois : un drapeau dans `userData` évite de l'envelopper à nouveau.
+- Les groupes restent dans la scène, vides et cachés (les groupes de zone sont raccrochés).
+- Un message réseau tardif d'un niveau dont le monde est déchargé est ignoré (`Story`), et
+  `bolt` vérifie `built`.
 
 ## La politique
 
-- Un seul point d'accroche : `Story.enter` (`js/game/story.js`). À l'entrée d'une phase, si la
-  phase quittée a un `world` différent de celui de la nouvelle phase, `Life.unload(world)`.
-- La ville reste toujours chargée (hub, retour en 0,3 s).
-- Les mondes partagés par plusieurs phases (les 4 tables de la Cour : V, D, R) ne sont déchargés
-  qu'en quittant la table : même `world` d'une phase à l'autre, donc pas de déchargement.
-- Pas de « niveau précédent gardé » : dans le jeu, on ne rentre jamais dans un niveau qu'on vient
-  de quitter (après un niveau viennent la récompense, la cinématique, la ville, puis un autre
-  niveau ; un échec ne change pas de phase). Garder le précédent ne ferait que garder sa mémoire.
-  Le coût d'une reconstruction est mesuré dans le rapport (tr_c10 : voir le commit pilote).
+- Un seul point d'accroche : `Story.enter` (`js/game/story.js`), via le champ `world` de la
+  définition du niveau. Les niveaux sans `world` se comportent comme avant.
+- Monde d'une seule phase : déchargé dès l'entrée dans la phase suivante (récompense, film ou
+  ville). La ville reste toujours chargée.
+- Monde partagé par plusieurs phases (les 4 tables de la Cour, V/D/R) : il attend pendant la
+  ville, la récompense et les films (le joueur passe par la ville entre deux figures) et n'est
+  déchargé qu'à l'entrée d'une autre épreuve. Au plus une table attend ainsi.
+- Pas de « niveau précédent gardé » pour les autres : on ne rentre jamais dans un niveau qu'on
+  vient de quitter (un échec ne change pas de phase). Mesuré : la reconstruction ajoute 0,8 à
+  1,5 s à l'entrée (écran noir du fondu), contre 0,5 à 0,7 Go de GPU gardés sinon.
 - L'état narratif `Story.S` n'est jamais touché : décharger ne change que ce qui est affiché.
   Rentrer dans le niveau (reprise après rechargement, nouvelle entrée) le reconstruit.
+
+## Mondes déchargeables
+
+tr_c10, tr_h8, tr_c5, tr_d7, tr_h7, tr_h6, cour_h, cour_c, cour_d, cour_s. Les autres gardent
+l'ancien comportement (cachés à la sortie) tant qu'ils n'ont pas leur `unbuild()`.
+
+## La carte procédurale 2048² sous un scan (non modifié)
+
+tr_c10 (et les tables de la Cour) lient leurs propres scans sur des matériaux `Tex.mat`, mais
+`Tex.mat` construit la matière (`Tex.build`). D'après le code : les matières de tr_c10 (pierre,
+brique, bois, métal) sont déjà construites par la ville au chargement de la page ; la pierre et
+le bois y sont des scans (`Look`), et c'est `Tex.rescope` qui génère leur carte procédurale en
+quittant le monde 1, parce que d'autres matériaux déjà construits (worlds.js, les mondes anciens) en ont
+besoin hors du monde 1. Ne pas la générer laisserait ces matériaux sur l'aperçu 256². Le coût est
+borné (une fois par matière et par session, dans le cache partagé), il ne grandit pas avec les
+niveaux : laissé tel quel.
