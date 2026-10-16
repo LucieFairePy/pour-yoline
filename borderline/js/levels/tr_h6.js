@@ -490,6 +490,7 @@
   };
 
   Story.register('tr_h6', {
+    world: H6,
     init: () => ({ stage: 1, grown: {}, roses: 0, fight: false, won: false }),
     voice: () => 1,
     net: {
