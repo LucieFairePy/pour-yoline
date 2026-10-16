@@ -115,8 +115,9 @@ window.CL = {
       B.note('reelle', 'pont 1 traversé ' + B.rel().join(','));
       const b = await run(segB, 58.5, 92);
       B.note('reelle', 'segment B ' + (b ? 'traversé' : 'ÉCHEC') + ' ' + B.rel().join(','));
-      await B.walk([2.2, 0, 92.6], 0.4, 10000);
+      // the switch answers within 1.6 m of its post (3, 94): stand right in front of it
       for (let i = 0; i < 5 && !x().s1; i++) {
+        await B.walk([2.75, 0, 92.95], 0.2, 10000);
         await B.tap('interact');
         await B.sl(500);
       }
@@ -126,8 +127,8 @@ window.CL = {
       B.note('reelle', 'pont 2 traversé ' + B.rel().join(','));
       const c = await run(segC, 112.5, 149);
       B.note('reelle', 'segment C ' + (c ? 'traversé' : 'ÉCHEC') + ' ' + B.rel().join(','));
-      await B.walk([0, 0, 149.6], 0.4, 10000);
       for (let i = 0; i < 5 && !x().s2; i++) {
+        await B.walk([0, 0, 149.95], 0.2, 10000);
         await B.tap('interact');
         await B.sl(500);
       }
