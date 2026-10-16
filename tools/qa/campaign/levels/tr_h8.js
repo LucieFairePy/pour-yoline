@@ -235,11 +235,19 @@ window.CL = {
         return m;
       };
       const R0 = 1.95;
+      // the lamp posts and anything else standing in the water
+      const solid = (x, z) => {
+        const w = P(x, 0, z);
+        const r = 0.55;
+        return Phys.query(w.x - r, w.z - r, w.x + r, w.z + r).some(
+          (b) => b.on && b.max[0] > w.x - r && b.min[0] < w.x + r && b.max[2] > w.z - r && b.min[2] < w.z + r && b.max[1] > w.y + 0.45 && b.min[1] < w.y + 1.8,
+        );
+      };
       const cost = new Float32Array(nx * nz);
       for (let i = 0; i < nx; i++)
         for (let j = 0; j < nz; j++) {
           const c = clr(cx(i), cz(j));
-          cost[i * nz + j] = c < R0 ? Infinity : 1 + Math.max(0, 3.2 - c) * 2.5;
+          cost[i * nz + j] = c < R0 || solid(cx(i), cz(j)) ? Infinity : 1 + Math.max(0, 3.2 - c) * 2.5;
         }
       const ci = (x) => clamp(Math.round((x - x0) / st), 0, nx - 1);
       const cj = (z) => clamp(Math.round((z - z0) / st), 0, nz - 1);
@@ -353,6 +361,9 @@ window.CL = {
       // through the gate to the other side
       const ex = k === 'A' ? 181 : 234;
       await B.sl(1500);
+      // round the valve's post (it stands right in front of the gate)
+      await walk(1.0, 0, Bs.valve[1] - 0.6, 0.4, 5000);
+      await walk(1.0, 0, Bs.valve[1] + 1.2, 0.4, 5000);
       await walk(0, 0, ex, 0.6, 15000);
     };
     const guide = async (k) => {
