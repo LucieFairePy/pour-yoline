@@ -46,7 +46,9 @@ window.CL = (() => {
     const p = q();
     return Player.body.grounded && d2(p, x, z) < r && Math.abs(p.y - y) < 0.3;
   };
-  const go = (p, near = 0.5, ms = 15000, sprint = true) => B.walk(p, near, ms, sprint);
+  // straight walk; if something is in the way (a door jamb), the path finder takes over
+  const go = async (p, near = 0.5, ms = 15000, sprint = true) =>
+    (await B.walk(p, near, Math.min(ms, 9000), sprint)) || (Math.abs(B.abs(p).y - Player.body.p.y) < 0.6 && B.go(p, { near, ms, pad: 10 }));
   const path = async (pts, near = 0.6, sprint = true) => {
     for (const p of pts) {
       if (!alive()) return false;
@@ -282,7 +284,7 @@ window.CL = (() => {
 
   // ---------------- 5 · spring ----------------
   const st5 = async () => {
-    await go(A(2 * sd(), 0, 144));
+    await go(A(0.8 * sd(), 0, 144));
     if (!grown('dand')) await grow('dand', A(isD() ? -8.5 : -3.5, 0, 146));
     if (!(await wait(() => grown('dand') || st() !== 5, 60000)) || st() !== 5) return;
     const i = isD() ? 0 : 2;

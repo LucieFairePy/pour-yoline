@@ -182,14 +182,14 @@ window.CL = (() => {
           // the partner fell behind: come back so their stone lights up again
           await B.leap(A(S1[mi - 1][0] + off, S1[mi - 1][1]), { run: 100 });
         } else if (pi >= mi) {
-          if (mi === 0) await B.walk(A(S1[0][0] + off, S1[0][1]), 0.3, 5000);
+          if (mi === 0) await B.go(A(S1[0][0] + off, S1[0][1]), { near: 0.3, ms: 8000, pad: 6 }); // round the lantern post
           await B.leap(A(S1[mi + 1][0] + off, S1[mi + 1][1]), { run: 120 });
           await B.sl(250);
         } else await B.sl(150);
       } else {
         if (pi === mi + 1) {
           await B.sl(350); // let the stone light up under the lantern
-          if (mi === 0) await B.walk(A(S1[0][0] + off, S1[0][1]), 0.3, 5000);
+          if (mi === 0) await B.go(A(S1[0][0] + off, S1[0][1]), { near: 0.3, ms: 8000, pad: 6 }); // round the lantern post
           await B.leap(A(S1[mi + 1][0] + off, S1[mi + 1][1]), { run: 120 });
           await B.sl(250);
         } else await B.sl(150);
@@ -226,7 +226,12 @@ window.CL = (() => {
       await wait(() => L().post === 'pA' || st() !== 2, 90000);
       for (let k = 0; k < 5 && alive() && st() === 2; k++) {
         await B.sl(500);
-        await B.go(A(-1.3, 47.6), { near: 0.3, ms: 15000 });
+        await B.go(A(-2, 47.4), { near: 0.3, ms: 15000 });
+        // the bridge's slabs start 1.2 m past the island's edge and stop 1.2 m before the far
+        // one: walking straight drops into the gaps (the step-up needs ground), so hop both
+        await B.leap(A(-2, 50.6), { dj: false, ms: 1500 });
+        await B.walk(A(-2, 56.2), 0.4, 5000);
+        await B.leap(A(-2, 59.6), { dj: false, ms: 1500 });
         await B.walk(A(-1.3, 61.5), 0.5, 6000, true);
         await B.sl(600);
         if (W.at('a2', q())) {
