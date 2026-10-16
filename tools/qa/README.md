@@ -39,3 +39,13 @@ same GPU here, so the GPU memory is the sum of two game instances.
 `avatar-parts.js` counts the triangles of an astronaut per part (limbs, gloves, helmet, visor…),
 for the film's resolution or a lighter one: evaluate it in the game page, then
 `__parts.classify(__parts.rig(true, { detail: 'game' }))`.
+
+## Interactions and coverage
+
+`tools/qa/play/<phase>.mjs` scripts drive real interactions of a level on both screens (test `play`):
+each exports `default async ({ A, B, go, sleep, log }) => ({ covered: [...], ok, notes })`, where
+A is Yoline (host) and B William (guest); `Story.role` gives each page's kit for the level, and
+`Story.ctx.act(d)` sends an action as that player. Every summary ends with a **Coverage** section:
+which phases loaded on both screens, which were unloaded and rebuilt, where co-op and save were
+checked, and the interactions each script covered; phases without a script are listed as "load,
+render and errors only".

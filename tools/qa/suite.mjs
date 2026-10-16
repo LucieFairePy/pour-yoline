@@ -3,7 +3,8 @@
 // save/resume, and records performance and memory, so a change can be compared with a baseline.
 //
 //   node tools/qa/suite.mjs [options]
-//     --tests boot,phases,coop,save,cycles   which tests (default: all)
+//     --tests boot,phases,coop,save,cycles,play  which tests (default: all)
+//     --play tr_s1,tr_c10                     interaction scripts to run (default: every tools/qa/play/*.mjs)
 //     --phases tr_s1,tr_c10                   phases for the "phases" test (default: every level)
 //     --cycles tr_c10:3,tr_h8:2               city -> level -> city round trips (default tr_s1:3,tr_c10:3)
 //     --fresh                                 reload the pages before each phase (cold numbers)
@@ -15,7 +16,8 @@
 //
 // Exit code 1 if a test failed or the page threw. Windows: GPU memory comes from the performance
 // counters of this run's own Chrome GPU process; elsewhere it is null.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from './serve.mjs';
@@ -31,7 +33,7 @@ const arg = (k, d) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const list = (v) => (typeof v === 'string' ? v.split(',').map((s) => s.trim()).filter(Boolean) : null);
 
-const TESTS = list(arg('tests')) || ['boot', 'phases', 'coop', 'save', 'cycles'];
+const TESTS = list(arg('tests')) || ['boot', 'phases', 'coop', 'save', 'cycles', 'play'];
 const OUT = resolve(arg('out', join(HERE, 'out', new Date().toISOString().replace(/[:.]/g, '-'))));
 const PORT = +arg('port', 8850);
 const CDP = +arg('cdp', 9420);
@@ -42,7 +44,7 @@ mkdirSync(OUT, { recursive: true });
 const PROBE = readFileSync(join(HERE, 'probe.js'), 'utf8');
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
-const report = { started: new Date().toISOString(), tests: {}, phases: {}, cycles: {}, errors: [], failures: [] };
+const report = { started: new Date().toISOString(), tests: {}, phases: {}, cycles: {}, play: {}, errors: [], failures: [] };
 const fail = (test, msg) => {
   report.failures.push({ test, msg });
   log('FAIL', test, msg);
@@ -195,6 +197,36 @@ try {
       report.cycles[ph] = rows;
     }
   }
+
+  // ---- play: scripted interactions, one file per phase in tools/qa/play/<phase>.mjs.
+  // A script exports `default async ({ A, B, go, sleep, log }) => ({ covered: [...], ok, notes })`:
+  // A is Yoline (host), B is William (guest), kits per level in `Story.role`; `covered` names each interaction it
+  // drove and checked on both screens (e.g. 'dame grapple', 'valet lever 2', 'wrong answer re-roll').
+  if (TESTS.includes('play')) {
+    const dir = join(HERE, 'play');
+    const all = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4)) : [];
+    const want = list(arg('play')) || all;
+    for (const ph of want) {
+      if (!all.includes(ph)) {
+        fail('play', `${ph}: no script tools/qa/play/${ph}.mjs`);
+        continue;
+      }
+      const n = chrome.errors.length;
+      try {
+        await open();
+        await go(ph);
+        const mod = await import(pathToFileURL(join(dir, ph + '.mjs')).href);
+        const r = (await mod.default({ A, B, go, sleep, log })) || {};
+        const errs = errorsSince(n);
+        report.play[ph] = { covered: r.covered || [], ok: !!r.ok, notes: r.notes || '', errors: errs.length };
+        log('play', ph, r.ok ? 'ok' : 'FAILED', (r.covered || []).join(', '));
+        if (!r.ok) fail('play', `${ph}: ${r.notes || 'script reported a failure'}`);
+        if (errs.length) fail('play', `${ph}: ${errs.length} page error(s): ${errs[0].text.slice(0, 160)}`);
+      } catch (e) {
+        fail('play', `${ph}: ${e.message.slice(0, 200)}`);
+      }
+    }
+  }
 } catch (e) {
   fail('suite', e.stack || String(e));
 } finally {
@@ -225,6 +257,23 @@ for (const [ph, rows] of Object.entries(report.cycles)) {
   rows.forEach((r, i) => L.push(`| ${i + 1} | ${r.into} | ${r.back} | ${r.levelFps} | ${r.cityFps} | ${r.gpuMB} | ${r.heapMB} | ${r.geometries} | ${r.textures} | ${r.programs} | ${r.meshes} | ${r.errors} |`));
 }
 for (const k of ['boot', 'coop', 'save']) if (report.tests[k]) L.push('', `${k}: ${JSON.stringify(report.tests[k])}`);
+
+// ---- coverage: what this run actually exercised
+L.push('', '## Coverage', '');
+L.push(`Tests run: ${TESTS.join(', ')}. Both players every time: A = Yoline (host), B = William (guest); their kits (dame / valet) follow each level.`);
+const loaded = Object.entries(report.phases).filter(([, m]) => m.both !== false && !m.errors.length).map(([p]) => p);
+if (Object.keys(report.phases).length) L.push(`Loaded on both screens without error: ${loaded.length}/${Object.keys(report.phases).length} phases.`);
+const cyc = Object.keys(report.cycles).filter((k) => k !== 'cityStart');
+if (cyc.length) L.push(`Unload/rebuild round trips from the city: ${cyc.join(', ')}.`);
+if (report.tests.coop) L.push(`Partner position agreement checked in: ${report.tests.coop.phase}.`);
+if (report.tests.save) L.push(`Save and resume after reload checked in: ${report.tests.save.phase}.`);
+const pl = Object.entries(report.play);
+L.push(`Scripted interactions (tools/qa/play): ${pl.length ? '' : 'none'}`);
+for (const [ph, r] of pl) L.push(`- ${ph} ${r.ok ? 'ok' : 'FAILED'}: ${r.covered.join(', ') || '(nothing reported)'}${r.notes ? ' — ' + r.notes : ''}`);
+if (Object.keys(report.phases).length) {
+  const none = Object.keys(report.phases).filter((p) => !report.play[p]);
+  L.push(`Phases loaded but with no scripted interaction (load, render and errors only): ${none.length} — ${none.join(', ')}`);
+}
 
 // ---- comparison with an earlier report
 const cmp = arg('compare', null);
