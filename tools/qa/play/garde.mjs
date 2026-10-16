@@ -1,6 +1,6 @@
 // garde « La Garde royale »: the world is unloaded in the city and rebuilt on the way back (same
 // fingerprint on both screens), then both walk into the hall (wave 1 comes, stage 2) and each
-// strikes a Pion down (the level's hit action, one per role), seen on both screens.
+// strikes a Pion down with real hits (the level's hit action, one per role), seen on both screens.
 export default async ({ A, B, go, sleep }) => {
   const covered = [];
   const who = (p) => (p === A ? 'Yoline (host)' : 'William (guest)');
@@ -56,10 +56,23 @@ export default async ({ A, B, go, sleep }) => {
   }
   covered.push('both in the hall: wave 1, stage 2 (both)');
 
-  // ---- one Pion struck down by each (the host resolves the hit, the guest sees it go)
+  // ---- one Pion struck down by each, with real hits (the weapon's own damage, in reach, at its
+  // own pace: the host validates the guest's hits) — the host resolves, the guest sees it go
   for (const [p, k] of [[valet, 'valet'], [dame, 'dame']]) {
     const id = await A.ev("[...Enemies.list.values()].find((e) => e.type === 'pion').id");
-    await p.ev(`Story.ctx.act({ a: 'hit', id: ${JSON.stringify(id)}, dmg: 999 }); 1`);
+    const hit =
+      k === 'valet'
+        ? `{ a: 'hit', id: ${JSON.stringify(id)}, dmg: 12, stun: (Enemies.TYPES.pion.stunP != null ? Enemies.TYPES.pion.stunP : 2.5) }`
+        : `{ a: 'hit', id: ${JSON.stringify(id)}, dmg: 9 }`;
+    for (let i = 0; i < 14; i++) {
+      const gone = await A.ev(`!Enemies.list.has(${JSON.stringify(id)})`);
+      if (gone) break;
+      // stand next to the Pion (as a player would), then strike
+      await p.ev(`(() => { const e = Enemies.list.get(${JSON.stringify(id)}); if (e) Player.body.p.set(e.pos.x + 1.6, e.pos.y + 0.05, e.pos.z); return 1; })()`);
+      await sleep(250);
+      await p.ev(`Story.ctx.act(${hit}); 1`);
+      await sleep(k === 'valet' ? 700 : 200);
+    }
     await sleep(900);
     const g = await both(`!Enemies.list.has(${JSON.stringify(id)})`);
     if (!g[0] || !g[1]) return { covered, ok: false, notes: `${k} hit: Pion ${id} still there: ${JSON.stringify(g)}` };
