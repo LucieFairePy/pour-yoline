@@ -206,6 +206,7 @@
   };
 
   Story.register('tr_dV', {
+    world: CourD,
     init: () => ({ stage: 1, cp: 'V', round: 1, deal: null, res: null, miss: 0, won: 0 }),
     voice: () => 1,
     net: {

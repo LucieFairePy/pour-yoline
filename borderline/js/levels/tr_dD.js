@@ -234,6 +234,7 @@
   const ease01 = (v) => v * v * (3 - 2 * v);
 
   Story.register('tr_dD', {
+    world: CourD,
     init: () => ({ stage: 1, cp: 'D', round: 1, puz: null, res: null, miss: 0, trickN: 0, won: 0 }),
     voice: () => 1,
     net: {
