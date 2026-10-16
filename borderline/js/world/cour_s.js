@@ -46,7 +46,8 @@ const CourS = (() => {
       [-6.5, 60.5, 10, 5, 1.2],
       [-6.5, 66, 10, 5, 1.2],
     ],
-    // pistons after the second portcullis: [x, z], top oscillating (local clock, each screen)
+    // pistons after the second portcullis: [x, z], top oscillating (on the time update() is given:
+    // tr_sV gives its shared clock, so both screens see them at the same height)
     pistons: [
       [-7.6, 72.6],
       [-5.4, 77.4],
@@ -2110,7 +2111,7 @@ const CourS = (() => {
     snapNext = false;
     return r;
   };
-  // the pistons' tops at time t (local clock): slow rises, short waits
+  // the pistons' tops at time t (the time given to update()): slow rises, short waits
   const pistonTop = (i, t) => {
     const p = pistons[i];
     const u = (t * 0.28 + p.ph / TAU) % 1;
