@@ -86,16 +86,18 @@
 
   Story.register('act5', {
     world: Worlds,
-    init: () => {
+    init: (s) => {
+      // drawn from the shared seed: a resumed save gets the same two puzzles
+      const r = s && s.seed ? rng(s.seed + 606) : Math.random;
       const lights = Array(9).fill(true);
       let n = 0;
       while (lights.every(Boolean) || n < 6) {
-        press(lights, (Math.random() * 9) | 0);
+        press(lights, (r() * 9) | 0);
         n++;
       }
       // the four symbols in a random order, then one of them again (never twice in a row)
-      const seq = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
-      seq.push(seq[(Math.random() * 3) | 0]);
+      const seq = [0, 1, 2, 3].sort(() => r() - 0.5);
+      seq.push(seq[(r() * 3) | 0]);
       return {
         stage: 'worlds',
         lights,

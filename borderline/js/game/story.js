@@ -98,6 +98,8 @@ const Story = (() => {
     };
     if (p && typeof p === 'object' && checkpoint(p.phase)) {
       s.phase = p.phase;
+      // the shared seed the arena, the maze and the worlds are drawn from (older saves: a new one)
+      if (Number.isInteger(p.seed)) s.seed = p.seed;
       if (p.v >= 4) s.done = (p.done || []).filter((id) => Trials.byId[id]);
       else {
         // older saves counted chapters in a fixed order
@@ -120,6 +122,9 @@ const Story = (() => {
       s.cards = [...new Set([...Trials.cardsOf(s.done), ...story])];
     }
     s.x = PH[s.phase] && PH[s.phase].init ? PH[s.phase].init(s) : {};
+    // a level that deals its puzzle from its own seed deals the same one again
+    if (p && p.phase === s.phase && s.x)
+      ['seed', 'gseed'].forEach((k) => Number.isInteger(p.x && p.x[k]) && Number.isInteger(s.x[k]) && (s.x[k] = p.x[k]));
     if (s.phase === 'cut') {
       if (p && p.cut && PH[p.after]) Object.assign(s.x, { cut: p.cut, after: p.after });
       else {
@@ -348,6 +353,8 @@ const Story = (() => {
             clues: S.clues,
             seen: S.seen,
             cards: S.cards,
+            seed: S.seed,
+            ...(S.x && (Number.isInteger(S.x.seed) || Number.isInteger(S.x.gseed)) ? { x: { seed: S.x.seed, gseed: S.x.gseed } } : {}),
             ...(S.phase === 'cut' ? { cut: S.x.cut, after: S.x.after } : {}),
             ...(S.phase === 'reward' ? { card: S.x.card } : {}),
           },
