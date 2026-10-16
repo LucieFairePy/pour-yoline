@@ -1005,6 +1005,7 @@
   };
 
   Story.register('tr_s6', {
+    world: TrS6,
     init: () => ({
       stage: 1,
       cp: 0,

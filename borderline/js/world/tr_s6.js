@@ -1027,8 +1027,17 @@ const TrS6 = (() => {
     group.add(heartLight);
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_s6');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     buildLava();
     buildCanyon();
@@ -1251,6 +1260,33 @@ const TrS6 = (() => {
     screen2.update(dt, t);
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the volcano's own geometry, materials and canvas textures (the instanced prisms, the
+  // lava shaders, the sky dome and the embers included), takes its colliders out and forgets
+  // every reference build() made; the prism list is emptied too (build fills it again). The
+  // materials and the prism geometry made when the script loads, and the crack, frost and seam
+  // textures cached on first use, stay as objects: three sends them to the GPU again at the next
+  // build. Tex materials and the card stay cached; TrS6.tiles is emptied in place.
+  const unbuild = () => {
+    if (!built) return null;
+    sleep();
+    const r = Life.free([group], [obsidian, iron, brass, prismGeo]);
+    r.world = 'tr_s6';
+    r.colliders = Phys.drop('tr_s6');
+    built = false;
+    [prisms, dynBoxes, cols, geys, bridge, ice, tiles, falls].forEach((a) => (a.length = 0));
+    levers = {};
+    ringMeshes = [];
+    plume = [];
+    lakeMesh = riverMesh = calMesh = gate = raft = raftBox = poolCrust = pillarCard = card = cardHeart = null;
+    lavaLight = heartLight = embers = screen = screen2 = volcano = dome = aimMark = null;
+    lavaU.uTime.value = 0;
+    lavaU.uHeat.value = 1;
+    lavaU.uCool.value = 0;
+    lastClk = 0;
+    return r;
+  };
+
   // ---------- sinking patterns in the caldera ----------
   const inPattern = (tl, s) => {
     const p = s.p;
@@ -1312,6 +1348,8 @@ const TrS6 = (() => {
       return built;
     },
     build,
+    unbuild,
+    group,
     wake() {
       group.visible = true;
     },

@@ -212,6 +212,7 @@
   const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
 
   Story.register('tr_h3', {
+    world: H3,
     init: () => ({
       stage: 1,
       // one garden for everybody, every time (both screens must build the same maze)

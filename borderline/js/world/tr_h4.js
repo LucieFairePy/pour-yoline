@@ -582,11 +582,20 @@ const H4 = (() => {
     });
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       group.visible = true;
       return;
     }
+    Phys.owner('tr_h4');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
 
@@ -1227,6 +1236,34 @@ const H4 = (() => {
     if (screen && screen.update) screen.update(dt, t);
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the forest's own geometry, materials and canvas textures (the materials and sprites
+  // made at script load included, and the rune cache: three sends them again at the next build),
+  // takes its colliders out (slabs, the gap wall and the blind stairs with them) and puts every
+  // table the level reads back as after a page load, in place. The slabs and the blind stairs
+  // use Tex materials keyed per stone (k): kept by Tex, found again by the next build.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    group.visible = false;
+    const r = Life.free([group], [brass, iron, leafMat, stemMat, lilyMat, flameTex, haloTex, eyeTex, runeTex, ['b1', 'b2'].map((k) => [blind[k].chalk, blind[k].edge])]);
+    r.world = 'tr_h4';
+    r.colliders = Phys.drop('tr_h4');
+    built = false;
+    [posts, rings, levers].forEach(clear);
+    [slabs, wraiths, braziers, flames, glows].forEach((a) => (a.length = 0));
+    ['b1', 'b2'].forEach((k) => {
+      blind[k].length = 0;
+      ['chalk', 'edge', 'stone'].forEach((p) => delete blind[k][p]);
+    });
+    screen = lantern = lanternLight = fireflies = mist = boss = card = dawnHeart = night = gapWall = null;
+    light.pos.set(0, 0, 0);
+    light.r = 0;
+    light.post = null;
+    light.on = false;
+    return r;
+  };
+
   const at = (name, q, pad = 0) => {
     const [x, z, sx, sz] = ISLANDS[name];
     return Math.abs(q.x - x) < sx / 2 + pad && Math.abs(q.z - z) < sz / 2 + pad && q.y > -1 && q.y < 3;
@@ -1235,7 +1272,9 @@ const H4 = (() => {
   return {
     O,
     P,
+    group,
     build,
+    unbuild,
     get built() {
       return built;
     },

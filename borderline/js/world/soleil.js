@@ -278,8 +278,17 @@ const Soleil = (() => {
     return trunk;
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('soleil');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     const { floor: floorMat, wall: wallMat, cap: capMat, pole, plinth } = mats();
@@ -359,11 +368,32 @@ const Soleil = (() => {
     group.add(screen.mesh);
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the playground's own geometry, materials and canvas textures (the mural, the doll),
+  // takes its colliders out and forgets every reference build() made. The Tex materials of M are
+  // shared and stay cached; M itself is made again (its mural is the world's own). The builder's
+  // box cache keeps its objects: three sends them to the GPU again at the next build. The card's
+  // face is Tex.card (kept). The chalk date is the level's own (it frees itself).
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [M]);
+    r.world = 'soleil';
+    r.colliders = Phys.drop('soleil');
+    built = false;
+    group.visible = false;
+    eyesM.length = lineM.length = 0;
+    M = screen = doll = card = null;
+    yaw = tilt = 0;
+    return r;
+  };
+
   return {
     O,
     P,
     LINES,
+    group,
     build,
+    unbuild,
     get built() {
       return built;
     },
@@ -386,6 +416,7 @@ const Soleil = (() => {
     nearCard: (q) => Math.hypot(q.x, q.z - 90) < 2.8 && q.y > -0.5,
     // yaw 0: back turned (singing), PI: facing the players
     setDoll(target, dt, eyes, sleep) {
+      if (!built) return;
       yaw = damp(yaw, target, 9, dt);
       doll.g.rotation.y = yaw;
       tilt = damp(tilt, sleep ? 0.35 : 0, 2, dt);

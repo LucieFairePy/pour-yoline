@@ -1059,7 +1059,8 @@ const TrC7 = (() => {
   };
 
   // ---------- the skiff ----------
-  const ship = { g: null, body: null, turret: null, gun: null, gear: [], flames: [], seats: {}, fires: [], lights: [], light: null };
+  const SHIP0 = () => ({ g: null, body: null, turret: null, gun: null, gear: [], flames: [], seats: {}, fires: [], lights: [], light: null });
+  const ship = SHIP0();
   const SHIP_FIRES = [V3(2.8, 0.3, -0.6), V3(-1.9, 0.1, -3.4), V3(0.4, 0.9, -4.1)];
   const SEAT = { pilot: V3(0, -0.42, 1.55), nav: V3(0, 0.22, 0) };
   const TURRET = V3(0, 0.78, -1.45);
@@ -1422,7 +1423,8 @@ const TrC7 = (() => {
   };
 
   // ---------- the mothership ----------
-  const mom = { g: null, cores: [], eye: null, iris: null, hurt: 0, k: 0 };
+  const MOM0 = () => ({ g: null, cores: [], eye: null, iris: null, hurt: 0, k: 0 });
+  const mom = MOM0();
   const CORES = [V3(-10, -8.5, -14), V3(10, -8.5, -14), V3(-6.5, -10.5, 7), V3(6.5, -10.5, 7)];
   const buildMom = () => {
     const g = new THREE.Group();
@@ -1526,6 +1528,7 @@ const TrC7 = (() => {
   };
   let tri = 0;
   const tracer = (a, b) => {
+    if (!built) return;
     const tr = tracers[tri++ % tracers.length];
     tr.m.position.copy(a);
     tr.m.lookAt(b);
@@ -1540,6 +1543,7 @@ const TrC7 = (() => {
     group.add(cable);
   };
   const setCable = (a, b) => {
+    if (!cable) return;
     cable.visible = !!a;
     if (!a) return;
     cable.position.copy(a);
@@ -1560,6 +1564,7 @@ const TrC7 = (() => {
   };
   let fli = 0;
   const flare = (p) => {
+    if (!built) return;
     const f = flares[fli++ % flares.length];
     f.s.position.copy(p);
     f.ring.position.copy(p);
@@ -1588,6 +1593,7 @@ const TrC7 = (() => {
   };
   let bi = 0;
   const boom = (p, size = 6) => {
+    if (!built) return;
     const b = booms[bi++ % booms.length];
     b.s.position.copy(p);
     b.t = 0;
@@ -1653,9 +1659,11 @@ const TrC7 = (() => {
   };
 
   // ---------- the landing shelf and the heart platform ----------
-  const pad = { boxes: [], moor: [], chains: [], screen: null };
+  const PAD0 = () => ({ boxes: [], moor: [], chains: [], screen: null });
+  const pad = PAD0();
   const PAD = { s0: 16, s1: 60, hw: 15 };
-  const plat = { g: null, boxes: [], ring: null, lights: [], card: null, beacon: null };
+  const PLAT0 = () => ({ g: null, boxes: [], ring: null, lights: [], card: null, beacon: null });
+  const plat = PLAT0();
   const buildPad = () => {
     // the shelf runs along +x at the start (the track is straight here)
     const f = at(PAD_S);
@@ -1827,8 +1835,17 @@ const TrC7 = (() => {
   };
 
   // ---------- build / wake / sleep ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_c7');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     buildWalls();
     buildSky();
@@ -1868,6 +1885,41 @@ const TrC7 = (() => {
     group.visible = false;
     pad.boxes.forEach((b) => (b.on = false));
     plat.boxes.forEach((b) => (b.on = false));
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the canyon's own geometry, materials and canvas textures (the materials and textures
+  // made at script load included: three sends them again at the next build), takes its colliders
+  // out (the landing shelf and the heart platform) and puts every table the level reads back as
+  // after a page load, in place. navOnly and pilotOnly are made when the script loads and hung
+  // under the group by build: emptied here too (Life.free only empties the roots). The rock
+  // materials are Tex materials (riftMat wrapped once, at script load): kept by Tex.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const reset = (o, f) => {
+    clear(o);
+    Object.assign(o, f());
+  };
+  const unbuild = () => {
+    if (!built) return null;
+    sleep();
+    const r = Life.free([group, navOnly, pilotOnly], [accent, dark, glass, dotTex, fireTex]);
+    navOnly.visible = pilotOnly.visible = true;
+    r.world = 'tr_c7';
+    r.colliders = Phys.drop('tr_c7');
+    built = false;
+    [wallChunks, islands, isl.parts, arches, rockfalls, gates, dams, hearts, trails, drones, bolts, mines, lasers, tracers, flares, booms, bolt3, debris].forEach((a) => (a.length = 0));
+    reset(ship, SHIP0);
+    reset(mom, MOM0);
+    reset(pad, PAD0);
+    reset(plat, PLAT0);
+    dome = sea = clouds = dust = rain = dustTex = spires = cable = flashLight = null;
+    tri = fli = bi = 0;
+    skyU.uTime.value = skyU.uStorm.value = skyU.uFlash.value = 0;
+    seaU.uCam.value.set(0, 0, 0);
+    seaU.uFog.value = 0.006;
+    seaU.uFogCol.value.set('#b77890');
+    riftU.uFront.value = -1e4;
+    return r;
   };
 
   // ---------- per-frame visuals ----------
@@ -1987,6 +2039,7 @@ const TrC7 = (() => {
       return built;
     },
     build,
+    unbuild,
     wake,
     sleep,
     update,

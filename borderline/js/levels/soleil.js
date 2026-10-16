@@ -145,6 +145,7 @@
   };
 
   Story.register('soleil', {
+    world: Soleil,
     init: () => ({ stage: 1, d: { ph: 'sing', dur: 4, real: true, n: 0 } }),
     voice: () => 1,
     net: {

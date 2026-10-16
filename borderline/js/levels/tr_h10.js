@@ -499,6 +499,7 @@
   };
 
   Story.register('tr_h10', {
+    world: H10,
     init: () => ({
       stage: 1,
       cp: '1',

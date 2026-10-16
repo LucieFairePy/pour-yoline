@@ -398,6 +398,7 @@
   };
 
   Story.register('tr_s2', {
+    world: TrS2,
     init: () => ({ sec: 1, cp: 0, tl: '', ladder: false, plank: false, hold: [], reach: false, catch: 0, reset: 0 }),
     voice: () => 1,
     net: {

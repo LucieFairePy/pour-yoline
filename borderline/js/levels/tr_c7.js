@@ -2486,6 +2486,7 @@
 
   // ---------- the register ----------
   Story.register('tr_c7', {
+    world: TrC7,
     init: () => ({
       stage: 0,
       moor: [0, 0],

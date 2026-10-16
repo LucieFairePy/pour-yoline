@@ -92,6 +92,7 @@
   const any = (c, fn) => fn(W.rel(c.pos('dame')), 'dame') || fn(W.rel(c.pos('valet')), 'valet');
 
   Story.register('tr_s1', {
+    world: TrS1,
     init: () => ({
       stage: 1,
       on: [],

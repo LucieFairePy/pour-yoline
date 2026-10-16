@@ -56,6 +56,7 @@
   };
 
   Story.register('garde', {
+    world: Garde,
     init: () => ({ stage: 1 }),
     voice: () => 1,
     net: {

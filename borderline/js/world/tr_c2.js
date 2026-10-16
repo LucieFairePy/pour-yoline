@@ -24,7 +24,8 @@ const TrC2 = (() => {
 
   let built = false;
   const M = {};
-  const anim = { dial: 0, dialSym: 0, dialT: 1, alarm: 0, ring: 0, gates: [0, 0], phone: 0 };
+  const ANIM0 = () => ({ dial: 0, dialSym: 0, dialT: 1, alarm: 0, ring: 0, gates: [0, 0], phone: 0 });
+  const anim = ANIM0();
   const panels = {};
   const cables = [];
   const plugs = [];
@@ -131,7 +132,8 @@ const TrC2 = (() => {
     t.encoding = THREE.LinearEncoding;
     return { t, period };
   };
-  const rnd = rng(22);
+  // reseeded on unbuild: a rebuild paints the same tiles
+  let rnd = rng(22);
   // walnut grain: long wavy fibres, darker growth lines, a few knots
   const grain = (g, W, H, base, dark, light) => {
     g.fillStyle = base;
@@ -1082,9 +1084,18 @@ const TrC2 = (() => {
     group.add(m);
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     group.visible = true;
     if (built) return;
+    Phys.owner('tr_c2');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     mats();
     hall();
@@ -1098,6 +1109,25 @@ const TrC2 = (() => {
     fixUV();
     gateB = gate(38);
     gateC = gate(70);
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the exchange's own geometry, materials and canvas textures (the painted tiles, the
+  // plate textures cached by label), takes its colliders out and empties the tables the level
+  // reads (plates, panels) in place. The Tex materials in M are shared and stay.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [M, plateTex]);
+    r.world = 'tr_c2';
+    r.colliders = Phys.drop('tr_c2');
+    built = false;
+    [M, panels, plateTex, anim].forEach(clear);
+    Object.assign(anim, ANIM0());
+    [cables, plugs, sockLamps.L, sockLamps.R, progLamps, ringLamps, chandeliers, plates].forEach((a) => (a.length = 0));
+    dial = tubes = tubeMat = gateB = gateC = phone = receiver = card = bell = null;
+    rnd = rng(22);
+    return r;
   };
 
   // ---------- per-frame visuals ----------
@@ -1151,6 +1181,7 @@ const TrC2 = (() => {
     plates,
     panels,
     build,
+    unbuild,
     get built() {
       return built;
     },
@@ -1262,6 +1293,7 @@ const TrC2 = (() => {
       card.position.y = O.y + 2.2 + Math.sin(t * 2) * 0.15;
     },
     lamps(st, role) {
+      if (!built) return;
       // room A progress
       const r1 = st.r1 || {};
       for (let i = 0; i < 5; i++) {
@@ -1290,6 +1322,7 @@ const TrC2 = (() => {
     },
     // cables follow the state: resting, held by someone, or plugged
     cables(st, role, localHand, remoteHand) {
+      if (!built) return;
       const r2 = st.r2 || { conn: {} };
       const conn = r2.conn || {};
       const hold = r2.hold;

@@ -304,8 +304,17 @@ const Maze = (() => {
     return s;
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = (myRole, seed) => {
     if (built) return;
+    Phys.owner('maze');
+    try {
+      make(myRole, seed);
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = (myRole, seed) => {
     built = true;
     role = myRole;
     group.visible = true;
@@ -460,7 +469,9 @@ const Maze = (() => {
       g.arc(256, 256, 180, 0, TAU);
       g.stroke();
       g.globalCompositeOperation = 'destination-out';
-      for (let i = 0; i < 3000; i++) g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+      // seeded, so a rebuild paints the same cracks
+      const R3 = rng(91);
+      for (let i = 0; i < 3000; i++) g.fillRect(R3() * 512, R3() * 512, 2, 2);
     });
     const ring = new THREE.Mesh(
       new THREE.PlaneGeometry(7, 7).rotateX(-Math.PI / 2),
@@ -503,10 +514,38 @@ const Maze = (() => {
   };
   const rimMatDark = () => Tex.mat('stone', { color: '#3c3a40', scale: 2.5, bump: 0.8 });
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the mazes' own geometry, materials and canvas textures, the sky and fireflies LvKit put
+  // straight in the scene and the lamp that follows the walker, takes the colliders out and
+  // forgets every reference build() made. The group and its decor group are made at script load:
+  // they stay (the decor hung back under the group), empty, the group hidden. Tex materials and
+  // the card's texture (Tex.card) are shared.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    // the level's exit already put the light back (mood(false)); only if the extras are still ours
+    if (amb.sky && amb.sky.visible) LvKit.mood(null);
+    const out = [amb.sky, amb.flies, lamp].filter(Boolean);
+    out.forEach((o) => R.scene.remove(o));
+    const r = Life.free([group, deco], [out, glass]);
+    group.add(deco);
+    deco.visible = true;
+    r.world = 'maze';
+    r.colliders = Phys.drop('maze');
+    built = false;
+    group.visible = false;
+    clear(mazes);
+    amb.sky = amb.flies = null;
+    role = 'dame';
+    lamp = screen = bombScreen = card = capMat = glass = null;
+    return r;
+  };
+
   return {
     O,
     P,
     build,
+    unbuild,
     get built() {
       return built;
     },

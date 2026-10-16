@@ -1457,19 +1457,56 @@ const D5 = (() => {
     }
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = (who) => {
     role = who || role;
     group.visible = true;
     if (!built) {
-      built = true;
-      buildHall();
-      buildCube();
-      buildRoom2();
-      buildOrrery();
-      buildSky();
+      Phys.owner('tr_d5');
+      try {
+        make();
+      } finally {
+        Phys.owner(null);
+      }
     }
     secretDame.forEach((m) => (m.visible = role === 'dame'));
     secretValet.forEach((m) => (m.visible = role === 'valet'));
+  };
+  const make = () => {
+    built = true;
+    buildHall();
+    buildCube();
+    buildRoom2();
+    buildOrrery();
+    buildSky();
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the observatory's own geometry, materials and canvas textures (the module's materials,
+  // textures and sigil cache made at script load lose their GPU copy only: three sends them again
+  // at the next build; a sigil swapped off a stone is passed too), takes its colliders out (both
+  // states of the turning room, the crates and the slab included) and forgets every reference
+  // build() made; the tables the level reads (crates, plates, stations, lanes, stones, lifts, r2
+  // and its bells) are emptied in place. Tex materials and the cards' textures are kept (shared).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const own = [mBrass, mDarkBrass, glass, mTile, mPanel, mCrate, sealMat, underMat, dotTex, sigilCache];
+    const r = Life.free([group], own);
+    r.world = 'tr_d5';
+    r.colliders = Phys.drop('tr_d5');
+    built = false;
+    [cubeCol[0], cubeCol[1], levers, crates, plates, seals, secretDame, secretValet, lanes, stones, rings, lifts, rocks].forEach((a) => (a.length = 0));
+    // r2 keeps its object and its three arrays (D5.bells is r2.bells)
+    [r2.gates, r2.bubbles, r2.bells].forEach((a) => (a.length = 0));
+    r2.block = r2.blockB = r2.carriage = r2.beam = r2.ring = null;
+    delete r2.eye;
+    [faceG, stations, lights].forEach(clear);
+    role = 'dame';
+    screen = cubePivot = exitGate = core = coreB = heart = card = dome = stars = null;
+    pulseRings = [];
+    cubeAngle = 0;
+    return r;
   };
 
   // ---------- room-1 controls ----------
@@ -1686,6 +1723,7 @@ const D5 = (() => {
     G1,
     G2,
     build,
+    unbuild,
     get built() {
       return built;
     },

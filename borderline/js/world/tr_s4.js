@@ -312,8 +312,17 @@ const TrS4 = (() => {
   const driftCards = [];
   let liftLight = null;
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_s4');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     mats();
@@ -1077,6 +1086,8 @@ const TrS4 = (() => {
   // ---------- falling cards (stage 3 hazard), purely visual here ----------
   const cardGeo = new THREE.PlaneGeometry(1.8, 2.5);
   const dropCard = (x, y, z) => {
+    // a late message from the partner may still drop one once the world is unloaded
+    if (!built) return;
     const ranks = ['2', '3', '5', '6', '8', '9', '10', 'V', 'D'];
     const suits = ['♠', '♣', '♥', '♦'];
     const m = new THREE.Mesh(
@@ -1094,6 +1105,29 @@ const TrS4 = (() => {
     falling.push({ m, x, y, z, t: 0, spin: (Math.random() - 0.5) * 6 });
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the tower's own geometry, materials and canvas textures (M's own materials and the
+  // cloud map included), takes its colliders out (the cogs', the lift's and the pedestal's moving
+  // boxes too) and empties every table in place (the level keeps TrS4.discs). M is refilled by
+  // mats() at the next build; its Tex materials stay cached (wallIn's BackSide is set again, the
+  // same value). The falling cards' geometry is made when the script loads and stays as an object.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    api.sleep();
+    const r = Life.free([group], [M, cardGeo]);
+    r.world = 'tr_s4';
+    r.colliders = Phys.drop('tr_s4');
+    built = false;
+    [M, levers].forEach(clear);
+    [discs, liftBoxes, rimBoxes, rimPosts, columns, ringMeshes, wallCogs, lanterns, falling, driftCards].forEach((a) => (a.length = 0));
+    arm = lift = crank = gate = gateBox = pendulum = screen = screen2 = screen3 = null;
+    card = cardHeart = bell = rose = cloudSea = liftLight = null;
+    // the host-shared values the level hands to update()
+    delete api.v;
+    return r;
+  };
+
   // ---------- per-frame ----------
   const tmp = V3();
   const discPos = (ri, k, ga) => {
@@ -1105,7 +1139,7 @@ const TrS4 = (() => {
   const colOn = (i, wt) => colPhase(i, wt) < ON;
   const colWarn = (i, wt) => colPhase(i, wt) > CYCLE - 1.0;
 
-  return {
+  const api = {
     O,
     P,
     RW,
@@ -1118,6 +1152,8 @@ const TrS4 = (() => {
     LEVERS,
     RINGS_G,
     build,
+    unbuild,
+    group,
     get built() {
       return built;
     },
@@ -1333,4 +1369,5 @@ const TrS4 = (() => {
     },
     tmp,
   };
+  return api;
 })();

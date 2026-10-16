@@ -1033,6 +1033,7 @@
       .replace('{s}', AGREE[tr.name] || '');
 
   Story.register('tr_s5', {
+    world: TrS5,
     init: () => ({
       stage: 1,
       T: 0,

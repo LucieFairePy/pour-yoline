@@ -160,6 +160,7 @@
   };
 
   Story.register('tr_d4', {
+    world: D4,
     init: () => {
       const SU = ['h', 'd', 's', 'c'];
       const target = [0, 1, 2].map(() => (Math.random() * 4) | 0);

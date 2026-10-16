@@ -46,7 +46,8 @@ const Heart = (() => {
     gr.addColorStop(1, 'rgba(120,20,80,0)');
     x.fillStyle = gr;
     x.fillRect(0, 0, 256, 256);
-    coreTex = new THREE.CanvasTexture(c);
+    // shared by every galaxy (the sky and several worlds): never freed by an unloaded world
+    coreTex = Life.keep(new THREE.CanvasTexture(c));
     return coreTex;
   };
 

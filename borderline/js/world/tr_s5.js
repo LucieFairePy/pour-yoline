@@ -930,8 +930,17 @@ const TrS5 = (() => {
   const spokeAng = (T, x, k) => (x.p3 != null ? (T - x.p3) * RING.spin + k * Math.PI : 0);
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_s5');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     mats();
@@ -1354,6 +1363,34 @@ const TrS5 = (() => {
   // ---------- per-frame ----------
   const tmp = V3();
   const lastSnd = {};
+
+  const sleep = () => {
+    Object.values(gates).forEach((g) => (g.b.on = false));
+    Object.values(locks).forEach((b) => (b.on = false));
+    group.visible = false;
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the fortress's own geometry, materials and canvas textures (the fan and boomerang
+  // shapes made at script load included: three sends them again at the next build), takes its
+  // colliders out (the gates and the stair locks with them) and puts every table back as after a
+  // page load. The tread canvas cache keeps its texture: only its clones go to the meshes.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    sleep();
+    const r = Life.free([group], [M, fanMat, boomGeo, fans.map((f) => f.m), booms.map((b) => b.m)]);
+    r.world = 'tr_s5';
+    r.colliders = Phys.drop('tr_s5');
+    built = false;
+    [M, trapViews, levers, gates, locks, lastSnd].forEach(clear);
+    spokes.length = fans.length = booms.length = 0;
+    embers = [];
+    lavaMats = [];
+    screen = screen2 = screen3 = card = cardHeart = sawRing = bossPit = forgeLight = null;
+    sparkT = 0;
+    return r;
+  };
   const nearMe = (p, d) => Player.body.p.distanceTo(p) < d;
   const update = (dt, t, x, role, T) => {
     if (!built) return;
@@ -1580,7 +1617,9 @@ const TrS5 = (() => {
     BOSS_R,
     BOOM,
     RING,
+    group,
     build,
+    unbuild,
     update,
     get built() {
       return built;
@@ -1639,6 +1678,7 @@ const TrS5 = (() => {
     },
     // telegraph a fan (sector) on the floor: pos (world), yaw (forward = sin/cos), half angle, radius
     fan(pos, yaw, h, r, t) {
+      if (!built) return;
       const m = new THREE.Mesh(fanGeo(r, h), fanMat.clone());
       m.position.set(pos.x, pos.y + 0.06, pos.z);
       // the fan's axis is local +z: rotation.y = yaw turns it to (sin yaw, cos yaw)
@@ -1647,6 +1687,7 @@ const TrS5 = (() => {
       fans.push({ m, t, max: t });
     },
     boomerang(b) {
+      if (!built) return;
       const m = new THREE.Mesh(boomGeo, M.steel);
       const e = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.035, 5, 32).rotateX(Math.PI / 2), M.edge);
       m.add(e);
@@ -1689,11 +1730,7 @@ const TrS5 = (() => {
       if (locks.B) locks.B.on = !!b;
     },
     nearStairs: (q, k) => (k === 'A' ? q.x < -2.6 && q.z > 2.2 && q.z < 10 : q.x > 2.7 && q.z < -56.2 && q.z > -63.2) && q.y < 5,
-    sleep() {
-      Object.values(gates).forEach((g) => (g.b.on = false));
-      Object.values(locks).forEach((b) => (b.on = false));
-      group.visible = false;
-    },
+    sleep,
     wake() {
       group.visible = true;
     },

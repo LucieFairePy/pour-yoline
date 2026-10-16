@@ -387,6 +387,7 @@
   };
 
   Story.register('tr_c2', {
+    world: TrC2,
     init: () => ({
       round: 1,
       r1: { call: 0, seq: seq(R1_LEN[0]), prog: 0, dn: 0, last: 0 },

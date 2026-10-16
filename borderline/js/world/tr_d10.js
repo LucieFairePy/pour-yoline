@@ -94,7 +94,8 @@ const D10 = (() => {
   // scan is there (or for good with ?noassets); nothing global is swapped
   const scan = (kind, id, mul, opt) => {
     const m = Tex.mat(kind, Object.assign({}, opt, { d10: id }));
-    if (!m.onBeforeCompile || !Tex.build) return m;
+    // a cached Tex material: wrapped once only (a rebuild after an unload finds it bound already)
+    if (!m.onBeforeCompile || !Tex.build || m.userData.d10) return m;
     const T = Tex.build(kind);
     const U = {
       tAlb: { value: T.uAlb.value },
@@ -102,6 +103,8 @@ const D10 = (() => {
       triMul: { value: 1 },
       triNrm: { value: 0 },
     };
+    // kept in userData: the scan's GPU copy goes with the world on unload (Life.free)
+    m.userData.d10 = U;
     const ob = m.onBeforeCompile;
     m.onBeforeCompile = (sh) => {
       ob(sh);
@@ -1014,8 +1017,17 @@ const D10 = (() => {
   let shafts = null;
   let mark = null;
   let uMotes = null;
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_d10');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     makeMats();
     T.crack = makeCracks();
@@ -1303,7 +1315,8 @@ const D10 = (() => {
   };
 
   // ---------- state the level drives ----------
-  const ST = {
+  // what the world shows, set by the level (as after a page load again on unbuild)
+  const ST0 = () => ({
     lean: null, // the field index whose underside the hole shows, or null
     hole: -1, // which field's hole has its lantern lit
     squall: 0, // 0..1
@@ -1315,7 +1328,8 @@ const D10 = (() => {
     me: V3(),
     crackK: 0,
     crackR: 3,
-  };
+  });
+  const ST = ST0();
   const drift = V3();
   let flashT = 0;
   let flashK = 0;
@@ -1411,6 +1425,44 @@ const D10 = (() => {
     if (screen) screen.update(dt, t);
   };
   const base = { hemi: 0.55 };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the lake's own geometry, materials and canvas textures (root, the camera-following snow
+  // and aurora, the under-ice group, the sky dome and under-ice motes LvKit put in the scene; the
+  // scans bound to the Tex materials through userData go with them, the images stay in Assets),
+  // takes its colliders out (the slabs' boxes included) and forgets every reference build() made.
+  // The level's tables (holes, RING) are emptied in place. The sound (AU, its own audio context)
+  // is suspended as on hide; the level resumes it on entry.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    AU.suspend();
+    [skyDome, uMotes].forEach((o) => o && R.scene.remove(o));
+    const r = Life.free([root, wx, under], [M, T, skyDome, uMotes]);
+    r.world = 'tr_d10';
+    r.colliders = Phys.drop('tr_d10');
+    built = false;
+    root.visible = wx.visible = under.visible = false;
+    [M, T, lights, ST].forEach(clear);
+    Object.assign(ST, ST0());
+    [fields, holes, lanterns, auroras, plates.top, plates.low].forEach((a) => (a.length = 0));
+    delete RING.mesh;
+    delete RING.wp;
+    snow = squallSnow = mist = water = skyDome = shafts = mark = uMotes = screen = card = null;
+    drift.set(0, 0, 0);
+    flashT = 0;
+    flashK = 0;
+    hz.copy(HZ_AIR);
+    base.hemi = 0.55;
+    SH.time.value = 0;
+    SH.me.value.set(0, 0, 0);
+    SH.crackK.value = 0;
+    SH.crackR.value = 3;
+    SH.reformZ.value = -1e4;
+    SH.storm.value = 0;
+    SH.aur.value.set('#3cd6a0');
+    return r;
+  };
 
   // ---------- sound: wind, singing ice, cracks, water ----------
   const AU = (() => {
@@ -1708,6 +1760,7 @@ const D10 = (() => {
     build() {
       build();
     },
+    unbuild,
     get built() {
       return built;
     },

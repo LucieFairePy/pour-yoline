@@ -85,6 +85,7 @@
   };
 
   Story.register('act5', {
+    world: Worlds,
     init: () => {
       const lights = Array(9).fill(true);
       let n = 0;

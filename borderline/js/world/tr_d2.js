@@ -379,7 +379,8 @@ const TrD2 = (() => {
   };
 
   // ---------- the Mirror Guardian ----------
-  const boss = { g: null, ring: null, heart: null, body: null, shards: [], crown: null, k: 0 };
+  const BOSS0 = () => ({ g: null, ring: null, heart: null, body: null, shards: [], crown: null, k: 0 });
+  const boss = BOSS0();
   const GAP = 0.55; // half-width of the gap in the ring (radians)
   const RING_R = 2.6;
   const buildBoss = () => {
@@ -865,10 +866,21 @@ const TrD2 = (() => {
   let card = null;
   const decor = [];
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_d2');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
+    // envify sets onBeforeCompile (it does not wrap the previous one): doing it again on a
+    // rebuild changes nothing
     envList.forEach(([m, k]) => CineKit2.envify(m, k));
     K = LvKit.builder(O, group);
     // floor: dark marble with light inlay bands
@@ -1069,6 +1081,32 @@ const TrD2 = (() => {
   const tmpV = V3();
   let traced = null;
   let sparkT = 0;
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the hall's own geometry, materials and canvas textures (the module's materials and
+  // geometries made at script load lose their GPU copy only: three sends them again at the next
+  // build), takes its colliders out (the doors' moving boxes included) and forgets every
+  // reference build() made; the tables the level reads (mirrors, sockets, targets, crystals) are
+  // emptied in place. The ghost path group is made at script load: emptied, and build() hangs it
+  // back. Tex materials and the cards' textures are kept (shared).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const own = [gold, brass, darkMetal, mirrorMat, shardMat, glassMat, prismMat, gearGeo, beamGeo];
+    const r = Life.free([group, ghost], own);
+    r.world = 'tr_d2';
+    r.colliders = Phys.drop('tr_d2');
+    built = false;
+    [doors, emitters, crystals, sockets, blocks, targets, boss].forEach(clear);
+    Object.assign(boss, BOSS0());
+    [rects, mirrors, telegraphs, projectiles, beamPool, decor].forEach((a) => (a.length = 0));
+    beamUsed = 0;
+    ringWave.m = null;
+    ghost.visible = false;
+    K = screen = card = traced = null;
+    sparkT = 0;
+    return r;
+  };
   const angDamp = (cur, want, k, dt) => cur + Math.atan2(Math.sin(want - cur), Math.cos(want - cur)) * (1 - Math.exp(-k * dt));
 
   const sources = (x) => {
@@ -1105,6 +1143,7 @@ const TrD2 = (() => {
       return screen;
     },
     build,
+    unbuild,
     ROOM1,
     ROOM2,
     ARENA,

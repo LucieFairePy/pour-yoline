@@ -22,8 +22,9 @@ const Worlds = (() => {
     Tex.mat('cobble', { color: '#5a2a38', scale: 2, emissive: '#3a0a18', id: crumbleN++ });
   let built = false;
   let role = 'dame';
-  const D = { tiles: [], peds: [], doors: [], screen: null };
-  const V = {
+  // the three worlds' state, as after a page load (factories: unbuild puts them back in place)
+  const D0 = () => ({ tiles: [], peds: [], doors: [], screen: null });
+  const V0 = () => ({
     moving: [],
     crumble: [],
     bridges: [],
@@ -33,8 +34,11 @@ const Worlds = (() => {
     seg: -1,
     cp: 0,
     seqWall: null,
-  };
-  const C = { center: null };
+  });
+  const C0 = () => ({ center: null });
+  const D = D0();
+  const V = V0();
+  const C = C0();
 
   const sprite = (txt, size, color, font = 'bold 80px Georgia') => {
     const c = document.createElement('canvas');
@@ -289,8 +293,17 @@ const Worlds = (() => {
     C.center = V3(o.x, o.y + 3, o.z);
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = (myRole, seed) => {
     if (built) return;
+    Phys.owner('worlds');
+    try {
+      make(myRole, seed);
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = (myRole, seed) => {
     built = true;
     role = myRole;
     group.visible = true;
@@ -298,6 +311,30 @@ const Worlds = (() => {
     buildLibrary(r);
     buildParkour();
     buildConverge();
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the three worlds' own geometry, materials and canvas textures (the library light and
+  // the sequence wall live in the group), takes the colliders out (doors, moving and crumbling
+  // slabs, bridges included) and puts D, V and C back as after a page load. The group is made at
+  // script load: it stays in the scene, empty and hidden. The Tex materials (module-level ones
+  // and the crumbling slabs', cached by id) are shared: crumbleN starts again at 0 so the next
+  // build takes the same cached ones instead of adding new ones to the cache.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group]);
+    r.world = 'worlds';
+    r.colliders = Phys.drop('worlds');
+    built = false;
+    group.visible = false;
+    [[D, D0], [V, V0], [C, C0]].forEach(([o, f]) => {
+      clear(o);
+      Object.assign(o, f());
+    });
+    crumbleN = 0;
+    role = 'dame';
+    return r;
   };
 
   const vrel = (p) => V3(p.x - OV.x, p.y - OV.y, p.z - OV.z);
@@ -310,6 +347,7 @@ const Worlds = (() => {
     SYMS,
     SYM_COL,
     build,
+    unbuild,
     get built() {
       return built;
     },
@@ -353,7 +391,7 @@ const Worlds = (() => {
       return C.ring;
     },
     showSeq(seq) {
-      if (V.seqWall || role !== 'valet') return;
+      if (!built || V.seqWall || role !== 'valet') return;
       const g = new THREE.Group();
       seq.forEach((k, i) => {
         const s = sprite(SYMS[k], 1.4, SYM_COL[k]);

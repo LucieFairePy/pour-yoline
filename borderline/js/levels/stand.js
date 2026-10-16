@@ -39,6 +39,7 @@
   };
 
   Story.register('stand', {
+    world: Garde,
     init: () => ({}),
     enter(c) {
       Garde.build();

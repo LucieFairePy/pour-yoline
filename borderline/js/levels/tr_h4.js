@@ -314,6 +314,7 @@
   };
 
   Story.register('tr_h4', {
+    world: H4,
     init: () => ({
       stage: 1,
       lan: { who: null, post: 'p0' },

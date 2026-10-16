@@ -190,8 +190,17 @@ const TrC1 = (() => {
     cable.g.attributes.position.needsUpdate = true;
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_c1');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     mats = mk();
@@ -499,7 +508,33 @@ const TrC1 = (() => {
     });
   };
 
-  return {
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the cable work's own geometry, materials and canvas textures (and the cable, its clips
+  // and the anchor rings, which live in the scene outside the group), takes its colliders out and
+  // forgets every reference build() made. The Tex materials and the card stay cached; the
+  // builder's box cache keeps its objects (three sends them to the GPU again at the next build).
+  const unbuild = () => {
+    if (!built) return null;
+    const loose = [cable && cable.m, ...(clips || []), ...(anchorFx || [])].filter(Boolean);
+    loose.forEach((o) => R.scene.remove(o));
+    const r = Life.free([group], [mats, loose]);
+    group.visible = false;
+    r.world = 'tr_c1';
+    r.colliders = Phys.drop('tr_c1');
+    built = false;
+    ledges.length = planks.length = 0;
+    bridgeSegs = [];
+    mats = lever = wheel = card = cloudU = cable = anchorFx = clips = windFx = null;
+    // what the level writes on the module (crank damping, bridge front, gust, wheel, debug)
+    api.front = null;
+    api.gust = 0;
+    delete api._bk;
+    delete api._wheelSpin;
+    delete api.dbg;
+    return r;
+  };
+
+  const api = {
     O,
     P,
     UP,
@@ -509,6 +544,8 @@ const TrC1 = (() => {
     BR0,
     BR1,
     build,
+    unbuild,
+    group,
     get built() {
       return built;
     },
@@ -673,4 +710,5 @@ const TrC1 = (() => {
       planks.forEach((pk) => (pk.fall = 0));
     },
   };
+  return api;
 })();

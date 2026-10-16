@@ -710,6 +710,7 @@
   };
 
   Story.register('tr_s4', {
+    world: TrS4,
     init: () => ({
       stage: 1,
       brk: [],

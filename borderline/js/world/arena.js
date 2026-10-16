@@ -114,9 +114,22 @@ const Arena = (() => {
   let pathOf;
   let layLane;
   const laid = { valet: 0, dame: 0 };
+  // the tile labels and glass materials made on demand (a fake one swapped in after a fall):
+  // module-level so unbuild can free those no tile holds any more
+  const texCache = {};
+  const glass = {};
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = (myRole, seed) => {
     if (built) return;
+    Phys.owner('arena');
+    try {
+      make(myRole, seed);
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = (myRole, seed) => {
     built = true;
     role = myRole;
     group.visible = true;
@@ -148,7 +161,6 @@ const Arena = (() => {
     // girders, pylons, a cloud sea far below, and every tile lights up once stepped on.
     const LANE = ['G', 'M', 'D'];
     const KCOL = { seen: '#ff5f8a', plain: '#ffcf8a', real: '#6cc8ff', fake: '#ff3a4a' };
-    const texCache = {};
     tileTex = (row, lane, kind) => {
       const key = row + lane + kind;
       if (texCache[key]) return texCache[key];
@@ -201,7 +213,6 @@ const Arena = (() => {
     const tileGeo = new THREE.BoxGeometry(1.8, 0.3, 2.6);
     const edgeGeo = new THREE.EdgesGeometry(tileGeo);
     const topGeo = new THREE.PlaneGeometry(1.74, 2.54).rotateX(-Math.PI / 2).rotateY(Math.PI);
-    const glass = {};
     glassMat = (kind) =>
       glass[kind] ||
       (glass[kind] = new THREE.MeshStandardMaterial({
@@ -554,10 +565,33 @@ const Arena = (() => {
 
   const harnessPos = (t, out = V3()) => curve.getPoint(clamp(t, 0, 1), out);
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the bridges' own geometry, materials and canvas textures (the tile labels and glass
+  // kept for re-deals included), takes the colliders out (tiles, cabins, doors, ceilings) and
+  // forgets every reference build() made. The group is made at script load: it stays in the
+  // scene, empty and hidden. Tex materials and the card's texture (Tex.card) are shared.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [Object.values(texCache), Object.values(glass)]);
+    r.world = 'arena';
+    r.colliders = Phys.drop('arena');
+    built = false;
+    group.visible = false;
+    [texCache, glass, cab].forEach(clear);
+    [rings, blind, own, tiles.mine, tiles.theirs].forEach((a) => (a.length = 0));
+    laid.valet = laid.dame = 0;
+    role = 'dame';
+    harness = crank = crank2 = curve = screen = card = dust = bridgeFx = null;
+    tileTex = glassMat = lit = pathOf = layLane = null;
+    return r;
+  };
+
   return {
     O,
     P,
     build,
+    unbuild,
     get built() {
       return built;
     },
