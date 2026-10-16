@@ -275,12 +275,18 @@ const Story = (() => {
 
   const action = (who, d, from) => {
     if (!S || !d || typeof d !== 'object') return;
-    if (d.a === 'clue' && !S.clues.includes(d.id)) set((s) => s.clues.push(d.id));
-    if (d.a === 'seen' && !S.seen.includes(d.id)) set((s) => s.seen.push(d.id));
+    if (d.a === 'clue' && T.clues[d.id] && !S.clues.includes(d.id)) set((s) => s.clues.push(d.id));
+    if (d.a === 'seen' && typeof d.id === 'string' && !S.seen.includes(d.id))
+      set((s) => s.seen.push(d.id));
     if (d.a === 'card' && Cards.valid(d.id) && !Cards.has(d.id)) Cards.award(ctx, [d.id]);
     // the guest's actions: one sent from a phase the host has already left is not for this level
-    // (older pages do not say their phase)
-    if (from && from.ph && from.ph !== S.phase) return note('actOtherPhase', d.a + ' from ' + from.ph);
+    // (older pages do not say their phase), and what it says it hit or revived must be possible
+    if (from) {
+      if (from.ph && from.ph !== S.phase) return note('actOtherPhase', d.a + ' from ' + from.ph);
+      const no = Combat.check(who, d);
+      if (no) return note('actRefused', d.a + ': ' + no);
+      note('actOk');
+    }
     const def = PH[S.phase];
     if (def && def.action) def.action(ctx, who, d);
   };

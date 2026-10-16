@@ -29,6 +29,8 @@ const Remote = (() => {
   // the clocks of the last snapshots received (copies are told apart by it)
   const seen = new Set();
   const seenQ = [];
+  // where the other player was over the last second (newest last), for the host's checks
+  const hist = [];
   const reset = () => {
     seen.clear();
     seenQ.length = 0;
@@ -74,6 +76,11 @@ const Remote = (() => {
     get state() {
       return state;
     },
+    // positions received in the last second or so: [[x, y, z, arrival ms], ...]
+    recent() {
+      const now = performance.now();
+      return hist.length && now - hist[hist.length - 1][3] < 5000 ? hist : [];
+    },
     get fresh() {
       return performance.now() - lastRx < 3000;
     },
@@ -113,6 +120,8 @@ const Remote = (() => {
       seen.add(st);
       seenQ.push(st);
       if (seenQ.length > 120) seen.delete(seenQ.shift());
+      hist.push([s[0], s[1], s[2], now]);
+      while (hist.length > 2 && now - hist[0][3] > 1200) hist.shift();
       const o = now - st;
       if (off === null || o < off) off = o;
       else off += (o - off) * 0.002; // follows clock drift / a slower route, slowly
