@@ -969,6 +969,7 @@
   };
 
   Story.register('tr_d6', {
+    world: D6W,
     init: () => ({ stage: 1, rig: {}, lit: [1, 1, 1], cut: [0, 0, 0, 0], won: false }),
     voice: () => 1,
     net: {

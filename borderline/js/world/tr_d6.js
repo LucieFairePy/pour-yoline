@@ -832,6 +832,8 @@ const D6W = (() => {
     '|' +
     w.cuts.map((c) => [c.on ? 1 : 0, c.x.toFixed(3), c.y.toFixed(3), c.o].join(',')).join(';');
   const refreshSolids = (w, force) => {
+    // unloaded: the wall has no pool of boxes
+    if (!w.boxes) return false;
     const k = rigKey(w);
     if (!force && k === w.key) return false;
     w.key = k;
@@ -1803,8 +1805,17 @@ const D6W = (() => {
   let screenLight = null;
   let screen = null;
   let finalStair = null;
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_d6');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     drawAtlas();
     atlasTex = new THREE.CanvasTexture(atlasCv);
@@ -1885,6 +1896,36 @@ const D6W = (() => {
   const wake = () => {
     group.visible = true;
     Object.values(doors).forEach((d) => (d.b.on = true));
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the theatre's own geometry, materials and canvas textures (the atlas and the materials
+  // and shapes made at script load included: three sends them again at the next build), takes
+  // its colliders out (the doors and every wall's pool of shadow boxes with them) and puts every
+  // table back as after a page load. WALLS stays the same object, with the same lights and
+  // cut-outs (the level reads them and resetRig puts them back on entry): only what build hung
+  // on each wall goes. The masks and the rectangles cache are pure functions of the atlas.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    sleep();
+    const r = Life.free(
+      [group],
+      [atlasTex, volGeo, volMat, stripGeo, stripMat, seatGeo, velvet, seatVelvet, blackVelvet, gold, brass, lacquer, Object.values(WALLS).map((w) => w.mat)],
+    );
+    r.world = 'tr_d6';
+    r.colliders = Phys.drop('tr_d6');
+    built = false;
+    Object.values(WALLS).forEach((w) => {
+      ['mat', 'U', 'boxes', 'vol', 'strip'].forEach((k) => delete w[k]);
+      w.solids = [];
+      w.key = '';
+      w.active = false;
+    });
+    [screens, doors, consoles, cutMeshes, puppet, projs, beams].forEach(clear);
+    seats.length = ringMeshes.length = 0;
+    atlasTex = dome = dust = card = cardHeart = playerLight = screenLight = screen = finalStair = pick = null;
+    return r;
   };
 
   // the pilot's current pick glows (only on the pilot's own screen)
@@ -2100,7 +2141,9 @@ const D6W = (() => {
     get built() {
       return built;
     },
+    group,
     build,
+    unbuild,
     resetRig,
     wake,
     sleep,

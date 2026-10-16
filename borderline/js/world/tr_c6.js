@@ -1323,11 +1323,20 @@ const C6M = (() => {
   let callBeam = null;
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       return;
     }
+    Phys.owner('tr_c6');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     makeTextures();
@@ -1908,6 +1917,7 @@ const C6M = (() => {
   const RING_SPEED = 8;
   const ringR = (t, d) => (t < d.dur ? 1.2 + Math.sin(t * 10) * 0.2 : 1.2 + (t - d.dur) * RING_SPEED);
   const tele = (d) => {
+    if (!boss) return null;
     const tl = boss.tele.find((x) => x.t < 0) || boss.tele[0];
     tl.t = 0;
     tl.d = d;
@@ -1917,6 +1927,7 @@ const C6M = (() => {
     if (boss) boss.flash = 1;
   };
   const burstShards = (w, me, x, y, z) => {
+    if (!shards) return;
     shards.forEach((s, i) => {
       s.t = 0;
       s.m.visible = true;
@@ -2147,6 +2158,46 @@ const C6M = (() => {
   })();
 
   // ---------- queries ----------
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees both gardens' own geometry, materials and canvas textures (the reflection and the
+  // Reflet's astronauts included: their shared parts stay while the players' avatars use them),
+  // takes the colliders out (bridges, gates, doors, the cage and the chasm walls with them) and
+  // puts every table back as after a page load. The zone groups and dynG are made when the script
+  // loads: emptied, hidden again and hung back under the root. The synth keeps its AudioContext.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const ZG = () => ZK.flatMap((k) => ['U', 'L'].flatMap((w) => [G[w][k].real, G[w][k].mir]));
+  const unbuild = () => {
+    if (!built) return null;
+    root.visible = false;
+    Syn.ambient(false);
+    const r = Life.free([root, dynG, ...ZG()], [M, T]);
+    ZG().forEach((g) => {
+      g.visible = false;
+      root.add(g);
+    });
+    root.add(dynG);
+    r.world = 'tr_c6';
+    r.colliders = Phys.drop('tr_c6');
+    built = false;
+    [M, T, liquids, motes, bridges, levers, gates, plates, doors, items].forEach(clear);
+    boxG.clear();
+    buckets.clear();
+    LIDS.length = countSprites.length = 0;
+    sky = countTex = countCtx = countShown = cage = ghost = boss = card = cardHalo = shards = callBeam = null;
+    ripN = 0;
+    LIQ.uDay.value = 1;
+    LIQ.uTime.value = LIQ.uTrouble.value = LIQ.uCalm.value = 0;
+    LIQ.uRip.value.forEach((v) => v.set(0, 0, -99, 0));
+    SKY.uDay.value = 1;
+    SKY.uTime.value = SKY.uCalm.value = 0;
+    CU.uCT.value = 0;
+    BOSS_U.uRim.value = 0.6;
+    BOSS_U.uHot.value = BOSS_U.uT.value = 0;
+    pz.me = pz.mate = 0;
+    st0.reunited = false;
+    return r;
+  };
+
   const SPAWN_Z = { a0: 2, a1: 24, a2: 44, a3: 66, a4: 88, b: 96, c0: 160, c1: 190, c2: 200, c3: 213, c4: 228, d: 273, e: 279 };
   const spawn = (w, key, kit) => {
     const z = SPAWN_Z[key] != null ? SPAWN_Z[key] : 2;
@@ -2192,7 +2243,9 @@ const C6M = (() => {
     rel,
     P,
     view,
+    root,
     build,
+    unbuild,
     get built() {
       return built;
     },

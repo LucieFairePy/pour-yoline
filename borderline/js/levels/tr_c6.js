@@ -1093,6 +1093,7 @@
 
   // ---------- register ----------
   Story.register('tr_c6', {
+    world: C6M,
     init: (s) => ({
       stage: 1,
       sw: 0,
