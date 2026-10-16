@@ -250,6 +250,13 @@ const Story = (() => {
     Remote.handPose = false;
     Avatar.hold.on = false;
     if (Player.mode === 'sit') Player.mode = 'walk';
+    // nor the previous level's fall line, respawn and grapple anchors: a level that wants them
+    // sets them in its enter (a stale checkpoint reads a state that no longer exists, e.g. the
+    // reward after tr_d10 threw on every frame)
+    Player.killY = -40;
+    Player.checkpoint = () => V3();
+    Player.targets = null;
+    Player.grappleLand = null;
     setKit(ph, !first || SWAP.has(ph));
     local.phase = ph;
     HUD.prompt(null);
