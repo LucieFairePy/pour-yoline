@@ -228,6 +228,7 @@
   const seed = () => 1 + ((Math.random() * 1e9) | 0);
 
   Story.register('tr_h5', {
+    world: H5,
     init: () => ({
       stage: 1,
       lay: { A: seed(), B: seed() },

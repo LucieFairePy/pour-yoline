@@ -678,11 +678,20 @@ const H3 = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = (seed) => {
     if (built) {
       group.visible = true;
       return;
     }
+    Phys.owner('tr_h3');
+    try {
+      make(seed);
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = (seed) => {
     built = true;
     seedUsed = seed;
     mk();
@@ -931,6 +940,28 @@ const H3 = (() => {
     void down;
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the garden's own geometry, materials and canvas textures, takes its colliders out (the
+  // lily pads' moving boxes included) and forgets every reference build() made; the tables the
+  // level reads (maze, stones, plateMeshes) are emptied in place (maze keeps its object, its
+  // fields go back to their page-load values). mats is emptied: mk() makes the module's own
+  // materials again, the Tex ones come back from the shared cache.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [mats]);
+    r.world = 'tr_h3';
+    r.colliders = Phys.drop('tr_h3');
+    built = false;
+    clear(mats);
+    Object.assign(maze, { walls: [], path: [], plates: [], mid: null, cells: null });
+    [stones, markers, lanterns, plateMeshes, tileGlow.cols].forEach((a) => (a.length = 0));
+    tileGlow.mesh = null;
+    chandeliers = [];
+    seedUsed = screen = danceScreen = flies = water = waterNorm = heart = card = midStone = hoverRing = null;
+    return r;
+  };
+
   // ---------- per-frame visuals ----------
   const tmpC = new THREE.Color();
   const update = (dt, t, st) => {
@@ -1035,6 +1066,7 @@ const H3 = (() => {
     GZ,
     WALK_Y,
     build,
+    unbuild,
     get built() {
       return built;
     },

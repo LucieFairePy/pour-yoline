@@ -621,11 +621,20 @@ const H5 = (() => {
   const ringPolys = {};
   const inHeart = (q) => inPoly(heartPoly, q.x - WELL.x, -(q.z - WELL.z));
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       group.visible = true;
       return;
     }
+    Phys.owner('tr_h5');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
 
@@ -1054,6 +1063,29 @@ const H5 = (() => {
     });
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the islands' own geometry, materials and canvas textures (the module's materials and
+  // textures made at script load lose their GPU copy only: three sends them again at the next
+  // build), takes the colliders out (the raft's moving box included) and forgets every reference
+  // build() made; the tables the level reads (hidden, updrafts, rings, diveRings, PILLARS) are
+  // emptied in place. Tex materials and the cards' textures are kept (shared).
+  const unbuild = () => {
+    if (!built) return null;
+    const own = [deckTex, deck, puffTex, haloTex, rayTex, runeTex, seaMat, cloudMat, puffMat, birdGeo, birdMat, brass, glass, leafMat, blossom];
+    const r = Life.free([group], own);
+    r.world = 'tr_h5';
+    r.colliders = Phys.drop('tr_h5');
+    built = false;
+    [hidden, PILLARS, updrafts, rings, diveRings, flags, birds, puffs].forEach((a) => (a.length = 0));
+    Object.keys(bridges).forEach((k) => delete bridges[k]);
+    bolts = [];
+    screen = raft = mist = sea = sun = rays = board = heartIsland = card = galaxy = shadowMark = ringMark = fallCards = null;
+    clockNow = 0;
+    seaMat.uniforms.uTime.value = 0;
+    seaMat.uniforms.uDen.value = 0.006;
+    return r;
+  };
+
   // ---------- the hidden clouds' layout, new for each attempt ----------
   // Every fixed cloud slides sideways by up to 2 m (the drifting ones stay put; the updraft moves
   // with the high cloud it feeds), from a seed the host draws on each fall. No hop gets longer
@@ -1296,6 +1328,7 @@ const H5 = (() => {
     O,
     P,
     build,
+    unbuild,
     get built() {
       return built;
     },

@@ -310,6 +310,7 @@
   };
 
   Story.register('tr_d5', {
+    world: D5,
     init: () => ({
       stage: 1,
       r1: {

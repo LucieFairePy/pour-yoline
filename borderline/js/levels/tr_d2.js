@@ -159,6 +159,7 @@
   };
 
   Story.register('tr_d2', {
+    world: TrD2,
     init,
     voice: () => 1,
     net: {

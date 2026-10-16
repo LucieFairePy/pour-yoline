@@ -292,8 +292,17 @@ const TrS1 = (() => {
   const drift = [];
   let sun = null;
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_s1');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     mats();
@@ -516,8 +525,8 @@ const TrS1 = (() => {
       WALL_Z - 1.0,
     );
     chalk.push(floorMark);
-    // the card-block (a big crate printed with the deck back)
-    const bm = new THREE.MeshStandardMaterial({ map: Cards.backTexture(), roughness: 0.55, metalness: 0.05 });
+    // the card-block (a big crate printed with the deck back; the back is the deck's, kept)
+    const bm = new THREE.MeshStandardMaterial({ map: Life.keep(Cards.backTexture()), roughness: 0.55, metalness: 0.05 });
     const side = new THREE.MeshStandardMaterial({ color: '#2b0c20', roughness: 0.6 });
     block = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.6), [side, side, bm, bm, bm, bm]);
     const bEdge = new THREE.LineSegments(
@@ -748,6 +757,28 @@ const TrS1 = (() => {
     LvKit.light(group, P(0, 16, 170), '#ff9ec4', 1.0, 90);
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the course's own geometry, materials and canvas textures (the suit decals and the gold
+  // trims are caches of the module: they lose their GPU copy only, three sends them again at the
+  // next build), takes its colliders out (the card-block's moving box included) and forgets every
+  // reference build() made; the tables the level reads (pads, ghosts, gatePads, altarPads) are
+  // emptied in place. Tex materials and the cards' textures are kept (shared).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [M, decalCache, [...trimGeo.values()], keelGeo]);
+    r.world = 'tr_s1';
+    r.colliders = Phys.drop('tr_s1');
+    built = false;
+    [M, ghosts, pads, gatePads, altarPads].forEach(clear);
+    [links, chalk, tiles, drift].forEach((a) => (a.length = 0));
+    keelGeo = bridge = lever = winch = veil = block = ringA = ringB = illusion = illusionCap = null;
+    gate = altarCard = altarHeart = wave = screen = screen2 = sun = null;
+    rumbleT = 0;
+    burstDone = false;
+    return r;
+  };
+
   // ---------- queries ----------
   const rel = K.rel;
   const near2 = (q, x, z, r) => Math.hypot(q.x - x, q.z - z) < r;
@@ -964,6 +995,7 @@ const TrS1 = (() => {
     O,
     P,
     build,
+    unbuild,
     update,
     rel,
     get built() {
