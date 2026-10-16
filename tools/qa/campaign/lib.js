@@ -32,6 +32,9 @@ window.B = window.CB = (() => {
   B.drain = () => notes.splice(0);
   B.x = () => Story.S.x;
   B.until = async (fn, ms = 20000, step = 100) => {
+    // always give the page a turn first: a solver loop of calls that are already true would
+    // otherwise run on microtasks only and freeze the page
+    await sl(0);
     const t = performance.now();
     while (performance.now() - t < ms) {
       try {
@@ -71,6 +74,7 @@ window.B = window.CB = (() => {
   };
   // walk (flat) toward p; true once within `near`
   B.walk = async (p, near = 0.6, ms = 15000, sprint = false) => {
+    await sl(0);
     p = B.abs(p);
     const t = performance.now();
     if (sprint) S.held.add('sprint');

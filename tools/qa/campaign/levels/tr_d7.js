@@ -254,8 +254,19 @@ window.CL = {
             B.note('reelle', 'dame descend dans la niche du ' + W.ROMAN[tg] + ' → heure ' + X().s1.round);
             continue;
           }
-          if (p.r < 11.5 && still() && W.hourDist(am, 6) > 0.8) {
-            await B.walk(handPt(am, 13.8), 0.35, 4000);
+          // out past the hour hand (the valet waits for it): steer along the hand's current
+          // angle every frame, so a turning hand never carries her off its side
+          if (p.r < 12.6 && W.hourDist(am, 6) > 0.8) {
+            const t1 = performance.now();
+            while (!ab() && performance.now() - t1 < 4000 && W.polar(rel()).r < 13.4 && Player.body.grounded) {
+              const tp = B.abs(handPt(aMin(), 13.8));
+              Cam.yaw = Math.atan2(tp.x - Player.body.p.x, tp.z - Player.body.p.z);
+              B.steer(tp);
+              Input.sim.x *= 0.6;
+              Input.sim.z *= 0.6;
+              await B.sl(16);
+            }
+            B.stop();
             continue;
           }
           await B.sl(100);
