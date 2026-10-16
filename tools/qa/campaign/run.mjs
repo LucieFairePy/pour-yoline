@@ -433,21 +433,26 @@ const prologue = async () => {
 
 // ---------------------------------------------------------------- the story finale
 const finale = async () => {
-  // the last memory (danse) in the city, then act3
   curPhase = 'city';
-  const has = await H().ev("Story.S.seen.includes('danse')");
   const e = await H().ev("City.places.danse.entry.toArray()");
-  jot('dernier souvenir', 'les deux', 'reelle', `marche vers le souvenir « danse » à ${e.map((v) => v.toFixed(1))}`);
-  await Promise.all(
-    both().map((p, i) =>
-      p.ev(`(async () => { const e = V3(${e[0]}, 0, ${e[2]}); await CB.go(V3(e.x + ${i ? 0.8 : -0.8}, 0, e.z + 0.6), { near: 1.2, ms: 150000 }); await CB.sl(400); await CB.tap('interact'); CB.note('reelle', 'E devant le souvenir'); return CB.where(); })()`).catch(() => null),
-    ),
-  );
-  await sleep(1500);
-  await overlays();
-  const ph = await waitPhase(['act3'], 60000);
-  await drain();
-  jot('dernier souvenir', 'hôte', 'attente', 'regardé par les deux, le banc compte', ph ? '→ act3' : 'BLOQUÉ');
+  let ph = null;
+  for (let tries = 1; tries <= 3 && !ph; tries++) {
+    jot('dernier souvenir', 'les deux', 'reelle', `marche vers le souvenir « danse » à ${e.map((v) => v.toFixed(1))} (essai ${tries})`);
+    const res = await Promise.all(
+      both().map((p, i) =>
+        p
+          .ev(`(async () => { const e = V3(${e[0]}, 0, ${e[2]}); await CB.go(V3(e.x + ${i ? 0.8 : -0.8}, 0, e.z + 0.6), { near: 1.2, ms: 150000 }); await CB.sl(400); const pr = $('prompt') ? $('prompt').textContent : ''; if (/Regarder/.test(pr)) await CB.tap('interact'); CB.note('reelle', 'E devant le souvenir (invite « ' + pr + ' »)'); return JSON.stringify({ at: CB.where(), d: +Math.hypot(Player.body.p.x - e.x, Player.body.p.z - e.z).toFixed(2), pr }); })()`)
+          .then(JSON.parse)
+          .catch((er) => ({ err: er.message.slice(0, 120) })),
+      ),
+    );
+    await sleep(1500);
+    await overlays();
+    ph = await waitPhase(['act3'], 45000);
+    await drain();
+    const seen = await H().ev("JSON.stringify({ seen: Story.S.seen.includes('danse'), by: Story.S.x.seenBy || [] })");
+    jot('dernier souvenir', 'hôte', 'attente', `regardé : ${seen} ; positions ${JSON.stringify(res)}`, ph ? '→ act3' : 'pas encore');
+  }
   return ph;
 };
 
