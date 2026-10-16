@@ -1617,11 +1617,13 @@ const D10 = (() => {
       tick(dt, o) {
         if (!init()) return;
         const t = now();
-        N.wind.gain.setTargetAtTime((0.05 + o.storm * 0.08) * (o.under ? 0.3 : 1), t, 0.4);
+        // levels set against the game's music (a narrow band of noise is quiet: at 0.05 the wind
+        // came out 12 dB under the music, and a step's creak hardly above the wind)
+        N.wind.gain.setTargetAtTime((0.2 + o.storm * 0.3) * (o.under ? 0.3 : 1), t, 0.4);
         N.windF.frequency.setTargetAtTime(380 + Math.sin(t * 0.37) * 120 + o.squall * 300, t, 0.6);
-        N.gust.gain.setTargetAtTime(o.squall * 0.2 * (o.under ? 0.2 : 1), t, 0.25);
+        N.gust.gain.setTargetAtTime(o.squall * 0.7 * (o.under ? 0.2 : 1), t, 0.25);
         N.gustF.frequency.setTargetAtTime(700 + Math.sin(t * 1.3) * 300, t, 0.3);
-        N.deep.gain.setTargetAtTime(o.under ? 0.22 : 0, t, 0.3);
+        N.deep.gain.setTargetAtTime(o.under ? 0.6 : 0, t, 0.3);
         N.muff.frequency.setTargetAtTime(o.under ? 700 : 16000, t, 0.2);
         // the lake sings and groans by itself, now and then
         ambT -= dt;
@@ -1660,7 +1662,7 @@ const D10 = (() => {
       },
       creak(pos) {
         if (!init()) return;
-        burst(pos, 0.12, 2400, 4, 0.09, 'bandpass', 3);
+        burst(pos, 0.12, 2400, 2, 0.3, 'bandpass', 3);
       },
       splash(pos, k = 1) {
         if (!init()) return;

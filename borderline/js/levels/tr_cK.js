@@ -286,6 +286,8 @@
   Story.register('tr_cK', {
     world: CourC,
     init: () => ({ stage: 0, seed: (Math.random() * 1e9) | 0, pair: 0, roll: 0, tip: 0, roi: 0, seen: [] }),
+    // won: a reload goes on with the film of the table, then the reward
+    resume: (x) => (x.stage >= 2 ? { cut: 'cour_c', after: 'reward', card: 'cK' } : null),
     voice: () => 1,
     partner: (c) => c.S.x.stage !== 3,
     hideRemote: (c) => c.S.x.stage === 3,

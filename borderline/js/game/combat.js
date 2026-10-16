@@ -200,6 +200,13 @@ const Combat = (() => {
       C.on = on;
       C.reset();
       HUD.combat(on);
+      // update() is no longer called once a level turns combat off: the rifle's counter and the
+      // gun hand go now, not with the next combat level
+      if (!on) {
+        C.ads = false;
+        Input.gunHand = false;
+        if (ammoEl) ammo(false);
+      }
     },
     reset() {
       C.hp = C.max;

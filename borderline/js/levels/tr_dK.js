@@ -181,6 +181,8 @@
   Story.register('tr_dK', {
     world: CourD,
     init: () => ({ stage: 1, cp: 'K', code: newCode(), cn: 1, hist: [], slots: [-1, -1, -1, -1], ready: { dame: 0, valet: 0 }, res: null, lost: 0, reveal: [], won: 0 }),
+    // won (the Roi bows before the film): a reload goes on with the film
+    resume: (x) => (x.stage >= 3 ? { cut: 'cour_d', after: 'tr_dKw' } : null),
     voice: () => 1,
     net: {
       dKsay: (c, d) => (d[1] ? ksay(d[0], d[2]) : say(d[0], d[2])),

@@ -362,6 +362,8 @@
   Story.register('tr_hK', {
     world: CourH,
     init: () => ({ stage: 0, seed: (Math.random() * 1e9) | 0, round: 0, roll: 0, full: 0, used: 0, marks: [], pause: 0, seen: [] }),
+    // won: a reload goes on with the film of the table, then the reward
+    resume: (x) => (x.stage >= 1 ? { cut: 'cour_h', after: 'reward', card: 'hK' } : null),
     voice: () => 1,
     partner: (c) => c.S.x.stage !== 2,
     hideRemote: (c) => c.S.x.stage === 2,
