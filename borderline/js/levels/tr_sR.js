@@ -514,6 +514,7 @@
   };
 
   Story.register('tr_sR', {
+    world: CourS,
     init: () => ({ stage: 1, fight: 0, focus: 'valet', ph: 1, turns: 0, wipes: 0, seen: [], hp: 1 }),
     voice: () => 1,
     net: {

@@ -330,6 +330,7 @@
   };
 
   Story.register('tr_sD', {
+    world: CourS,
     init: () => ({ stage: 1, m: 1, live: 0, att: 0, left: 0, res: null, fails: 0 }),
     voice: () => 1,
     net: {
