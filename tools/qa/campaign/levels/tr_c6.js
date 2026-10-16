@@ -437,6 +437,8 @@ window.CL = {
         if (st === 1) await stage1();
         else if (st === 2) await stage2();
         else if (st === 3) await stage3();
+        // the Reflet broken: the stage turns to 5 a moment later
+        else if (st === 4 && X().won) await wait(() => X().stage !== 4, 10000);
         else if (st === 4) await stage4();
         else if (st === 5) {
           await stage5();

@@ -41,7 +41,7 @@ window.CL = {
       const sees = W.dbgV.ROUNDS[x.round].see.includes(me);
       if (!sees && !blindNoted[x.round + '|' + x.roll]) {
         blindNoted[x.round + '|' + x.roll] = 1;
-        B.note('raccourci', 'manche ' + (x.round + 1) + ' : le tambour est caché sur cet écran, le partenaire donne le rythme à voix haute ; le bot lit la liste des coups (W.dbgV.beats) au lieu d’entendre sa voix');
+        B.note('info', 'manche ' + (x.round + 1) + ' : le tambour est caché sur cet écran, le partenaire donne le rythme à voix haute ; le bot lit la liste des coups (W.dbgV.beats) au lieu d’entendre sa voix');
       }
       const key = L.key;
       const list = W.dbgV.beats();

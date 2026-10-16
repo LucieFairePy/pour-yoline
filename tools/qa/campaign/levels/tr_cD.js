@@ -156,7 +156,7 @@ window.CL = {
       }
       if (!noted[x.ride + '|' + x.roll]) {
         noted[x.ride + '|' + x.roll] = 1;
-        B.note('raccourci', 'médaillons visibles seulement du chariot (le partenaire guide à la voix) : le pupitre lit leurs positions (W.dbgD.tokens)');
+        B.note('info', 'médaillons visibles seulement du chariot (le partenaire guide à la voix) : le pupitre lit leurs positions (W.dbgD.tokens)');
       }
       const T3 = W.dbgD.tokens() || [];
       const i = [0, 1, 2].find((k) => T3[k] && !(x.got & (1 << k)));

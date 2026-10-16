@@ -8,6 +8,7 @@
 // --from       start at that phase: with --resume, the save left by an earlier run (its save.json)
 //              is put back in the fresh profile; without, a save "every épreuve before <phase>
 //              done" is written — both are shortcuts and are labelled in the journal
+// --cap        at most that many seconds per level
 // --stop       stop after that phase (debugging one level)
 //
 // Writes tools/qa/out/campaign-<date>-<host>/journal.md + journal.json (+ screenshots, save.json),
@@ -41,6 +42,8 @@ const RESUME = arg('resume', null);
 const STOP = arg('stop', null);
 const ONLY = typeof arg('only', null) === 'string' ? arg('only').split(',') : null;
 const RESUME_CHECKS = !arg('no-resume-checks', false);
+// --cap <s>: never wait longer than that for a level (probing runs)
+const CAP = +arg('cap', 1e9);
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT = resolve(arg('out', join(HERE, '..', 'out', `campaign-${stamp}-${HOST}`)));
 mkdirSync(OUT, { recursive: true });
@@ -311,7 +314,7 @@ const playLevel = async (ph, until = ['reward', 'cut']) => {
   } else {
     const src = readFileSync(solverFile(ph), 'utf8');
     for (const p of both()) await p.ev(LIB + ';' + src + ';1');
-    const timeout = (await H().ev('(window.CL && CL.timeout) || 600')) * 1000;
+    const timeout = Math.min(CAP, await H().ev('(window.CL && CL.timeout) || 600')) * 1000;
     jot('solveur', 'les deux', 'check', `solveur levels/${ph}.js lancé sur les deux pages (délai ${timeout / 1000} s)`);
     const runs = both().map((p) =>
       p.ev('(async () => { try { return String(await CL.run()); } catch (e) { return "EXC " + (e && e.stack || e); } })()').catch((e) => 'CDP ' + e.message.slice(0, 200)),
