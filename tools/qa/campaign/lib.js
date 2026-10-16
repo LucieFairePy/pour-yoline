@@ -143,6 +143,38 @@ window.B = window.CB = (() => {
     B.stop();
     return B.rel();
   };
+  // one tick of air control toward p (what a player does with the stick while falling): reach p
+  // when coming down to its height
+  B.airStep = (p) => {
+    p = B.abs(p);
+    const b = Player.body;
+    const disc = b.v.y * b.v.y + 52 * (b.p.y - p.y);
+    const tl = Math.max(0.12, disc > 0 ? (b.v.y + Math.sqrt(disc)) / 26 : 0.12);
+    const wx = (p.x - b.p.x) / tl - b.v.x;
+    const wz = (p.z - b.p.z) / tl - b.v.z;
+    const m = Math.hypot(wx, wz);
+    if (m > 0.05) {
+      B.steer(V3(b.p.x + wx, 0, b.p.z + wz));
+      S.x *= Math.min(1, m / 1.5);
+      S.z *= Math.min(1, m / 1.5);
+    } else {
+      S.x = 0;
+      S.z = 0;
+    }
+  };
+  // after a grapple (or any fall): steer in the air onto p until grounded
+  B.air = async (p, ms = 4000) => {
+    const t = performance.now();
+    while (performance.now() - t < ms) {
+      if (Player.mode !== 'grapple') {
+        if (Player.body.grounded && performance.now() - t > 150) break;
+        B.airStep(p);
+      }
+      await sl(16);
+    }
+    B.stop();
+    return B.rel();
+  };
   B.aim = (p) => {
     p = B.abs(p);
     const c = R.camera.position;

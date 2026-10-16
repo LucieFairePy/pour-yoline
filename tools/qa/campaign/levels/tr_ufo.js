@@ -166,6 +166,7 @@ window.CL = {
       return true;
     };
     let grappleAt = 0;
+    let landOn = null;
     const dameTick = () => {
       const x = X();
       const boss = Enemies.boss();
@@ -212,6 +213,7 @@ window.CL = {
           B.aim(ringOf(a));
           if (Player.lockTarget === a.i) {
             grappleAt = performance.now();
+            landOn = a;
             S.held.add('ability');
             setTimeout(() => S.held.delete('ability'), 90);
             B.note('reelle', 'grappin (visée + F) sur l’anneau de l’ancre ' + (a.i + 1) + ' (phase ' + x.ph + ')' + (cut ? ', chaîne déjà tranchée' : ', William au poteau'));
@@ -394,6 +396,17 @@ window.CL = {
           continue;
         }
         dodge();
+        // after the grapple lets go, steer in the air onto the anchor's platform (a player's stick)
+        if (dame && landOn) {
+          if (Player.mode === 'grapple' || !Player.body.grounded) {
+            if (Player.mode !== 'grapple') B.airStep(W.P(landOn.pos.x, landOn.pos.y, landOn.pos.z));
+            continue;
+          }
+          if (performance.now() - grappleAt > 400) {
+            landOn = null;
+            B.stop();
+          }
+        }
         if (Player.mode === 'grapple') continue;
         if (reviveTick()) continue;
         if (dame) dameTick();
