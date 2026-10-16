@@ -756,6 +756,7 @@
   };
 
   Story.register('tr_h8', {
+    world: W,
     init: () => ({ stage: 1, umb: 'valet', pass: 0, rods: [0, 0, 0, 0], opened: 0, fight: false, won: false }),
     voice: () => 1,
     net: {
