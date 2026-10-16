@@ -8,6 +8,12 @@
 // positions keep every snapshot (each packet also repeats the previous ones, so a lost packet
 // leaves no hole), everything else is numbered, acknowledged and resent until the other side
 // has it.
+//
+// Every message except the position snapshots carries a number (per page) and the phase the
+// sender was playing: a message that reaches us twice (two brokers, a resend, the link switching
+// between the relay and the direct channel) is applied once, and an older value of a "latest
+// only" stream never replaces a newer one. Older pages send neither: their messages are applied
+// as they come, as before.
 const Net = (() => {
   const PREFIX = 'brdl-yo-';
   const BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
@@ -26,6 +32,27 @@ const Net = (() => {
   let p2pOpen = false;
   let rtt = 0;
   const BORN = Date.now();
+  // message numbers and the sender's phase (Net.stamp, set by the story)
+  let txI = 0;
+  let stamp = null;
+  const NOMETA = {};
+  let meta = NOMETA;
+  // per sending page (its id): numbers already applied, newest number of each latest stream
+  const peers = new Map();
+  // ?netdebug: counters in window.__netdbg (sent, received, duplicates and stale values dropped)
+  const nd = new URLSearchParams(location.search).has('netdebug')
+    ? Object.assign((window.__netdbg = window.__netdbg || {}), {
+        tx: {},
+        rx: {},
+        dup: {},
+        stale: {},
+        reset() {
+          ['tx', 'rx', 'dup', 'stale'].forEach((k) => (window.__netdbg[k] = {}));
+          if (window.__netdbg.story) window.__netdbg.story.reset();
+        },
+      })
+    : null;
+  const bump = (o, k) => (o[k] = (o[k] || 0) + 1);
 
   const emit = (t, d) => (handlers[t] || []).forEach((f) => f(d));
   const state = (s) => emit('state', s);
@@ -36,26 +63,86 @@ const Net = (() => {
     if (was !== s) emit(s ? 'connect' : 'disconnect');
   };
 
-  // ?netsim=jitter (test only): inbound messages get 0-120 ms of random delay and are held
-  // back in bursts, like a congested broker
-  const SIM = new URLSearchParams(location.search).get('netsim');
+  // ?netsim= (test only) plays a bad network on what this page receives:
+  //   jitter                  0-120 ms of random delay, held back in bursts (a congested broker)
+  //   delay:300,jitter:100    fixed + random delay (ms)
+  //   dup:0.2                 a share of the messages comes a second time, a little later
+  //   loss:0.1                a share of the snapshots and "latest only" values is lost (the
+  //                           numbered messages are resent by the relay: never lost)
+  // Net.sim.set({...}) changes it while running, Net.sim.cut(ms) drops the link for a while
+  const SIM = { delay: 0, jitter: 0, dup: 0, loss: 0, burst: 0, cut: 0 };
+  const simOn = () => SIM.delay || SIM.jitter || SIM.dup || SIM.loss || SIM.burst;
+  ((q) => {
+    if (!q) return;
+    if (q === 'jitter' || q === '1') return Object.assign(SIM, { jitter: 120, burst: 1 });
+    q.split(',').forEach((kv) => {
+      const [k, v] = kv.split(':');
+      if (k in SIM && k !== 'cut') SIM[k] = +v || 0;
+    });
+  })(new URLSearchParams(location.search).get('netsim'));
   let simT = 0;
-  const rxSim = (t, d) => {
+  const rxSim = (t, d, x, o) => {
+    const lossy = t === 'p' || LATEST.has(t);
+    if (SIM.loss && lossy && Math.random() < SIM.loss) return;
     const now = performance.now();
-    let at = now + Math.random() * 120;
-    if (now % 1000 < 250) at = Math.max(at, now - (now % 1000) + 250);
-    simT = Math.max(simT, at);
-    setTimeout(() => rxNow(t, d), simT - now);
+    let at = now + SIM.delay + Math.random() * SIM.jitter;
+    if (SIM.burst && now % 1000 < 250) at = Math.max(at, now - (now % 1000) + 250);
+    // numbered messages keep their order (both links deliver them in order)
+    if (!lossy) at = simT = Math.max(simT, at);
+    setTimeout(() => rxNow(t, d, x, o), at - now);
+    if (SIM.dup && Math.random() < SIM.dup)
+      setTimeout(() => rxNow(t, d, x, o), at - now + 10 + Math.random() * (SIM.jitter + 40));
   };
-  const rx = (t, d) => (SIM ? rxSim(t, d) : rxNow(t, d));
-  // every message from the other side lands here
-  const rxNow = (t, d) => {
+  const rx = (t, d, x, o) => {
+    if (SIM.cut) return;
+    if (simOn()) rxSim(t, d, x, o);
+    else rxNow(t, d, x, o);
+  };
+  // a message seen before (same page, same number) is dropped, and so is a "latest only" value
+  // older than the last one applied
+  const fresh = (t, x, o) => {
+    if (!x || x.i == null || !o) return true;
+    let pr = peers.get(o);
+    if (!pr) {
+      pr = { seen: new Set(), order: [], last: {} };
+      peers.set(o, pr);
+      if (peers.size > 4) peers.delete(peers.keys().next().value);
+    }
+    if (LATEST.has(t)) {
+      if (x.i <= (pr.last[t] || 0)) {
+        if (nd) bump(nd.stale, t);
+        return false;
+      }
+      pr.last[t] = x.i;
+      return true;
+    }
+    if (pr.seen.has(x.i)) {
+      if (nd) bump(nd.dup, t);
+      return false;
+    }
+    pr.seen.add(x.i);
+    pr.order.push(x.i);
+    if (pr.order.length > 4000) pr.seen.delete(pr.order.shift());
+    return true;
+  };
+  // every message from the other side lands here (x: its number and phase, o: the sending page)
+  const rxNow = (t, d, x, o) => {
+    if (SIM.cut) return;
     if (t === '__rtt') return send('__rtt2', d);
     if (t === '__rtt2') {
       rtt = Math.round(performance.now() - d);
       return;
     }
-    emit(t, d);
+    if (!fresh(t, x, o)) return;
+    if (nd) bump(nd.rx, t);
+    // the handlers read the number and the sender's phase through Net.meta
+    const was = meta;
+    meta = x || NOMETA;
+    try {
+      emit(t, d);
+    } finally {
+      meta = was;
+    }
   };
 
   const makeCode = () => {
@@ -87,14 +174,14 @@ const Net = (() => {
     ackDue: false,
   };
   const topic = (from) => 'brdl-yo/v2/' + code + '/' + from;
-  const relayQueue = (t, d) => {
+  const relayQueue = (t, d, x) => {
     if (t === 'p') {
       RL.pos.push(d);
       RL.posNew++;
       if (RL.pos.length > 6) RL.pos.shift();
-    } else if (LATEST.has(t)) RL.latest.set(t, d);
+    } else if (LATEST.has(t)) RL.latest.set(t, x ? [d, x] : [d]);
     else {
-      RL.pend.push([++RL.seq, t, d]);
+      RL.pend.push(x ? [++RL.seq, t, d, x] : [++RL.seq, t, d]);
       if (RL.pend.length > 400) RL.pend.splice(0, RL.pend.length - 400);
     }
   };
@@ -106,7 +193,7 @@ const Net = (() => {
     if (RL.hello) pkt.h = 1;
     if (RL.pend.length) pkt.r = RL.pend.slice(0, 60);
     if (RL.latest.size) {
-      pkt.l = [...RL.latest];
+      pkt.l = [...RL.latest].map(([t, v]) => [t, ...v]);
       RL.latest.clear();
     }
     if (RL.posNew) {
@@ -153,10 +240,10 @@ const Net = (() => {
     // acknowledged messages can go
     if (m.a) while (RL.pend.length && RL.pend[0][0] <= m.a) RL.pend.shift();
     if (m.r) {
-      for (const [s, t, d] of m.r)
+      for (const [s, t, d, x] of m.r)
         if (s === RL.rxSeq + 1) {
           RL.rxSeq = s;
-          rx(t, d);
+          rx(t, d, x, m.f);
         }
       RL.ackDue = true;
     }
@@ -165,7 +252,7 @@ const Net = (() => {
     // packets arrive from both brokers: only the newest "latest" values count
     if (m.n > RL.rxN) {
       RL.rxN = m.n;
-      if (m.l) for (const [t, d] of m.l) rx(t, d);
+      if (m.l) for (const [t, d, x] of m.l) rx(t, d, x, m.f);
     }
   };
   const startRelay = () => {
@@ -221,7 +308,7 @@ const Net = (() => {
       state('Connexion directe établie');
       if (localStream && isHost) call(localStream);
     });
-    c.on('data', (m) => m && m.t && rx(m.t, m.d));
+    c.on('data', (m) => m && m.t && rx(m.t, m.d, m.x, m.o));
     c.on('close', () => {
       if (conn === c) {
         conn = null;
@@ -290,14 +377,23 @@ const Net = (() => {
     });
 
   const send = (t, d) => {
-    if (bc) bc.postMessage({ from: me, t, d });
+    if (SIM.cut) return;
+    // snapshots carry their own clock and the link's own messages need nothing
+    let x;
+    if (t !== 'p' && t[0] !== '_') {
+      x = { i: ++txI };
+      const ph = stamp && stamp();
+      if (ph) x.ph = ph;
+    }
+    if (nd) bump(nd.tx, t);
+    if (bc) bc.postMessage(x ? { from: me, t, d, x } : { from: me, t, d });
     else if (p2pOpen && conn && conn.open) {
       try {
-        conn.send({ t, d });
+        conn.send(x ? { t, d, x, o: me } : { t, d });
       } catch (e) {
-        relayQueue(t, d);
+        relayQueue(t, d, x);
       }
-    } else if (RL.up) relayQueue(t, d);
+    } else if (RL.up) relayQueue(t, d, x);
   };
 
   // ?relay forces the relay only (for testing strict networks)
@@ -451,12 +547,40 @@ const Net = (() => {
           refresh();
           return;
         }
-        rx(m.t, m.d);
+        rx(m.t, m.d, m.x, m.from);
       };
       bc.postMessage({ from: me, t: '__hi' });
       return Promise.resolve(c);
     },
     send,
+    // the number and phase of the message being handled ({} for an older page's message)
+    get meta() {
+      return meta;
+    },
+    // fn() returns the phase this page plays, stamped on what it sends
+    set stamp(fn) {
+      stamp = fn;
+    },
+    // test only (tools/qa/net-coop.mjs): a bad network on what this page receives, a lost link
+    sim: {
+      set(o) {
+        Object.assign(SIM, o);
+      },
+      get: () => ({ ...SIM }),
+      cut(ms) {
+        SIM.cut = 1;
+        p2pOpen = false;
+        refresh();
+        setTimeout(() => {
+          SIM.cut = 0;
+          if (!bc) return;
+          // local link: say hello again, as a page that comes back does
+          p2pOpen = true;
+          refresh();
+          bc.postMessage({ from: me, t: '__hi' });
+        }, ms);
+      },
+    },
     voice(stream) {
       localStream = stream;
       if (connected) call(stream);

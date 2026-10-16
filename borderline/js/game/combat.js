@@ -22,6 +22,14 @@ const Combat = (() => {
   };
   const MAG = 30;
   const RELOAD = 2.4;
+  // the two weapons: damage, time between two attacks (the host checks the guest's hits on them)
+  const RIFLE = { dmg: 9, every: 0.1, range: 80 };
+  const SWORD = { dmg: 12, every: 0.55, reach: 3.2 };
+  // how long the sword stuns an enemy
+  const stunOf = (type) => {
+    const T = Enemies.TYPES[type] || {};
+    return T.stunP != null ? T.stunP : type === 'tour' ? 4.5 : 2.5;
+  };
   // ammo counter, bottom right, only while a rifle is in hand
   let ammoEl = null;
   const ammo = (show) => {
@@ -146,7 +154,7 @@ const Combat = (() => {
       Fx.burst(to, hit.weak ? '#ffcf8a' : '#ff8fb0', hit.weak ? 16 : 8, 3.5, 0.35, 0);
       HUD.hitmark(hit.weak);
       Enemies.flash(hit.e.id);
-      act({ a: 'hit', id: hit.e.id, dmg: 9, weak: hit.weak });
+      act({ a: 'hit', id: hit.e.id, dmg: RIFLE.dmg, weak: hit.weak });
     }
     // the other player sees the shot, the muzzle flash and the impact (and the hole it leaves:
     // its surface and which face, 0..5 = -x +x -y +y -z +z)
@@ -178,16 +186,11 @@ const Combat = (() => {
       const dz = e.pos.z - p.z;
       const d = Math.hypot(dx, dz);
       const T = Enemies.TYPES[e.type];
-      const reach = T.reach || 3.2;
+      const reach = T.reach || SWORD.reach;
       if (d < reach && (dx * fx + dz * fz) / (d || 1) > 0.35) {
         Enemies.flash(e.id);
         Fx.burst(tmp.set(e.pos.x, p.y + 1.2, e.pos.z), '#bfe6ff', 10, 3, 0.3, 0);
-        act({
-          a: 'hit',
-          id: e.id,
-          dmg: 12,
-          stun: T.stunP != null ? T.stunP : e.type === 'tour' ? 4.5 : 2.5,
-        });
+        act({ a: 'hit', id: e.id, dmg: SWORD.dmg, stun: stunOf(e.type) });
       }
     }
   };
@@ -228,6 +231,8 @@ const Combat = (() => {
       }
     },
     revived() {
+      // a second "revived" (a late copy, both players reviving at once) must not set the hp back
+      if (!C.down) return;
       C.down = false;
       C.revR = 0;
       C.hp = 50;
@@ -300,13 +305,13 @@ const Combat = (() => {
         const role = Story.role;
         if (role === 'dame' && Input.held('attack') && C.atkCd <= 0 && Player.mode !== 'grapple') {
           if (C.mag > 0 && C.reloadT <= 0) {
-            C.atkCd = 0.1;
+            C.atkCd = RIFLE.every;
             C.mag--;
             shoot();
           }
         }
         if (role === 'valet' && Input.pressed('attack') && C.atkCd <= 0) {
-          C.atkCd = 0.55;
+          C.atkCd = SWORD.every;
           punch();
         }
         if (role === 'valet' && !C.noCloak && Input.pressed('ability') && C.cloakCd <= 0) {
@@ -350,6 +355,113 @@ const Combat = (() => {
     },
   });
 
+  // ---- the host checks what the guest says it did (a modified page could send anything): a
+  // hit must name a live enemy, carry its weapon's damage and stun, come from where the guest
+  // was (its last snapshots: the shot left before they arrived) with a clear line for a bullet,
+  // at the weapon's pace; a revive needs the host down and the guest close. Returns why it is
+  // refused, or null. Tolerances are wide: lag (up to ~400 ms) and jitter must never refuse a
+  // real hit
+  const LAG_M = 8;
+  const buckets = new Map();
+  // token bucket: `cap` actions at once (packets come bunched), refilled at `rate` per second
+  const take = (key, cap, rate) => {
+    const now = performance.now() / 1000;
+    let b = buckets.get(key);
+    if (!b) {
+      if (buckets.size > 300) buckets.clear();
+      buckets.set(key, (b = { n: cap, t: now }));
+    }
+    b.n = Math.min(cap, b.n + (now - b.t) * rate);
+    b.t = now;
+    if (b.n < 1) return false;
+    b.n -= 1;
+    return true;
+  };
+  const losV = V3();
+  const losD = V3();
+  // a bullet could get from near one of these points (head, shoulder camera, high camera) to
+  // the enemy (its middle, its sides, its top) without a wall in the way
+  const clearShot = (pts, x, y, z, r) => {
+    const step = Math.max(1, Math.floor(pts.length / 3));
+    for (let i = pts.length - 1; i >= 0; i -= step) {
+      const p = pts[i];
+      losD.set(x - p[0], 0, z - p[2]).normalize();
+      const sx = losD.z;
+      const sz = -losD.x;
+      const bx = losD.x;
+      const bz = losD.z;
+      // the camera sits up to ~5.5 m behind the player, over a shoulder: it sees round corners
+      for (const back of [0, 3, 5.5])
+        for (const up of [1.6, 3, 5])
+          for (const side of [0, 1.3, -1.3])
+            for (const [tu, ts] of [[0, 0], [0, r], [0, -r], [r, 0]]) {
+              losV.set(p[0] + sx * side - bx * back, p[1] + up, p[2] + sz * side - bz * back);
+              losD.set(x + sx * ts - losV.x, y + tu - losV.y, z + sz * ts - losV.z);
+              const dist = losD.length();
+              if (dist < r + 2) return true;
+              losD.divideScalar(dist);
+              // like the shooter's own ray (Combat.shoot), what lies before the player (+0.4 m)
+              // does not count: a wall the player leans on is shot through
+              const h = Phys.rayHit(losV, losD, dist, back + 1.2);
+              if (!h || h.t >= dist - r - 1) return true;
+            }
+    }
+    return false;
+  };
+  const checkHit = (who, d) => {
+    const e = Enemies.list.get(d.id);
+    if (!e || e.dead || !(e.hp > 0)) return 'no such enemy';
+    const T = Enemies.TYPES[e.type] || {};
+    const rifle = who === 'dame';
+    if (rifle) {
+      if (d.dmg !== RIFLE.dmg || d.stun) return 'rifle damage ' + d.dmg + '/' + d.stun;
+      if (d.weak && !T.boss) return 'weak point';
+    } else if (d.dmg !== SWORD.dmg || d.stun !== stunOf(e.type) || d.weak)
+      return 'sword damage ' + d.dmg + '/' + d.stun;
+    const pts = Remote.recent();
+    if (pts.length) {
+      const cy = e.pos.y + (e.type === 'pion' ? 1 : (T.height || 2) * 0.55);
+      const r = e.type === 'roi' ? 2.6 : T.hitR || T.radius || 1;
+      let best = Infinity;
+      for (const p of pts) {
+        const dy = Math.abs(p[1] - e.pos.y);
+        const dd = rifle ? Math.hypot(p[0] - e.pos.x, p[1] + 1.5 - cy, p[2] - e.pos.z) : dy < 12 ? Math.hypot(p[0] - e.pos.x, p[2] - e.pos.z) : Infinity;
+        best = Math.min(best, dd);
+      }
+      const max = rifle ? RIFLE.range + 6 + r + LAG_M : (T.reach || SWORD.reach) + 4.5;
+      if (best > max) return 'too far ' + best.toFixed(1);
+      if (rifle && typeof Phys !== 'undefined' && !clearShot(pts, e.pos.x, cy, e.pos.z, r)) {
+        const q = pts[pts.length - 1];
+        return 'wall from ' + q.slice(0, 3).map((v) => v.toFixed(1)) + ' to ' + e.pos.toArray().map((v) => v.toFixed(1));
+      }
+    }
+    // pace: the rifle fires every 0.1 s, the sword swings every 0.55 s (one hit per enemy)
+    if (rifle ? !take('rifle', 6, 1.3 / RIFLE.every) : !take('sword' + d.id, 2, 1.3 / SWORD.every))
+      return 'too fast';
+    return null;
+  };
+  const checkRevive = () => {
+    if (!C.on || !C.down) return 'not down';
+    const pts = Remote.recent();
+    const p = Player.body.p;
+    if (pts.length && !pts.some((q) => Math.hypot(q[0] - p.x, q[2] - p.z) < 2.2 + 2.5 && Math.abs(q[1] - p.y) < 4))
+      return 'too far';
+    if (!take('revive', 1, 1 / 1.5)) return 'too fast';
+    return null;
+  };
+  C.check = (who, d) => {
+    // a 'hit' of a fight (with a damage, or while the weapons are out); some puzzles use 'hit'
+    // for their own events (tr_c7, tr_d5, tr_h8) and are left to their level
+    if (d.a === 'hit' && (d.dmg !== undefined || C.on)) return checkHit(who, d);
+    if (d.a === 'revive') return checkRevive();
+    // the frost bolt of tr_s6: three charges, one back every 2.8 s at best
+    if (d.a === 'frost') {
+      if (d.k === 'ice' && !(Number.isFinite(d.x) && Number.isFinite(d.z))) return 'frost spot';
+      if (!take('frost', 4, 1.3 / 2.8)) return 'too fast';
+    }
+    return null;
+  };
+
   Net.on('shot', (d) => {
     if (!Remote.has) return;
     const to = remoteTo.set(d[0], d[1], d[2]);
@@ -382,7 +494,8 @@ const Combat = (() => {
     );
     slash(p, yaw);
   });
-  Net.on('hurt', (d) => C.apply(d.dmg));
-  Net.on('revived', () => C.revived());
+  // the host decides who gets hurt or back up: the guest never sends these to the host
+  Net.on('hurt', (d) => !Net.isHost && d && C.apply(+d.dmg || 0));
+  Net.on('revived', () => !Net.isHost && C.revived());
   return C;
 })();

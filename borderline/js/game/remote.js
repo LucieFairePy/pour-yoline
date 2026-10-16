@@ -23,10 +23,17 @@ const Remote = (() => {
   const tgt = V3();
   const handV = V3();
   const dbg = new URLSearchParams(location.search).has('netdebug')
-    ? (window.__netdbg = { under: 0, snaps: 0, late: 0, delay: 0, jit: 0, iv: 0 })
+    ? Object.assign((window.__netdbg = window.__netdbg || {}), { under: 0, snaps: 0, late: 0, delay: 0, jit: 0, iv: 0 })
     : null;
 
+  // the clocks of the last snapshots received (copies are told apart by it)
+  const seen = new Set();
+  const seenQ = [];
+  // where the other player was over the last second (newest last), for the host's checks
+  const hist = [];
   const reset = () => {
+    seen.clear();
+    seenQ.length = 0;
     buf.length = 0;
     off = null;
     base = null;
@@ -69,6 +76,11 @@ const Remote = (() => {
     get state() {
       return state;
     },
+    // positions received in the last second or so: [[x, y, z, arrival ms], ...]
+    recent() {
+      const now = performance.now();
+      return hist.length && now - hist[hist.length - 1][3] < 5000 ? hist : [];
+    },
     get fresh() {
       return performance.now() - lastRx < 3000;
     },
@@ -101,6 +113,15 @@ const Remote = (() => {
       const st = s[19] != null ? s[19] : now;
       // the other page reloaded (its clock restarted): start over
       if (lastSt >= 0 && st < lastSt - 2000) reset();
+      // a copy of a snapshot we have (the relay repeats each one in the next two packets, and
+      // both brokers deliver them) says nothing about the network's jitter: counting it made
+      // the jitter, and so the playback delay, look up to ~250 ms larger than it is
+      if (seen.has(st)) return;
+      seen.add(st);
+      seenQ.push(st);
+      if (seenQ.length > 120) seen.delete(seenQ.shift());
+      hist.push([s[0], s[1], s[2], now]);
+      while (hist.length > 2 && now - hist[0][3] > 1200) hist.shift();
       const o = now - st;
       if (off === null || o < off) off = o;
       else off += (o - off) * 0.002; // follows clock drift / a slower route, slowly
@@ -111,8 +132,7 @@ const Remote = (() => {
         jit = q[Math.floor(q.length * 0.95)];
       }
       if (st <= lastSt) {
-        // a late or duplicate packet: slot it in if it is still ahead of playback
-        if (buf.some((x) => x.st === st)) return;
+        // a late packet: slot it in if it is still ahead of playback
         if (dbg) dbg.late++;
         const i = buf.findIndex((x) => x.st > st);
         if (i > 0) buf.splice(i, 0, { st, s, cut: false });

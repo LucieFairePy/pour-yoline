@@ -34,6 +34,7 @@ const Enemies = (() => {
   let nextId = 1;
   let netT = 0;
   let sentEmpty = false;
+  let lastPack = null;
   const tmpV = V3();
   const tmpV2 = V3();
   const m4 = new THREE.Matrix4();
@@ -318,6 +319,10 @@ const Enemies = (() => {
       };
     },
     unpack(d) {
+      // the same pack handed over twice (a second listener) is applied once; a malformed one
+      // (another version of the game) is ignored
+      if (!d || d === lastPack || !Array.isArray(d.e) || !Array.isArray(d.o)) return;
+      lastPack = d;
       const seen = new Set();
       d.e.forEach(
         ([

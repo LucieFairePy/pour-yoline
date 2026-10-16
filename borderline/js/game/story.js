@@ -252,15 +252,76 @@ const Story = (() => {
     // the world's title card and why we are here, before the épreuve's own intro
     Lore.enter(ph, prev);
     if (PH[ph] && PH[ph].enter) PH[ph].enter(ctx, first, prev);
+    // level messages the partner sent from this phase before we got here
+    flushHeld();
   };
 
-  const action = (who, d) => {
-    if (!S) return;
-    if (d.a === 'clue' && !S.clues.includes(d.id)) set((s) => s.clues.push(d.id));
-    if (d.a === 'seen' && !S.seen.includes(d.id)) set((s) => s.seen.push(d.id));
+  // ?netdebug: what the story dropped or refused, in window.__netdbg.story
+  const nd = new URLSearchParams(location.search).has('netdebug')
+    ? ((window.__netdbg = window.__netdbg || {}).story = {
+        reset() {
+          Object.keys(this).forEach((k) => k !== 'reset' && k !== 'shared' && delete this[k]);
+        },
+      })
+    : null;
+  const note = (k, why) => {
+    if (!nd) return;
+    nd[k] = (nd[k] || 0) + 1;
+    if (why) {
+      (nd.log = nd.log || []).push(why);
+      if (nd.log.length > 40) nd.log.shift();
+    }
+  };
+
+  const action = (who, d, from) => {
+    if (!S || !d || typeof d !== 'object') return;
+    if (d.a === 'clue' && T.clues[d.id] && !S.clues.includes(d.id)) set((s) => s.clues.push(d.id));
+    if (d.a === 'seen' && typeof d.id === 'string' && !S.seen.includes(d.id))
+      set((s) => s.seen.push(d.id));
     if (d.a === 'card' && Cards.valid(d.id) && !Cards.has(d.id)) Cards.award(ctx, [d.id]);
+    // the guest's actions: one sent from a phase the host has already left is not for this level
+    // (older pages do not say their phase), and what it says it hit or revived must be possible
+    if (from) {
+      if (from.ph && from.ph !== S.phase) return note('actOtherPhase', d.a + ' from ' + from.ph);
+      const no = Combat.check(who, d);
+      if (no) return note('actRefused', d.a + ': ' + no);
+      note('actOk');
+    }
     const def = PH[S.phase];
     if (def && def.action) def.action(ctx, who, d);
+  };
+
+  // level messages (def.net). Each is handled once: the handler of the phase it was sent from,
+  // else the one of the phase played here, else the first one registered (garde's 'en', 'tel'
+  // and 'bossfx' serve every combat level). One sent from a phase that has its own handler is
+  // for that phase only: it waits (up to 4 s) if it came before we entered it, and is dropped
+  // once that phase is over (a late 'wipe' would respawn us in a level we left)
+  const SNAP = new Set(['en']);
+  const early = [];
+  const netMsg = (k, list, d, ph) => {
+    if (!S) return;
+    let h = ph && list.find((o) => o.name === ph);
+    if (h && local.phase !== ph) {
+      if (SNAP.has(k)) return note('netOtherPhase');
+      early.push({ k, h, d, ph, t: performance.now() });
+      return note('netHeld');
+    }
+    if (!h) h = list.find((o) => o.name === local.phase) || list[0];
+    if (h.live()) h.fn(ctx, d);
+  };
+  const flushHeld = () => {
+    const now = performance.now();
+    for (let i = 0; i < early.length; i++) {
+      const m = early[i];
+      if (m.ph === local.phase) {
+        early.splice(i--, 1);
+        if (S && m.h.live()) m.h.fn(ctx, m.d);
+        note('netReplayed');
+      } else if (now - m.t > 4000) {
+        early.splice(i--, 1);
+        note('netDropped', m.k + ' from ' + m.ph + ' in ' + local.phase);
+      }
+    }
   };
 
   const hostTick = (dt) => {
@@ -350,8 +411,10 @@ const Story = (() => {
       role = BASE[me];
       other = role === 'dame' ? 'valet' : 'dame';
       beam = beamMesh();
-      Net.on('S', (ns) => !Net.isHost && apply(ns));
-      Net.on('act', (d) => Net.isHost && action(other, d));
+      // what we send says which phase we play (Net.meta.ph on the other side)
+      Net.stamp = () => local.phase;
+      Net.on('S', (ns) => !Net.isHost && ns && ns.phase && apply(ns));
+      Net.on('act', (d) => Net.isHost && action(other, d, Net.meta));
       Net.on('call', (p) => {
         const far = PH[S && S.phase] && PH[S.phase].farCall;
         Sound.play('call', far ? null : V3(p[0], p[1] + 1.5, p[2]));
@@ -362,11 +425,15 @@ const Story = (() => {
       Net.on('connect', () => Net.isHost && S && Net.send('S', S));
       // a late message for a level whose world is unloaded (the partner sent it just before the
       // phase changed) has nothing left to act on: dropped
+      const owners = {};
       Object.entries(PH).forEach(([name, def]) => {
         const live = () => !def.world || def.world.built || local.phase === name;
         if (def.net)
-          Object.entries(def.net).forEach(([k, fn]) => Net.on(k, (d) => S && live() && fn(ctx, d)));
+          Object.entries(def.net).forEach(([k, fn]) => (owners[k] = owners[k] || []).push({ name, fn, live }));
       });
+      // one listener per message, which picks the handler (netMsg)
+      Object.entries(owners).forEach(([k, list]) => Net.on(k, (d) => netMsg(k, list, d, Net.meta.ph)));
+      if (nd) nd.shared = Object.keys(owners).filter((k) => owners[k].length > 1).map((k) => k + ':' + owners[k].map((o) => o.name).join('/'));
       if (Net.isHost) {
         S = fresh(from);
         dirty = true;
