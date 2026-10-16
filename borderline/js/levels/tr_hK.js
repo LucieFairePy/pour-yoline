@@ -360,6 +360,7 @@
   };
 
   Story.register('tr_hK', {
+    world: CourH,
     init: () => ({ stage: 0, seed: (Math.random() * 1e9) | 0, round: 0, roll: 0, full: 0, used: 0, marks: [], pause: 0, seen: [] }),
     voice: () => 1,
     partner: (c) => c.S.x.stage !== 2,
