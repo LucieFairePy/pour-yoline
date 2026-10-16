@@ -144,8 +144,17 @@ const Portes = (() => {
     return { g, U };
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('portes');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     solid(0, -0.5, 7, 20, 1, 14, floor);
@@ -519,6 +528,30 @@ const Portes = (() => {
     });
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the chambers' own geometry, materials and canvas textures (and the sky and dust LvKit
+  // put in the scene), takes the colliders out and empties every table build() filled; panels
+  // and buttons are read by the level, so they are emptied in place. The wall, floor, steel and
+  // panel materials are Tex's (shared); glassMat is made at script load and sent again to the GPU
+  // at the next build. The card's face is Tex.card (kept).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const out = [amb.sky, amb.dust].filter(Boolean);
+    out.forEach((o) => R.scene.remove(o));
+    const r = Life.free([group], [glassMat, out]);
+    r.world = 'portes';
+    r.colliders = Phys.drop('portes');
+    built = false;
+    group.visible = false;
+    panels.length = glass.length = lamps.length = 0;
+    [buttons, doors, portals, pdCache].forEach(clear);
+    bridge = bridgeStep = card = screen = null;
+    amb.sky = amb.dust = null;
+    ledgeTop = 0;
+    return r;
+  };
+
   const placeOn = (pnl, hit) => {
     const d = V3().subVectors(hit, pnl.pos);
     let u = d.dot(pnl.right);
@@ -534,7 +567,9 @@ const Portes = (() => {
   return {
     O,
     P,
+    group,
     build,
+    unbuild,
     get built() {
       return built;
     },

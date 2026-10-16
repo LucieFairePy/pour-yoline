@@ -78,6 +78,7 @@
   };
 
   Story.register('portes', {
+    world: Portes,
     init: () => ({
       stage: 1,
       portals: { a: null, b: null },

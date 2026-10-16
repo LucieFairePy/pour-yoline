@@ -189,8 +189,17 @@ const Raid = (() => {
     (tiles[lane + n] = tiles[lane + n] || []).push({ m, edge, ghost, b, k: 0, who: lane === 'd' ? 'dame' : 'valet' });
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('raid');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     // start platform
@@ -644,12 +653,39 @@ const Raid = (() => {
   const inZ = (q, r) => q.z > r[0] && q.z < r[1] && Math.abs(q.x) < 7.2 && q.y > FLOOR - 0.6;
   const tmpC = new THREE.Color();
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the vault's own geometry, materials and canvas textures (and what build put straight in
+  // the scene: the Égide dome, the sky and the sparks), takes its colliders out and empties every
+  // table build() filled (pillars is read by the level: emptied in place). The suit textures and
+  // the sequence materials are the world's own caches (freed, then made again); ghostMarble and
+  // the rune texture are made at script load and sent again to the GPU at the next build. The
+  // stone, marble, trim and dark materials are Tex's (shared); the card's face is Tex.card (kept).
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const out = [dome, amb.sky, amb.motes].filter(Boolean);
+    out.forEach((o) => R.scene.remove(o));
+    const r = Life.free([group], [out, ghostMarble, runeTex, symCache, glyphCache]);
+    r.world = 'raid';
+    r.colliders = Phys.drop('raid');
+    built = false;
+    group.visible = false;
+    [pillars, padM, rings, lights, symCache, glyphCache].forEach((a) => (a.length = 0));
+    [tiles, seals].forEach(clear);
+    screen = card = door = doorB = door2 = door2B = dome = glyphs = sentinel = sweepM = crystals = null;
+    amb.sky = amb.motes = null;
+    sweepT = warnT = 0;
+    return r;
+  };
+
   return {
     O,
     P,
     FLOOR,
     SYMS,
+    group,
     build,
+    unbuild,
     get built() {
       return built;
     },
@@ -714,6 +750,8 @@ const Raid = (() => {
     },
     nearCard: (q) => Math.hypot(q.x, q.z - ARENA.z) < 3.5,
     setDome(on, pos) {
+      // the level's exit hides it, and may run once the world is gone
+      if (!dome) return;
       dome.visible = on;
       if (on) dome.position.copy(pos);
     },

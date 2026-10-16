@@ -272,6 +272,7 @@
   const sameList = (a, b) => (a || []).join() === (b || []).join();
 
   Story.register('raid', {
+    world: Raid,
     init: () => ({
       stage: 1,
       ms: 0,

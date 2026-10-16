@@ -11,7 +11,7 @@
     carry: null,
     carryR: null,
     rel: false,
-    benchAdded: false,
+    benches: [],
     bridgeHint: false,
   };
   const tm = { win: 0, sit: 0, far: 0 };
@@ -47,15 +47,21 @@
   };
 
   Story.register('balade', {
+    world: Balade,
     init: () => ({ stage: 1, hand: false, lan: {}, released: false }),
     voice: () => 1,
     async enter(c, first) {
       tap = { req: {}, rel: {} };
       if (!first) await fadeTo(true);
       Balade.build();
-      if (!local.benchAdded) {
-        local.benchAdded = true;
-        Balade.benches.forEach((b) => City.benches.push(b));
+      // a world rebuilt after an unload has new bench objects: they replace the old ones
+      if (local.benches[0] !== Balade.benches[0]) {
+        local.benches.forEach((b) => {
+          const i = City.benches.indexOf(b);
+          if (i >= 0) City.benches.splice(i, 1);
+        });
+        local.benches = Balade.benches.slice();
+        local.benches.forEach((b) => City.benches.push(b));
       }
       local.stage = 0;
       c.spawn(Balade.spawn(c.S.x.stage, c.role), 0);

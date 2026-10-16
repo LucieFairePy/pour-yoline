@@ -314,8 +314,17 @@ const Balade = (() => {
     return m;
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('balade');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     const r = rng(1402);
@@ -623,11 +632,37 @@ const Balade = (() => {
     return g;
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the river's own geometry, materials and canvas textures, takes its colliders out and
+  // empties every table build() filled (the prop lists T too, or the next build would instance
+  // them twice); benches, signs and stall are read by the level, so they are emptied in place.
+  // The Tex materials of M are shared and stay cached (cliff keeps its flatShading flag). The
+  // water, fall, blossom and halo materials and the halo texture are made at script load: three
+  // sends them to the GPU again at the next build. The card's face is Tex.card (kept).
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [waterMat, fallMat, blossom, haloMat, haloTex]);
+    r.world = 'balade';
+    r.colliders = Phys.drop('balade');
+    built = false;
+    group.visible = false;
+    Object.values(T).forEach((a) => (a.length = 0));
+    signs.length = benches.length = stall.length = 0;
+    gapB = [];
+    bridgeRails = [];
+    bridge = bridgeB = card = skyLan = flies = fall = null;
+    released = 0;
+    U.uTime.value = 0;
+    return r;
+  };
+
   const m4 = new THREE.Matrix4();
   return {
     O,
     P,
+    group,
     build,
+    unbuild,
     lantern,
     get built() {
       return built;

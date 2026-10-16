@@ -46,8 +46,18 @@ const Garde = (() => {
     });
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild); the phases
+  // 'garde' and 'stand' (and the lab rooms) all build it
   const build = () => {
     if (built) return;
+    Phys.owner('garde');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     solid(0, -0.5, 0, 14, 1, 12);
@@ -368,10 +378,35 @@ const Garde = (() => {
     });
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the hall's own geometry, materials and canvas textures (and the sky and embers LvKit
+  // put in the scene), takes its colliders out and forgets every reference build() made; plates
+  // is emptied in place (the level reads it on entry). The stone, trim and rock materials are
+  // Tex's (shared). The firing range's targets (js/levels/stand.js) are its own, not the world's.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const out = [amb.sky, amb.dust].filter(Boolean);
+    out.forEach((o) => R.scene.remove(o));
+    const r = Life.free([group], [out]);
+    r.world = 'garde';
+    r.colliders = Phys.drop('garde');
+    built = false;
+    group.visible = false;
+    clear(plates);
+    fires.length = 0;
+    gate = lasers = sw = screen = null;
+    amb.sky = amb.dust = null;
+    gateY = 0;
+    return r;
+  };
+
   return {
     O,
     P,
+    group,
     build,
+    unbuild,
     get built() {
       return built;
     },
