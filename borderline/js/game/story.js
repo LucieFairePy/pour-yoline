@@ -313,7 +313,13 @@ const Story = (() => {
       early.push({ k, h, d, ph, t: performance.now() });
       return note('netHeld');
     }
-    if (!h) h = list.find((o) => o.name === local.phase) || list[0];
+    if (!h) h = list.find((o) => o.name === local.phase);
+    if (!h) {
+      // a shared handler (garde's 'en', 'tel', 'bossfx') serving the phase played here: its own
+      // level's world may well be unloaded, that doesn't matter; from another phase, it's late
+      if (ph && ph !== local.phase) return note('netOtherPhase');
+      return list[0].fn(ctx, d);
+    }
     if (h.live()) h.fn(ctx, d);
   };
   const flushHeld = () => {
