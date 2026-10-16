@@ -35,3 +35,7 @@ Numbers depend on the machine: compare runs from the same computer. Both players
 same GPU here, so the GPU memory is the sum of two game instances.
 
 `baseline/` keeps reference reports of `main` before the foundation work, to compare against.
+
+`avatar-parts.js` counts the triangles of an astronaut per part (limbs, gloves, helmet, visor…),
+for the film's resolution or a lighter one: evaluate it in the game page, then
+`__parts.classify(__parts.rig(true, { detail: 'game' }))`.

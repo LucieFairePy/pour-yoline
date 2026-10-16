@@ -376,7 +376,7 @@ const Avatar = (() => {
       color: new THREE.Color(L.glow).multiplyScalar(2),
       toneMapped: false,
     });
-    const rig = HQRig.build(HQ_LOOK[role]());
+    const rig = HQRig.build(Object.assign(HQ_LOOK[role](), { detail: api.detail }));
     mergeStatic(rig.A);
     rig.g.scale.setScalar(SCALE);
     rig.apply(HQRig.P.stand());
@@ -959,5 +959,16 @@ const Avatar = (() => {
     return true;
   };
 
-  return { build: (role) => (useHQ() ? buildHQ(role) : build(role)), LOOK, hold, together };
+  // In game the astronauts are built light ('game', see js/hq/astro.js): ~48k triangles each
+  // instead of the film's ~536k, which the intro and the cinematics keep for their close-ups.
+  // ?avdetail=1 (or 0.5, ...) builds the in-game ones at another resolution, to compare.
+  const urlDetail = /[?&]avdetail=([\w.]+)/.exec(location.search);
+  const api = {
+    build: (role) => (useHQ() ? buildHQ(role) : build(role)),
+    LOOK,
+    hold,
+    together,
+    detail: urlDetail ? (isNaN(+urlDetail[1]) ? urlDetail[1] : +urlDetail[1]) : 'game',
+  };
+  return api;
 })();
