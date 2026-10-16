@@ -10,6 +10,7 @@
   const allClues = () => got() >= TOTAL;
 
   Story.register('final', {
+    world: Finale,
     init: () => ({ step: 'joker', done: [] }),
     voice: () => 1,
     async enter(c, first) {

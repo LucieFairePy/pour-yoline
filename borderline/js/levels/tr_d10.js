@@ -529,6 +529,7 @@
   };
 
   Story.register('tr_d10', {
+    world: D10,
     init: () => ({ stage: 1, seed: newSeed(), trod: [], crossed: false, falls: 0, won: false }),
     // the voice carries over the ice: the one at the hole hears the one on it
     voice: () => 1,

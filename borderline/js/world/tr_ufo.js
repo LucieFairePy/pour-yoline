@@ -576,6 +576,8 @@ const TrUfo = (() => {
   });
   const lances = [];
   const lance = (pos, top) => {
+    // a late message from the partner may still ask for one once the world is unloaded
+    if (!built) return;
     let l = lances.find((x) => x.t <= 0);
     if (!l) {
       l = { m: new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true).translate(0, 0.5, 0), lanceMat.clone()), t: 0 };
@@ -734,8 +736,17 @@ const TrUfo = (() => {
     group.add(card);
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_ufo');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     buildIslands();
     buildSky();
@@ -781,6 +792,54 @@ const TrUfo = (() => {
     // (the city sets the fog and the background again every frame)
     R.scene.onBeforeRender = env.br;
     env = null;
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the arena's own geometry, materials and canvas textures (islands, anchors and their
+  // locks, cores, strikes, sky), takes its colliders out and forgets every reference build() made;
+  // the tables the level reads (anchors, cores) are emptied in place. The sweeps and the intake
+  // ring are made when the script loads: emptied out of the group with the rest, hung back
+  // (their GPU copy is sent again when next drawn), as are the module materials (sea, shield,
+  // tether...). The saucer model cached for Enemies goes too once Enemies has taken it out of
+  // the scene (the level's exit clears the enemies): the next spawn builds a fresh ship. The Tex
+  // materials (grass, rock, stone) are shared and stay.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    sleep();
+    const roots = [group];
+    const ship = saucer && !saucer.g.parent ? saucer.g : null;
+    if (ship) roots.push(ship);
+    const r = Life.free(roots);
+    sweeps.forEach((sw) => {
+      sw.g.visible = false;
+      group.add(sw.g);
+    });
+    intake.visible = false;
+    group.add(intake);
+    r.world = 'tr_ufo';
+    r.colliders = Phys.drop('tr_ufo');
+    built = false;
+    if (ship) saucer = null;
+    islands.heart = null;
+    islands.petals.length = 0;
+    delete islands.rim;
+    delete islands.rimPts;
+    anchors[1].length = anchors[3].length = 0;
+    [cores, lances].forEach((a) => (a.length = 0));
+    clear(lastFx);
+    sea = puffs = stones = sun = card = null;
+    seaMat.uniforms.uTime.value = 0;
+    seaMat.uniforms.uStorm.value = 0;
+    sweepMat.uniforms.uTime.value = 0;
+    sweepMat.uniforms.uA.value = 1;
+    tetherMat.opacity = 0.55;
+    shieldMat.uniforms.uTime.value = 0;
+    shieldMat.uniforms.uOn.value = 1;
+    shieldMat.uniforms.uHit.value = 0;
+    intake.material.opacity = 0;
+    intake.material.color.set('#9ff4ff').multiplyScalar(2);
+    return r;
   };
 
   // ---------- pure helpers ----------
@@ -1030,6 +1089,7 @@ const TrUfo = (() => {
     rel,
     group,
     build,
+    unbuild,
     get built() {
       return built;
     },

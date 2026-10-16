@@ -20,8 +20,17 @@ const Finale = (() => {
   let column = null;
   let sky = null;
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('final');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     const floor = new THREE.Mesh(new THREE.CylinderGeometry(17, 15, 2, 48), stone);
@@ -151,10 +160,29 @@ const Finale = (() => {
     group.add(screen.mesh);
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the place's own geometry, materials and canvas textures (the screen, the heart-galaxy,
+  // the glow materials), takes its colliders out and forgets every reference build() made. The
+  // Tex materials (stone, poles, wood), the cards (Tex.card) and the galaxy's core sprite texture
+  // (Heart's cache, also used by Sky.heart) are shared and stay. The group made at script load
+  // stays in the scene, empty and hidden as after a page load.
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group]);
+    r.world = 'final';
+    r.colliders = Phys.drop('final');
+    built = false;
+    group.visible = false;
+    joker = screen = queen = heart = column = sky = null;
+    broken = false;
+    return r;
+  };
+
   return {
     O,
     P,
     build,
+    unbuild,
     get screen() {
       return screen;
     },
@@ -166,7 +194,7 @@ const Finale = (() => {
     inRing: (p) => Math.hypot(p.x - O.x, p.z - O.z) < RING + 0.4 && Math.abs(p.y - O.y) < 3,
     spawn: (who) => P(who === 'dame' ? -3 : 3, 0, -11),
     breakJoker() {
-      if (broken || !joker) return;
+      if (!built || broken || !joker) return;
       broken = true;
       Fx.shatter(joker.position.clone());
       Sound.play('shatter');

@@ -1124,6 +1124,7 @@
   };
 
   Story.register('tr_ufo', {
+    world: TrUfo,
     init: () => ({
       stage: 0,
       T: 0,

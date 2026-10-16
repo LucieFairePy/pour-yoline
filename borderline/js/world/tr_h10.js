@@ -103,7 +103,9 @@ const H10 = (() => {
   };
   const scan = (kind, name, opt) => {
     const m = Tex.mat(kind, Object.assign({ h10: name }, opt));
-    if (!m.userData.tri) return m;
+    // a cached Tex material: wrapped once only (a rebuild after an unload gets it back wrapped)
+    if (!m.userData.tri || m.userData.h10) return m;
+    m.userData.h10 = true;
     const T = Tex.build(kind);
     const s = SCAN[name];
     const prev = m.onBeforeCompile;
@@ -639,6 +641,8 @@ const H10 = (() => {
   let flashV = 0;
   const flash = (k) => (flashV = Math.max(flashV, k));
   const bolt = (a, b, opt = {}) => {
+    // a late message from the partner may still ask for one once the world is unloaded
+    if (!built) return;
     const Bo = bolts.find((x) => x.t < 0) || bolts[0];
     const seed = (Math.random() * 1e6) | 0;
     Bo.core.geometry.dispose();
@@ -1070,12 +1074,21 @@ const H10 = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       wx.visible = true;
       return;
     }
+    Phys.owner('tr_h10');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     wx.visible = true;
@@ -1652,7 +1665,8 @@ const H10 = (() => {
   })();
 
   // ---------- per-frame (the level writes ST, the world follows it) ----------
-  const ST = {
+  // what the world shows, set by the level (as after a page load again on unbuild)
+  const ST0 = () => ({
     joker: V3(0, 14, 52),
     jokerOn: 1,
     talk: 0,
@@ -1677,10 +1691,48 @@ const H10 = (() => {
     door: 0,
     card: false,
     lect: { dame: 0, valet: 0 },
-  };
+  });
+  const ST = ST0();
   const mats = {};
   let lightT = 0;
   let snapNext = false;
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the market's own geometry, materials and canvas textures (the root, the sky, sea and
+  // bolts that follow the camera, the motes LvKit put in the scene, the dials kept off the clocks,
+  // the shapes in G only copied into batches), and the GPU copy of the scans of this level (floor,
+  // plaster, and the rock face it shares with tr_d10: the images stay in Assets and the next
+  // build sends them again). The stone and wood scans are the city's: not freed. The Tex
+  // materials stay cached and wrapped once (userData.h10, envify's own flag). The sound (AU) is
+  // only silenced: its nodes live on the shared audio context, as after its first start.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    AU.set(false);
+    // the deck's back (Cards) is shared with the city and other worlds: never this world's to free
+    Life.keep(Cards.backTexture());
+    if (amb.motes) R.scene.remove(amb.motes);
+    const scans = ['floor', 'plaster', 'rock'].map((k) => [SCAN[k].alb, SCAN[k].dat]);
+    const r = Life.free([root, wx], [M, T, G, rockGeos, amb.motes, scans]);
+    r.world = 'tr_h10';
+    r.colliders = Phys.drop('tr_h10');
+    built = false;
+    root.visible = wx.visible = false;
+    [T, M, BAT, G, SKY, JOKER, plates, gates, levers, clocks, lect, mats, ST].forEach(clear);
+    Object.assign(ST, ST0());
+    [rockGeos, bolts, signs, lamps, booth, seals, leaves, LIGHTS, pool].forEach((a) => (a.length = 0));
+    delete amb.motes;
+    portal = freeCard = wall3 = door3 = curtain4 = key = card = screen = cards = skiff = flashLight = null;
+    flashV = 0;
+    SH.flash.value = 0;
+    SH.bolt.value.set(0, 1, 0);
+    SH.fp.value.set(0, 0, 0);
+    stormT = 2;
+    innerT = 1;
+    lightT = 0;
+    snapNext = false;
+    return r;
+  };
   const update = (dt, t, me) => {
     if (!built) return;
     // a fresh entry snaps every door, gate and curtain to where the state says
@@ -1942,6 +1994,7 @@ const H10 = (() => {
     AU,
     amb,
     build,
+    unbuild,
     get built() {
       return built;
     },
@@ -1960,6 +2013,7 @@ const H10 = (() => {
     at,
     spawn,
     talk(k = 1.4) {
+      if (!built) return;
       JOKER.talk = Math.max(JOKER.talk, k);
     },
     get joker() {
