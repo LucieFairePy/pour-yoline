@@ -267,7 +267,7 @@ const HQ = (() => {
     }
     g.computeVertexNormals();
     if (rs < 72) weldSeam(g, rs, pts.length);
-    return (limbCache[key] = g);
+    return (limbCache[key] = Life.keep(g));
   };
   function limb(mesh, a, b, r) {
     const d = new THREE.Vector3().subVectors(b, a),
@@ -355,7 +355,7 @@ const HQ = (() => {
       const a = ((i / cap) * Math.PI) / 2;
       pts.push(new THREE.Vector2(Math.max(1e-4, Math.cos(a) * r1), L + Math.sin(a) * r1 * 0.95));
     }
-    return (phCache[key] = new THREE.LatheGeometry(pts, rad));
+    return (phCache[key] = Life.keep(new THREE.LatheGeometry(pts, rad)));
   }
   function glove(mat, curl = 0.9, flip = 1, opts = {}) {
     const n = opts.res || resOf(1);

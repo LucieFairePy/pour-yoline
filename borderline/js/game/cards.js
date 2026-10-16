@@ -215,7 +215,7 @@ const Cards = (() => {
   const back = () => backUrl || (backUrl = backCanvas().toDataURL('image/webp', 0.9));
   const backTexture = () => {
     if (!backTex) {
-      backTex = new THREE.CanvasTexture(backCanvas());
+      backTex = Life.keep(new THREE.CanvasTexture(backCanvas()));
       backTex.anisotropy = 8;
     }
     return backTex;
