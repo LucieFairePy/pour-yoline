@@ -84,8 +84,26 @@ ré-envoyée au GPU (pas de plantage) : l'erreur coûterait un à-coup, pas un b
 
 ## Mondes déchargeables
 
-tr_c10, tr_h8, tr_c5, tr_d7, tr_h7, tr_h6, cour_h, cour_c, cour_d, cour_s. Les autres gardent
-l'ancien comportement (cachés à la sortie) tant qu'ils n'ont pas leur `unbuild()`.
+Tous les mondes d'épreuve : les 4 tables de la Cour (cour_h, cour_c, cour_d, cour_s), tr_s1, tr_s2,
+tr_s4, tr_s5, tr_s6, tr_c1, tr_c2, tr_c3, tr_c5, tr_c6, tr_c7, tr_c10, tr_d1 à tr_d7, tr_d10, tr_h3
+à tr_h8, tr_h10, tr_ufo, soleil, donjon, garde, portes, balade, raid, la finale (`final`, déchargée
+à l'épilogue), worlds.js (act5), l'arène (act1) et le labyrinthe (act2).
+
+Restent chargés : la ville (toujours), et ce qui joue dans la ville (prologue, welcome, act3, act4,
+epilogue, la récompense). `garde` est partagé avec `stand` quand `?stand` charge ce niveau de
+test : il attend alors dans la ville comme une table de la Cour.
+
+Points relevés en passant :
+- Les tables remplies au `build()` et jamais vidées doublaient à la reconstruction (instances
+  de façades de tr_s2, prismes de tr_s6, sièges de tr_d6, arbres de balade, pièces du donjon,
+  points du chemin de tr_d2) : vidées dans `unbuild()`.
+- Les mondes dont le `build()` tire au hasard le font sur une graine : tr_c2 (dalles) et le
+  labyrinthe (fissures) n'utilisent plus `Math.random` au build, la reconstruction est identique.
+- La graine partagée `S.seed` (arène, labyrinthe) ne fait pas partie de la sauvegarde : après un
+  rechargement, l'arène et le labyrinthe sont tirés à nouveau (les deux joueurs voient le même).
+  Comportement antérieur, indépendant du déchargement.
+- `Life.keep` en plus : la texture du dos des cartes (`Cards.backTexture`, prise par tr_s1 et
+  tr_h10) et le cœur des galaxies (`Heart`, ciel et plusieurs mondes).
 
 ## La carte procédurale 2048² sous un scan (non modifié)
 
@@ -97,3 +115,30 @@ quittant le monde 1, parce que d'autres matériaux déjà construits (worlds.js,
 besoin hors du monde 1. Ne pas la générer laisserait ces matériaux sur l'aperçu 256². Le coût est
 borné (une fois par matière et par session, dans le cache partagé), il ne grandit pas avec les
 niveaux : laissé tel quel.
+
+## Mémoire GPU : ce que mesure le compteur Windows
+
+Mesuré avec `tools/qa/mem-gl.js` (registre des allocations WebGL vivantes, octet près, injecté dans
+la page de test) et `tools/qa/mem-tour.mjs` (ville → niveau → ville pour chaque phase, deux joueurs),
+le 16/10 sur la même machine, deux tournées par version :
+
+| version | registre en fin de tournée | pic du registre | compteur Windows (pic) |
+|---|---|---|---|
+| avant les fondations | 13,5 Go | 13,5 Go | 9,4 et 10,1 Go |
+| 10 mondes déchargeables | 9,95 Go | 9,95 Go | 8,9 et 11,1 Go |
+| tous les mondes | 2,65 Go | 3,1 Go | 5,7 et 5,7 Go |
+
+- Les textures font 97 % du registre ; la géométrie (buffers) moins de 150 Mo par page même avant :
+  compter les géométries ne dit presque rien de la mémoire.
+- Le compteur « Dedicated Usage » du processus GPU n'est pas le registre : il s'arrête là où la
+  carte est pleine (16 Go, partagés avec les autres processus : 15,8 Go occupés au total pendant
+  les tournées de référence, d'où des pics de 8,9 à 11,1 Go sans rapport avec le code), il
+  additionne les deux pages (deux joueurs = deux fois un joueur), il compte ≈ 0,65 Go par page
+  hors WebGL, et il ne rend pas ce qui est libéré : après `WEBGL_lose_context` (registre à zéro),
+  il reste 1,4 Go par page, plus qu'au démarrage. Il suit le plus haut niveau atteint, pas ce
+  qui est vivant. Un GC forcé ne change rien (les ressources ne tiennent pas à des références JS
+  oubliées).
+- Ce qui reste après la tournée (par page, 1,3 Go) : la ville (0,47 Go), le cache partagé des
+  cartes procédurales `Tex` (une paire 2048² par matière rencontrée, 43 Mo ; 52 textures 2048²,
+  0,9 Go en fin de tournée, borné par le nombre de matières), la table de la Cour en attente, et
+  ce que les phases jouées dans la ville gardent (act3, act4, prologue).

@@ -49,3 +49,14 @@ A is Yoline (host) and B William (guest); `Story.role` gives each page's kit for
 which phases loaded on both screens, which were unloaded and rebuilt, where co-op and save were
 checked, and the interactions each script covered; phases without a script are listed as "load,
 render and errors only".
+
+Memory tools (Windows, same port options):
+
+- `mem-tour.mjs`: city → level → city for every phase with `mem-gl.js` in each page, a ledger of
+  the live WebGL allocations (textures, buffers, renderbuffers, by the phase that made them), the
+  three.js counters and the Windows GPU counters (our process, and the whole adapter). `--root`
+  tests another checkout, `--pages 1` the host alone, `--gc` forces a collection before each
+  measure, `--lose` ends with `WEBGL_lose_context`.
+- `mem-rebuild.mjs --phases a,b [--reload a] [--fp '<expr>']`: first build against the build after
+  a trip to the city (counts, the world's unload record, spawn-view screenshots compared pixel by
+  pixel), and a reload in the level after the rebuild.
