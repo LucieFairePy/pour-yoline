@@ -122,8 +122,17 @@ const Donjon = (() => {
     gates[id] = { g, b, y: 0, open: false, glowBar };
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('donjon');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     group.visible = true;
     // entrance hall
@@ -539,6 +548,30 @@ const Donjon = (() => {
     });
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the crypt's own geometry, materials and canvas textures (and the dust LvKit put in the
+  // scene), takes its colliders out and forgets every reference build() made, the room list
+  // included (dress() walks it). Tex materials, the card and goldM (made when the script loads,
+  // sent to the GPU again at the next build) stay as objects.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    if (amb.on) LvKit.mood(null);
+    if (amb.dust) R.scene.remove(amb.dust);
+    const r = Life.free([group], [goldM, amb.dust]);
+    group.visible = false;
+    r.world = 'donjon';
+    r.colliders = Phys.drop('donjon');
+    built = false;
+    [gates, plates].forEach(clear);
+    [rooms, torches, pool].forEach((a) => (a.length = 0));
+    screen = card = chest = chestB = lid = ring = amb.dust = null;
+    amb.on = false;
+    amb.haze.set('#130d0a');
+    poolT = 0;
+    return r;
+  };
+
   const SPAWN = [
     [1, 3],
     [3, 42],
@@ -552,6 +585,8 @@ const Donjon = (() => {
     O,
     P,
     build,
+    unbuild,
+    group,
     get built() {
       return built;
     },
@@ -580,6 +615,7 @@ const Donjon = (() => {
     darkAt: (q) => q.z > 100 && q.z < 130,
     onPlate(who, q) {
       const p = plates[who];
+      if (!p) return false;
       const lx = p.pos.x - O.x;
       return Math.hypot(q.x - lx, q.z - 50) < 1.6 && Math.abs(q.y - p.y) < 0.6;
     },

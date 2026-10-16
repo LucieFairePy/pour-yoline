@@ -105,6 +105,7 @@
   };
 
   Story.register('donjon', {
+    world: Donjon,
     init: () => ({ stage: 1, plates: [] }),
     voice: () => 1,
     net: {

@@ -129,6 +129,7 @@
   };
 
   Story.register('tr_c1', {
+    world: TrC1,
     init: () => ({ stage: 1, bridge: false, cr: [0, 0, 0, 0, 0, 0], front: null, fspd: 4, rn: 0 }),
     voice: () => 1,
     net: {

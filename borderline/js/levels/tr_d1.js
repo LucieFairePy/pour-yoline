@@ -129,6 +129,7 @@
   };
 
   Story.register('tr_d1', {
+    world: D1,
     init: () => ({
       stage: 1,
       grid: { L: scramble(3), R: scramble(3) },

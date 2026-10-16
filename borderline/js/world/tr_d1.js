@@ -172,9 +172,18 @@ const D1 = (() => {
     return m;
   };
 
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     group.visible = true;
     if (built) return;
+    Phys.owner('tr_d1');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
 
     // ---------- entrance hall ----------
@@ -669,6 +678,26 @@ const D1 = (() => {
     return t;
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the workshop's own geometry, materials and canvas textures (the engraving's map
+  // included), takes its colliders out and empties every table in place (the level keeps
+  // D1.tiles, D1.switches...). The materials made when the script loads (glass, the number
+  // plates' cache, the lamp and tile geometries) stay as objects: three sends them to the GPU
+  // again at the next build. Tex materials and the card stay cached.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [numCache, numGeo, lampGeo, bezelGeo]);
+    group.visible = false;
+    r.world = 'tr_d1';
+    r.colliders = Phys.drop('tr_d1');
+    built = false;
+    [tiles, boards.L, boards.R, ledges, gears, beams].forEach((a) => (a.length = 0));
+    [gates, crystals, pedestals, switches, rings].forEach(clear);
+    screen = engraving = clock = guard = card = heart = null;
+    return r;
+  };
+
   // ---------- per-frame ----------
   const tmp = V3();
   // lit lamp colour (above the bloom threshold on purpose: the lamps glow)
@@ -776,6 +805,8 @@ const D1 = (() => {
     COLORS,
     SYM,
     build,
+    unbuild,
+    group,
     get built() {
       return built;
     },
