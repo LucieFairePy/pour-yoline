@@ -1983,9 +1983,18 @@ const C5 = (() => {
   };
 
   // ================= build =================
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     group.visible = true;
     if (built) return;
+    Phys.owner('tr_c5');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
 
     // ===== car A · the salon-library =====
@@ -2169,6 +2178,26 @@ const C5 = (() => {
     lights.push(LvKit.light(group, P(0, 3.1, 35), '#ffd2a0', 1.3, 20));
     lights.push(LvKit.light(group, P(0, 3.1, 57), '#ffc890', 1.2, 18));
     lights.push(LvKit.light(group, P(0, 3.1, 78), '#ffc890', 1.3, 20));
+  };
+
+  // ================= unload (js/world/LIFECYCLE.md) =================
+  // frees the train's geometry, materials and canvas textures, takes its colliders out, removes
+  // the flash overlay and forgets every reference build() made. The materials made when the
+  // script loads (brass, velvet...) and the glyph caches stay as objects: three sends them to the
+  // GPU again at the next build.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([group], [glyphCache, numCache]);
+    r.world = 'tr_c5';
+    r.colliders = Phys.drop('tr_c5');
+    built = false;
+    [books, keyPosts, repeaters].forEach(clear);
+    [doors, slots, valves, lamps, wheels, lights].forEach((a) => (a.length = 0));
+    if (flash) flash.remove();
+    bomb = bombCol = timerMat = serialMat = beatRing = card = heart = confetti = shock = scenery = tunnel = flash = null;
+    lastTimer = lastSerial = lastDigits = '';
+    return r;
   };
 
   // ================= per frame =================
@@ -2388,6 +2417,7 @@ const C5 = (() => {
     KEYS,
     PAGES,
     build,
+    unbuild,
     update,
     elements,
     get built() {
