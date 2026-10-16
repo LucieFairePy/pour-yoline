@@ -457,6 +457,7 @@
   };
 
   Story.register('tr_d7', {
+    world: TrD7,
     init: () => {
       const tg = pickTargets();
       return {

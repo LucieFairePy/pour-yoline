@@ -287,6 +287,7 @@
   };
 
   Story.register('tr_hV', {
+    world: CourH,
     init: () => ({ stage: 0, seed: (Math.random() * 1e9) | 0, round: 0, roll: 0, cut: 0, bouquet: [], pause: 0 }),
     voice: () => 1,
     net: {

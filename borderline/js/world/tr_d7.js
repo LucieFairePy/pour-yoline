@@ -828,7 +828,7 @@ const TrD7 = (() => {
   };
 
   // ---------- part 0 + 1: the hall and the great dial ----------
-  const S1 = {
+  const S1_ = () => ({
     minG: null,
     hrG: null,
     minBox: [],
@@ -846,7 +846,8 @@ const TrD7 = (() => {
     crankG: null,
     deep: [],
     exitDoor: null,
-  };
+  });
+  const S1 = S1_();
   let screen = null;
   const MIN_PROF = [
     [-2.7, 0],
@@ -1320,7 +1321,8 @@ const TrD7 = (() => {
   };
 
   // ---------- part 2: the echo rooms ----------
-  const S2 = { labs: [], plates: [], bridge: null, bridgeBox: null, gates: [], echo: {}, echoMat: null, recRing: null, glass: [] };
+  const S2_ = () => ({ labs: [], plates: [], bridge: null, bridgeBox: null, gates: [], echo: {}, echoMat: null, recRing: null, glass: [] });
+  const S2 = S2_();
   const plate = (p, col) => {
     const m = mats();
     const g = new THREE.Group();
@@ -1505,7 +1507,8 @@ const TrD7 = (() => {
   };
 
   // ---------- part 3: frozen and accelerated time ----------
-  const S3 = { debris: [], levers: {}, discs: [], pends: [], grains: null, lockG: null, slowDome: null };
+  const S3_ = () => ({ debris: [], levers: {}, discs: [], pends: [], grains: null, lockG: null, slowDome: null });
+  const S3 = S3_();
   const lever = (p, ry, tag) => {
     const m = mats();
     const g = new THREE.Group();
@@ -1743,7 +1746,8 @@ const TrD7 = (() => {
   };
 
   // ---------- part 4: the arena and the Horloger ----------
-  const S4 = { st: [], boss: null, pend: null, weights: [], tele: [], sweep: null, rings: [], card: null, heart: null, face: null, faceHands: null, glowL: null };
+  const S4_ = () => ({ st: [], boss: null, pend: null, weights: [], tele: [], sweep: null, rings: [], card: null, heart: null, face: null, faceHands: null, glowL: null });
+  const S4 = S4_();
   const buildArena = () => {
     const m = mats();
     // bridge from the far landing
@@ -2060,8 +2064,17 @@ const TrD7 = (() => {
 
   // ---------- build / sleep ----------
   let dynBoxes = [];
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_d7');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     mats();
     buildTower();
@@ -2087,6 +2100,31 @@ const TrD7 = (() => {
   const wake = () => {
     dynBoxes.forEach((b) => (b.on = true));
     group.visible = true;
+  };
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the tower's own geometry, materials and canvas textures, takes its colliders out and
+  // puts the four parts' state back as after a page load. M stays: Tex materials only, wrapped
+  // once by envify (wrapping them again would add the warm light twice). The gear geometry
+  // cache keeps its objects: three sends them to the GPU again at the next build.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    sleep();
+    const r = Life.free([group], [geoCache]);
+    r.world = 'tr_d7';
+    r.colliders = Phys.drop('tr_d7');
+    built = false;
+    [[S1, S1_], [S2, S2_], [S3, S3_], [S4, S4_]].forEach(([o, f]) => {
+      clear(o);
+      Object.assign(o, f());
+    });
+    wallGears.length = shafts.length = 0;
+    streams = [];
+    dynBoxes = [];
+    cloudU = motes = screen = null;
+    ctrlT = 0;
+    return r;
   };
 
   // ---------- per frame ----------
@@ -2444,6 +2482,7 @@ const TrD7 = (() => {
       return built;
     },
     build,
+    unbuild,
     wake,
     sleep,
     update,

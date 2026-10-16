@@ -179,6 +179,7 @@
   const mySet = (x, who) => W.SLOTS.filter((s) => s.who === who).every((s) => x.slots[s.i] >= 0);
 
   Story.register('tr_dK', {
+    world: CourD,
     init: () => ({ stage: 1, cp: 'K', code: newCode(), cn: 1, hist: [], slots: [-1, -1, -1, -1], ready: { dame: 0, valet: 0 }, res: null, lost: 0, reveal: [], won: 0 }),
     voice: () => 1,
     net: {

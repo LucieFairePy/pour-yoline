@@ -3,6 +3,10 @@ const Phys = (() => {
   const grid = new Map();
   const dyn = [];
   let stamp = 0;
+  // the world being built (owner(tag) ... owner(null)) owns the boxes added meanwhile, so an
+  // unloaded world can take them all back out (drop)
+  let owner = null;
+  let statics = 0;
 
   const key = (x, z) => (x * 73856093) ^ (z * 19349663);
 
@@ -16,9 +20,11 @@ const Phys = (() => {
       // what a bullet hits (concrete, metal, wood, glass, dirt); '' = guessed from the tag
       surf: opt.surf || '',
       s: 0,
+      owner,
     };
     if (b.dyn) dyn.push(b);
     else {
+      statics++;
       const x0 = Math.floor(b.min[0] / CELL);
       const x1 = Math.floor(b.max[0] / CELL);
       const z0 = Math.floor(b.min[2] / CELL);
@@ -244,5 +250,42 @@ const Phys = (() => {
     return best;
   };
 
-  return { add, box, move, ray, rayHit, query, groundAt };
+  /** remove every box of an owner (static and moving); returns how many went */
+  const drop = (o) => {
+    if (o == null) return 0;
+    const gone = new Set();
+    // every cell is filtered: a box moved after it was added may sit in other cells
+    grid.forEach((l, k) => {
+      let j = 0;
+      for (let i = 0; i < l.length; i++) {
+        if (l[i].owner === o) gone.add(l[i]);
+        else l[j++] = l[i];
+      }
+      if (j) l.length = j;
+      else grid.delete(k);
+    });
+    statics -= gone.size;
+    let j = 0;
+    for (let i = 0; i < dyn.length; i++) {
+      if (dyn[i].owner === o) gone.add(dyn[i]);
+      else dyn[j++] = dyn[i];
+    }
+    dyn.length = j;
+    return gone.size;
+  };
+
+  return {
+    add,
+    box,
+    move,
+    ray,
+    rayHit,
+    query,
+    groundAt,
+    owner(o) {
+      owner = o || null;
+    },
+    drop,
+    count: () => statics + dyn.length,
+  };
 })();

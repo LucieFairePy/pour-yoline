@@ -322,6 +322,7 @@
   };
 
   Story.register('tr_cD', {
+    world: CourC,
     init: () => ({ stage: 0, seed: (Math.random() * 1e9) | 0, ride: 0, roll: 0, got: 0 }),
     voice: () => 1,
     net: {

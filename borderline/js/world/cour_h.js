@@ -93,7 +93,9 @@ const CourH = (() => {
     const sc = opt.scanColor;
     delete opt.scanColor;
     const m = Tex.mat(kind, Object.assign({ cc: 'h_' + name + (opt.cc || '') }, opt));
-    if (!m.userData.tri) return m;
+    // a cached material bound by an earlier build (the world was unloaded since) is ready as is
+    if (!m.userData.tri || m.userData.hScan) return m;
+    m.userData.hScan = true;
     const T = Tex.build(kind);
     const s = SCAN[name];
     if (sc) {
@@ -1674,12 +1676,21 @@ const CourH = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       wx.visible = true;
       return;
     }
+    Phys.owner('cour_h');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     wx.visible = true;
@@ -2271,7 +2282,7 @@ const CourH = (() => {
   const amb = { haze: new THREE.Color('#241418') };
 
   // ---------- per-frame (the levels write ST, the world follows it) ----------
-  const ST = {
+  const ST0 = () => ({
     area: 'V',
     fig: { V: {}, D: {}, K: {} },
     figPos: { V: null, D: null, K: null },
@@ -2301,9 +2312,38 @@ const CourH = (() => {
     marksSeen: false,
     flight: null,
     curtain: 0,
-  };
+  });
+  const ST = ST0();
   let lightT = 0;
   let snapNext = false;
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the palace's own geometry, materials and canvas textures (and the motes LvKit put in
+  // the scene), the GPU copies of its scans, takes its colliders out and puts every table back
+  // as after a page load. The film of the table (js/cine/cour_h.js) builds its own figures.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    if (amb.motes) R.scene.remove(amb.motes);
+    const scans = Object.values(SCAN).map((x) => [x.alb, x.dat]);
+    const r = Life.free([root, wx], [M, T, G, amb.motes, scans]);
+    r.world = 'cour_h';
+    r.colliders = Phys.drop('cour_h');
+    built = false;
+    [M, T, G, SKY, BAT, figs, garden, ball, thea, screens, cards, ST].forEach(clear);
+    Object.assign(ST, ST0());
+    LIGHTS.length = pool.length = bolts.length = 0;
+    delete amb.motes;
+    flashLight = null;
+    flashV = 0;
+    SH.flash.value = 0;
+    stormT = 3;
+    innerT = 1;
+    lightT = 0;
+    snapNext = false;
+    return r;
+  };
+
   const update = (dt, t, me) => {
     if (!built) return;
     const dd = snapNext ? 30 : dt;
@@ -2570,6 +2610,7 @@ const CourH = (() => {
     AU,
     amb,
     build,
+    unbuild,
     figure,
     poseFig,
     FIG,

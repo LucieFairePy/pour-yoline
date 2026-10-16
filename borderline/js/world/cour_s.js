@@ -1523,12 +1523,21 @@ const CourS = (() => {
   const screens = {};
   const amb = { haze: new THREE.Color('#0d1118') };
   let flashLight = null;
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       wx.visible = true;
       return;
     }
+    Phys.owner('cour_s');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     wx.visible = true;
@@ -2055,7 +2064,7 @@ const CourS = (() => {
   })();
 
   // ---------- per-frame (the level writes ST, the world follows it) ----------
-  const ST = {
+  const ST0 = () => ({
     area: 'A',
     herse: [0, 0],
     bridge: [0, 0],
@@ -2069,9 +2078,38 @@ const CourS = (() => {
       R: { p: V3(0, C.daisY, C.throneZ), ry: Math.PI, s: {} },
     },
     figOn: { V: true, D: true, R: true },
-  };
+  });
+  const ST = ST0();
   let lightT = 0;
   let snapNext = false;
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the table's own geometry, materials and canvas textures (and the motes LvKit put in
+  // the scene; the scans bound to the Tex materials go with them), takes its colliders out and
+  // puts every table back as after a page load. The film of the table (js/cine/) builds its own
+  // figures.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    if (amb.motes) R.scene.remove(amb.motes);
+    const r = Life.free([root, wx, ...Object.values(AREA)], [M, T, G, amb.motes]);
+    Object.values(AREA).forEach((g) => root.add(g));
+    r.world = 'cour_s';
+    r.colliders = Phys.drop('cour_s');
+    built = false;
+    [M, T, G, SKY, BAT, doors, figs, screens, ST].forEach(clear);
+    Object.assign(ST, ST0());
+    [LIGHTS, pool, bolts, WINDOWS, HALOS.A, HALOS.B, HALOS.C, herses, bridges, winches, targets, maces, pistons, rings].forEach((a) => (a.length = 0));
+    delete amb.motes;
+    spineGroup = card = screen = flashLight = null;
+    flashV = 0;
+    SH.flash.value = 0;
+    stormT = 3;
+    innerT = 1;
+    lightT = 0;
+    snapNext = false;
+    return r;
+  };
   // the pistons' tops at time t (local clock): slow rises, short waits
   const pistonTop = (i, t) => {
     const p = pistons[i];
@@ -2276,6 +2314,7 @@ const CourS = (() => {
     AU,
     amb,
     build,
+    unbuild,
     get built() {
       return built;
     },

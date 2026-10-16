@@ -2895,7 +2895,8 @@ const H8 = (() => {
   };
 
   // ---------- per-frame ----------
-  const ST = {
+  // what the world shows, set by the level (as after a page load again on unbuild)
+  const ST0 = () => ({
     rain: 1,
     wind: new THREE.Vector2(),
     clear: 0,
@@ -2919,7 +2920,8 @@ const H8 = (() => {
     card: false,
     win: 0,
     lit: 1,
-  };
+  });
+  const ST = ST0();
   let lightT = 0;
   const lastProg = {};
   let beam = null;
@@ -3184,6 +3186,33 @@ const H8 = (() => {
     fx.forEach((s) => s.update(dt, t));
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the street's own geometry, materials and canvas textures (the zone groups, the
+  // camera-following rain and sky), takes its colliders out and forgets every reference build()
+  // made, so the next build() makes it again. The sound (AU) stays: tr_c10 plays it too. The
+  // level's umbrella lives in the scene from its first entry: what it uses stays alive with it.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([root, wx, ...Object.values(zg)], [M, T]);
+    Object.values(zg).forEach((g) => root.add(g));
+    r.world = 'tr_h8';
+    r.colliders = Phys.drop('tr_h8');
+    built = false;
+    [T, M, RAIN, SKY, mech, waters, overlays, stairs, gates, darkEdges, plateMeshes, lastProg, sh, shutter, ST].forEach(clear);
+    [fx, anchors, neonSigns, DRY_BOXES, bolts, lamps, streaks, rods, lights, playerLights, curtains, spills, puddlesList, lampList, teles, hail].forEach((a) => (a.length = 0));
+    delete streaks.im;
+    delete RING_B.wp;
+    delete RING_B.mesh;
+    shutter.k = 0;
+    screen = card = finale = bridge = gate5 = chasm = boss = rainbow = towerShelter = flashLight = hailPts = beam = beamSpot = null;
+    flashV = 0;
+    lightT = 0;
+    SH.flash.value = 0;
+    Object.assign(ST, ST0());
+    return r;
+  };
+
   // ---------- queries ----------
   const inShelter = (q) => {
     for (const s of SHELTERS) {
@@ -3280,10 +3309,17 @@ const H8 = (() => {
     AU,
     mech,
     rods,
+    // the colliders made while building belong to the world (Phys.drop on unbuild)
     build() {
-      build();
-      if (!teles.length) makeTeles();
+      Phys.owner('tr_h8');
+      try {
+        build();
+        if (!teles.length) makeTeles();
+      } finally {
+        Phys.owner(null);
+      }
     },
+    unbuild,
     get built() {
       return built;
     },

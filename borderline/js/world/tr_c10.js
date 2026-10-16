@@ -593,6 +593,8 @@ const C10 = (() => {
   let flashV = 0;
   const flash = (k) => (flashV = Math.max(flashV, k));
   const bolt = (a, b, opt = {}) => {
+    // a late message from the partner may still ask for one once the world is unloaded
+    if (!built) return;
     const B = bolts.find((x) => x.t < 0) || bolts[0];
     const seed = (Math.random() * 1e6) | 0;
     B.core.geometry.dispose();
@@ -842,8 +844,17 @@ const C10 = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) return;
+    Phys.owner('tr_c10');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     makeMats();
     soft = softTex();
@@ -1380,6 +1391,30 @@ const C10 = (() => {
     loadScans();
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the world's own geometry, materials and canvas textures, takes its colliders out and
+  // forgets every reference build() made, so the next build() makes it again from scratch.
+  // The materials of Tex (and the scans bound to them, see scan) are shared and stay cached.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const extra = [Object.values(M), Object.values(T), soft, picTex.map((p) => Object.values(p)), Object.values(picMat)];
+    const r = Life.free([root, wx], extra);
+    r.world = 'tr_c10';
+    r.colliders = Phys.drop('tr_c10');
+    built = false;
+    [M, T, batches, SKY, RAIN, steles, gates].forEach(clear);
+    [picTex, picMat.dame, picMat.valet, picMat.none, bolts, lev0, bells, rings, cranks, liftLev, lights, fires, petals].forEach((a) => (a.length = 0));
+    plates.dame.length = plates.valet.length = 0;
+    soft = screen = card = gate0 = check = lift = rift = null;
+    bridges = {};
+    flashV = 0;
+    SH.flash.value = 0;
+    liftY = liftYOf(0);
+    Object.assign(ST, ST0());
+    return r;
+  };
+
   // ---------- per-frame ----------
   // where the four warm lights hang for each stage (braziers of the floor being played)
   const LIGHTS = {
@@ -1390,7 +1425,8 @@ const C10 = (() => {
     4: [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
     5: [[-4, 75, 21], [4, 75, 29], [0, 76, 25], [0, 0, 0]],
   };
-  const ST = {
+  // what the world shows, set by the level from the shared state (as after a page load on unbuild)
+  const ST0 = () => ({
     stage: 0,
     gate0: 0,
     gates: { 1: 0, 2: 0, 3: 0 },
@@ -1404,7 +1440,8 @@ const C10 = (() => {
     wind: new THREE.Vector2(),
     rain: 1,
     open: 0,
-  };
+  });
+  const ST = ST0();
   let liftY = liftYOf(0);
   const placeLift = () => {
     lift.g.position.y = O.y + liftY;
@@ -1595,6 +1632,7 @@ const C10 = (() => {
     pSvg,
     faceSvg,
     build,
+    unbuild,
     get built() {
       return built;
     },

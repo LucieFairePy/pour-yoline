@@ -216,9 +216,26 @@ const Story = (() => {
     }
   };
 
+  // phases passed through between two épreuves of the same table (see enter)
+  const PASS = new Set(['city', 'reward', 'cut']);
+  const shared = (w) => Object.values(PH).filter((d) => d.world === w).length > 1;
+  let held = null;
   const enter = (ph, first) => {
     const prev = local.phase;
     if (prev && PH[prev] && PH[prev].exit) PH[prev].exit(ctx, ph);
+    // a level that names its world (def.world) unloads it once another phase is entered, unless
+    // that phase plays in the same world; the city always stays. A world shared by several
+    // phases (a table of the Cour) waits through the city, the reward and the films, and goes
+    // once another épreuve is entered. The shared state S is not touched: entering again builds
+    // the world anew (js/world/LIFECYCLE.md)
+    const was = prev && PH[prev] && PH[prev].world;
+    const now = PH[ph] && PH[ph].world;
+    if (was && was !== now) {
+      if (PASS.has(ph) && shared(was)) held = was;
+      else Life.unload(was);
+    }
+    if (held && held !== now && !PASS.has(ph)) Life.unload(held);
+    if (held && (held === now || !PASS.has(ph))) held = null;
     // the last lines of a level don't spill into the next one (the reward keeps its win line)
     if (prev && ph !== 'reward') HUD.hush();
     // a phase never inherits held hands or a seat from the one before
@@ -343,9 +360,12 @@ const Story = (() => {
         beamT = 4;
       });
       Net.on('connect', () => Net.isHost && S && Net.send('S', S));
-      Object.values(PH).forEach((def) => {
+      // a late message for a level whose world is unloaded (the partner sent it just before the
+      // phase changed) has nothing left to act on: dropped
+      Object.entries(PH).forEach(([name, def]) => {
+        const live = () => !def.world || def.world.built || local.phase === name;
         if (def.net)
-          Object.entries(def.net).forEach(([k, fn]) => Net.on(k, (d) => S && fn(ctx, d)));
+          Object.entries(def.net).forEach(([k, fn]) => Net.on(k, (d) => S && live() && fn(ctx, d)));
       });
       if (Net.isHost) {
         S = fresh(from);

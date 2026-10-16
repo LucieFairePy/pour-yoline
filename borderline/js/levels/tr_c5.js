@@ -339,6 +339,7 @@
   };
 
   Story.register('tr_c5', {
+    world: C5,
     init: () => ({
       stage: 1,
       serial: C5.RULES.serial(),

@@ -250,6 +250,7 @@
   };
 
   Story.register('tr_sV', {
+    world: CourS,
     init: () => ({
       stage: 1,
       cpV: 0,

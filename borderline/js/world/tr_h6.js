@@ -1769,11 +1769,20 @@ const H6 = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       return;
     }
+    Phys.owner('tr_h6');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     makeTextures();
@@ -2360,6 +2369,24 @@ const H6 = (() => {
     tools.beamSpot = beamSpot;
   };
 
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the glasshouse's own geometry, materials and canvas textures (the zone groups), takes
+  // its colliders out and forgets every reference build() made; the tables the level reads
+  // (buds, doors, movers, tools, holeCells) are emptied in place.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    const r = Life.free([root, ...Object.values(zg)], [M, T, waters]);
+    Object.values(zg).forEach((g) => root.add(g));
+    r.world = 'tr_h6';
+    r.colliders = Phys.drop('tr_h6');
+    built = false;
+    [M, T, buds, doors, tools].forEach(clear);
+    [movers, seeds, holeCells, fx, butterflies, waters].forEach((a) => (a.length = 0));
+    sunflower = screen = boss = card = bigRose = bloomField = bloomHeart = iceWall = spot = lampLight = fernCache = null;
+    return r;
+  };
+
   // ---------- per-frame ----------
   const zoneVis = (pz) => {
     Object.entries(ZONES).forEach(([k, [z0, z1]]) => {
@@ -2749,6 +2776,7 @@ const H6 = (() => {
     SEED_TOTAL: SEED_REST + SEED_FLY + SEED_LAND + 0.6,
     RING_DUR,
     build,
+    unbuild,
     get built() {
       return built;
     },

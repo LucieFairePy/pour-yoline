@@ -116,7 +116,9 @@ const CourD = (() => {
   };
   const scan = (kind, name, opt) => {
     const m = Tex.mat(kind, Object.assign({ dcour: name }, opt));
-    if (!m.userData.tri) return m;
+    // a cached material bound by an earlier build (the world was unloaded since) is ready as is
+    if (!m.userData.tri || m.userData.dScan) return m;
+    m.userData.dScan = true;
     const T = Tex.build(kind);
     const s = SCAN[name];
     const prev = m.onBeforeCompile;
@@ -1156,12 +1158,21 @@ const CourD = (() => {
   };
 
   // ---------- build ----------
+  // the colliders made while building belong to the world (Phys.drop on unbuild)
   const build = () => {
     if (built) {
       root.visible = true;
       wx.visible = true;
       return;
     }
+    Phys.owner('cour_d');
+    try {
+      make();
+    } finally {
+      Phys.owner(null);
+    }
+  };
+  const make = () => {
     built = true;
     root.visible = true;
     wx.visible = true;
@@ -1661,7 +1672,7 @@ const CourD = (() => {
   })();
 
   // ---------- per-frame (the levels write ST, the world follows it) ----------
-  const ST = {
+  const ST0 = () => ({
     gateA: 0,
     gateB: 0,
     // room A: per pedestal { c: colour, k: cut } or null; view 'col' | 'cut'
@@ -1680,9 +1691,40 @@ const CourD = (() => {
     slots: [-1, -1, -1, -1],
     lever: { B: 0, dame: 0, valet: 0 },
     card: null, // [x, y, z] when the reward card shows
-  };
+  });
+  const ST = ST0();
   let lightT = 0;
   let snapNext = false;
+
+  // ---------- unload (js/world/LIFECYCLE.md) ----------
+  // frees the table's own geometry, materials and canvas textures (and the motes LvKit put in
+  // the scene), the GPU copies of its scans, takes its colliders out and puts every table back
+  // as after a page load. The film of the table (js/cine/) builds its own figures.
+  const clear = (o) => Object.keys(o).forEach((k) => delete o[k]);
+  const unbuild = () => {
+    if (!built) return null;
+    if (amb.motes) R.scene.remove(amb.motes);
+    const scans = Object.values(SCAN).map((x) => [x.alb, x.dat]);
+    const r = Life.free([root, wx], [M, T, G, amb.motes, scans]);
+    r.world = 'cour_d';
+    r.colliders = Phys.drop('cour_d');
+    built = false;
+    [M, T, G, SKY, BAT, FIGMAT, figs, levers, gates, ST].forEach(clear);
+    Object.assign(ST, ST0());
+    [lamps, LIGHTS, bolts, gems, mirrors, crystals, slotGems, pool].forEach((a) => (a.length = 0));
+    delete amb.motes;
+    beam.segs = [];
+    beam.src = null;
+    board = orrery = screen = card = flashLight = null;
+    flashV = 0;
+    SH.flash.value = 0;
+    stormT = 3;
+    innerT = 1;
+    lightT = 0;
+    snapNext = false;
+    return r;
+  };
+
   const tmpQ = V3();
   const update = (dt, t, me) => {
     if (!built) return;
@@ -2022,6 +2064,7 @@ const CourD = (() => {
     figure,
     diamondGeo,
     build,
+    unbuild,
     setup,
     get built() {
       return built;

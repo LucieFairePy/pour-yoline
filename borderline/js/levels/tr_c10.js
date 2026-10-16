@@ -656,6 +656,7 @@
   const respawn = (c) => W.spawn(c.S.x.stage, c.role);
 
   Story.register('tr_c10', {
+    world: W,
     init: () => ({
       stage: 0,
       seed: (Math.random() * 1e9) | 0,
