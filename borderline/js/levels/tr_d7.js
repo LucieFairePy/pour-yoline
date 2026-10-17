@@ -359,9 +359,18 @@
     const aMin = (((local.m % 60) + 60) % 60) / 5;
     const aHr = (((local.m % 720) + 720) % 720) / 60;
     const gates = [];
+    // the big hand can set its rider down on the VI pier: from there, the VI grille lets her back
+    // into the niche (and stays open while she clears it), else she was stranded until the hand
+    // came back
+    const C = TrD7.C1;
+    const onPier = (p) => {
+      const q = TrD7.rel(p);
+      return Math.abs(q.x - C.x) < 1.7 && q.z > C.z - 17.3 && q.z < C.z - 10.1 && q.y > -1.5 && q.y < 1.5;
+    };
+    const pier = x.stage === 1 && (onPier(Player.body.p) || (Remote.has && onPier(Remote.pos)));
     for (let h = 0; h < 12; h++) {
       const al = TrD7.hourDist(aMin, h) < 0.16;
-      gates.push(al || (s1.done && (h === 6 || h === 0)) ? 1 : 0);
+      gates.push(al || (s1.done && (h === 6 || h === 0)) || (h === 6 && pier) ? 1 : 0);
     }
     const tg = r === 'valet' && x.stage === 1 && s1.round < 3 ? s1.tg[s1.round] : -1;
     const ep = x.stage >= 2 && x.stage <= 3 ? echoNow(x) : null;

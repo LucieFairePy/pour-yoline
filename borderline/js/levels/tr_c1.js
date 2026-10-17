@@ -399,6 +399,10 @@
         if (len > 1e-4) n.multiplyScalar(1 / len);
         let share;
         if (local.an) share = 0;
+        // hoisted to the wheel and hanging over the terrace: the cable lets you down onto it.
+        // Otherwise a partner standing still at the bottom of the well held you in the air, where
+        // you cannot anchor to reel them up, and both stayed stuck
+        else if (pulley && !b.grounded && q.y > TrC1.TOP - 0.3 && b.p.y - Phys.groundAt(b.p.x, b.p.y, b.p.z) < 2.2) share = 0;
         else if (local.heavy) share = M.heavy ? 0.5 : M.an ? 1 : 0;
         else if (M.an || M.heavy) share = 1;
         // feet planted (standing still, not jumping): a partner who merely walks away cannot
