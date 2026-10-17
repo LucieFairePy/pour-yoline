@@ -87,9 +87,43 @@
       cineStart: 0,
       curtain: 0,
       lastMarks: 0,
+      sync: 0,
+      seen: null,
+      lastMs: 0,
     });
   reset();
   const after = (sec, fn) => local.pend.push({ t: sec, fn });
+
+  // ---------- the carousel's clock (local.rt, seconds of the deal), shared by both screens ----------
+  // The host's runs on real time (not on frames, which count 50 ms at most: a slow page fell
+  // behind) and judges where the roses land; it is sent with the deal it belongs to (S.x.T,
+  // S.x.Tk). The guest's follows it: the last value heard plus the time since, eased toward it, so
+  // the vases are at the same place on both screens whatever their frame rates.
+  const lat = () => Math.min(0.25, (Net.rtt || 80) / 2000);
+  const clockStart = (x, key) => {
+    local.rt = x.Tk === key ? +x.T || 0 : 0;
+    local.seen = null;
+    local.sync = 1;
+  };
+  // the guest, as a value comes in (when it comes, not at the next frame)
+  const clockHear = (x) => {
+    if (Net.isHost || x.Tk !== local.key) return;
+    const v = +x.T || 0;
+    if (!local.seen || local.seen.v !== v) local.seen = { v, t: performance.now() };
+  };
+  const clockTick = (x, dt) => {
+    // real time, not the frame's dt (capped at 50 ms: a slow page would fall behind)
+    const ms = performance.now();
+    const real = local.lastMs ? clamp((ms - local.lastMs) / 1000, 0, Net.isHost ? 0.25 : 1) : dt;
+    local.lastMs = ms;
+    local.rt += real;
+    if (Net.isHost || x.Tk !== local.key || !local.seen) return;
+    const s = local.seen;
+    const want = s.v + lat() + Math.min(2, (ms - s.t) / 1000);
+    const e = want - local.rt;
+    if (Math.abs(e) > 0.5) local.rt = want;
+    else local.rt += e * Math.min(1, real * 4);
+  };
   const throwerOf = (x) => ROUNDS[Math.min(x.round, 1)].thrower;
   const guideOf = (x) => (throwerOf(x) === 'dame' ? 'valet' : 'dame');
 
@@ -470,7 +504,7 @@
         const prevRound = local.key ? +local.key.split('|')[1] : -1;
         local.key = key;
         if (x.stage === 0) {
-          local.rt = 0;
+          clockStart(x, key);
           local.roundT = 0;
           if (x.round !== prevRound) {
             if (me !== throwerOf(x)) stopAim();
@@ -480,11 +514,20 @@
           }
         }
       }
+      clockHear(x);
       HUD.objective(objective(c));
     },
     host(c, dt) {
       if (!W.built) return;
       const x = c.S.x;
+      local.sync += dt;
+      if (local.sync > 1 && x.stage === 0) {
+        local.sync = 0;
+        c.set((s) => {
+          s.x.T = +local.rt.toFixed(3);
+          s.x.Tk = local.key;
+        });
+      }
       if (x.stage === 0 && !x.pause) {
         local.roundT += dt;
         if (local.roundT > 110) hint(c, x.round ? 'timing' : 'numbers', 0);
@@ -533,7 +576,7 @@
         }
       }
       local.talk = Math.max(0, local.talk - dt);
-      local.rt += dt;
+      clockTick(x, dt);
       if (x.stage === 1) local.winT += dt;
       if (x.stage === 2) {
         Player.mode = 'frozen';

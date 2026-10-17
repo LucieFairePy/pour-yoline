@@ -82,9 +82,43 @@
       talk: 0,
       lines: -1,
       str: 0,
+      sync: 0,
+      seen: null,
+      lastMs: 0,
     });
   reset();
   const after = (sec, fn) => local.pend.push({ t: sec, fn });
+
+  // ---------- the dance's clock (local.rt, seconds of the figure), shared by both screens ----------
+  // The host's runs on real time (not on frames, which count 50 ms at most: a slow page fell
+  // behind) and judges the brushes; it is sent with the figure it belongs to (S.x.T, S.x.Tk). The
+  // guest's follows it: the last value heard plus the time since, eased toward it, so the couples
+  // are at the same place on both screens whatever their frame rates.
+  const lat = () => Math.min(0.25, (Net.rtt || 80) / 2000);
+  const clockStart = (x, key) => {
+    local.rt = x.Tk === key ? +x.T || 0 : 0;
+    local.seen = null;
+    local.sync = 1;
+  };
+  // the guest, as a value comes in (when it comes, not at the next frame)
+  const clockHear = (x) => {
+    if (Net.isHost || x.Tk !== local.key) return;
+    const v = +x.T || 0;
+    if (!local.seen || local.seen.v !== v) local.seen = { v, t: performance.now() };
+  };
+  const clockTick = (x, dt) => {
+    // real time, not the frame's dt (capped at 50 ms: a slow page would fall behind)
+    const ms = performance.now();
+    const real = local.lastMs ? clamp((ms - local.lastMs) / 1000, 0, Net.isHost ? 0.25 : 1) : dt;
+    local.lastMs = ms;
+    local.rt += real;
+    if (Net.isHost || x.Tk !== local.key || !local.seen) return;
+    const s = local.seen;
+    const want = s.v + lat() + Math.min(2, (ms - s.t) / 1000);
+    const e = want - local.rt;
+    if (Math.abs(e) > 0.5) local.rt = want;
+    else local.rt += e * Math.min(1, real * 4);
+  };
   const carrierOf = (x) => ROUNDS[Math.min(x.round, 1)].carrier;
   const guideOf = (x) => (carrierOf(x) === 'dame' ? 'valet' : 'dame');
 
@@ -362,7 +396,7 @@
       if (key !== local.key) {
         const prevRound = local.key ? +local.key.split('|')[1] : -1;
         local.key = key;
-        local.rt = 0;
+        clockStart(x, key);
         if (x.stage === 0 && x.round !== prevRound) {
           local.roundT = 0;
           const lines = () => say(me === carrierOf(x) ? TXT.carrier : TXT.guide, 6400);
@@ -371,6 +405,7 @@
           if (prevRound >= 0) W.AU.waltz(0.6, ROUNDS[Math.min(x.round, 1)].bpm);
         }
       }
+      clockHear(x);
       W.ST.couples = couples(x);
       W.ST.towerHome = x.stage === 0 && x.carry === 0;
       W.ST.delivered = x.done | 0;
@@ -379,6 +414,14 @@
     host(c, dt) {
       if (!W.built) return;
       const x = c.S.x;
+      local.sync += dt;
+      if (local.sync > 1) {
+        local.sync = 0;
+        c.set((s) => {
+          s.x.T = +local.rt.toFixed(3);
+          s.x.Tk = local.key;
+        });
+      }
       hostDance(c, dt);
       if (x.stage === 0) {
         local.roundT += dt;
@@ -445,7 +488,7 @@
       }
       local.talk = Math.max(0, local.talk - dt);
       local.jumpCd -= dt;
-      local.rt += dt;
+      clockTick(x, dt);
       if (x.stage === 1) local.winT += dt;
       const iCarry = x.stage === 0 && r === carrierOf(x);
       const carrying = x.stage === 0 && x.carry === 1;
