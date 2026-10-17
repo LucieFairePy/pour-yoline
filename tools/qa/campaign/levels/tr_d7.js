@@ -188,13 +188,15 @@ window.CL = {
         const onHand = q && q.y > -0.45 && p.r > 1.5 && p.r < 17.2 && W.hourDist(p.a, am) < 0.45;
         if (!onHand) {
           // bring the hand back in front of the niche the dame boards from (once she is in it)
-          const inFrom = q && W.nicheAt(q) === s1.from;
-          if (inFrom && W.hourDist(am, s1.from) > 0.05 && still()) {
-            if (lastNote !== 'from' + s1.from + s1.round) {
-              lastNote = 'from' + s1.from + s1.round;
-              B.note('reelle', 'valet amène la grande aiguille au ' + W.ROMAN[s1.from] + ' pour la dame');
+          // whichever niche she stands in (she may have been set down on the VI pier and walked
+          // back into the VI niche): bring the hand there
+          const nq = q ? W.nicheAt(q) : -1;
+          if (nq >= 0 && W.hourDist(am, nq) > 0.05 && still()) {
+            if (lastNote !== 'from' + nq + s1.round) {
+              lastNote = 'from' + nq + s1.round;
+              B.note('reelle', 'valet amène la grande aiguille au ' + W.ROMAN[nq] + ' pour la dame');
             }
-            await crankTo(s1.from, shortDir(Math.round(am) % 12, s1.from));
+            await crankTo(nq, shortDir(Math.round(am) % 12, nq));
           } else await B.sl(150);
           continue;
         }
@@ -202,7 +204,7 @@ window.CL = {
           await B.sl(150);
           continue;
         }
-        const dir = clearDir(s1.from, tg, s1.cur);
+        const dir = clearDir(Math.round(am) % 12, tg, s1.cur);
         if (lastNote !== 'tg' + s1.round) {
           lastNote = 'tg' + s1.round;
           B.note('reelle', 'heure ' + (s1.round + 1) + ' : valet tourne vers le ' + W.ROMAN[tg] + ' (sens ' + dir + ', le côté sans rideau que dit la dame)');
@@ -273,7 +275,7 @@ window.CL = {
           continue;
         }
         const ni = W.nicheAt(q);
-        if (ni >= 0 && ni === s1.from && W.hourDist(am, ni) < 0.05 && still()) {
+        if (ni >= 0 && (ni === s1.from || ni === 6) && W.hourDist(am, ni) < 0.05 && still()) {
           if (ni === 6) {
             // the VI pier, then the minute hand just past its end
             for (let k = 0; k < 3 && rel().y < -0.5 && !ab(); k++) {
@@ -300,7 +302,8 @@ window.CL = {
           }
           continue;
         }
-        if (ni < 0 && s1.round === 0 && q.z < 23) {
+        // off the hand on the VI pier (the turning hand sets a rider down on it): back to the VI niche
+        if (ni < 0 && q.y > -0.8 && Math.abs(q.x) < 2.6 && q.z < 30 && Player.body.grounded) {
           await B.walk([0, -1.2, 21.4], 0.4, 6000);
           continue;
         }

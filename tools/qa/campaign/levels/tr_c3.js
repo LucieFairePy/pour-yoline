@@ -202,6 +202,7 @@ window.CL = {
       let wi = 0;
       let lastMi = x().mi;
       let lastReset = 0;
+      const stuck = { t: 0, n: 0, log: performance.now() };
       const t1 = performance.now();
       while (x().mi < 3 && x().stage === 3 && performance.now() - t1 < 480000 && !ab()) {
         const mi = x().mi;
@@ -213,6 +214,21 @@ window.CL = {
         const m = W.st.marbles[mi];
         let px = 0;
         let pz = 0;
+        // a marble resting against a wall short of its waypoint: back off to the previous one a
+        // moment (what a player does), then on again
+        if (m && !m.done) {
+          const sp = Math.hypot(m.vx || 0, m.vz || 0);
+          if (sp > 0.15 || !stuck.t) stuck.t = performance.now();
+          if (performance.now() - stuck.t > 5000 && wi > 0) {
+            wi--;
+            stuck.t = performance.now();
+            stuck.n++;
+          }
+          if (performance.now() - stuck.log > 30000) {
+            stuck.log = performance.now();
+            B.note('reelle', `table : bille ${mi + 1} en ${m.x.toFixed(1)},${m.z.toFixed(1)}, étape ${wi}, reculs ${stuck.n}`);
+          }
+        }
         if (m && !m.done) {
           if (Math.hypot(m.x - W.CHUTE[0], m.z - W.CHUTE[1]) < 0.4 && wi > 0 && performance.now() - lastReset > 3000) {
             wi = 0;

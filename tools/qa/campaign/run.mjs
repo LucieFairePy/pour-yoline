@@ -301,7 +301,11 @@ const kitsOk = async (ph) => {
   const ey = await Y.ev(`Story.kitOf('yoline', ${JSON.stringify(ph)})`);
   const swap = await Y.ev(`(Trials.swap(${JSON.stringify(ph)}) || ['soleil','donjon','portes','act5'].includes(${JSON.stringify(ph)}))`);
   const ok = ry === ey && rw !== ry;
-  jot('kits', 'les deux', 'check', `Yoline=${ry}, William=${rw} (plan : ${swap ? 'kits échangés' : 'kits de base'})`, ok ? 'conformes' : 'NON CONFORMES');
+  const FPS = `new Promise((r) => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 1000) requestAnimationFrame(f); else r(n); }; requestAnimationFrame(f); })`;
+  const fy = await Y.ev(FPS).catch(() => '?');
+  const fw = await W.ev(FPS).catch(() => '?');
+  const heap = await Y.ev('performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null').catch(() => null);
+  jot('kits', 'les deux', 'check', `Yoline=${ry}, William=${rw} (plan : ${swap ? 'kits échangés' : 'kits de base'}) · ${fy} / ${fw} images/s, tas ${heap} Mo`, ok ? 'conformes' : 'NON CONFORMES');
   if (!ok) J.bugs.push({ phase: ph, text: `kits ${ry}/${rw}, attendu Yoline=${ey}` });
   return ok;
 };
