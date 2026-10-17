@@ -277,18 +277,24 @@
       } else if (c.S.seen.includes(LAST_PLACE)) {
         // every épreuve before the golden hour is done: the last memory, then the roof
         c.local.banc = (c.local.banc || 0) + dt;
-        const both = (c.S.x.seenBy || []).length >= 2;
+        const both = (c.S.x.lastBy || []).length >= 2;
         if ((both && c.local.banc > 4) || c.local.banc > 30) c.goto('act3');
       }
     },
     action(c, who, d) {
-      if (d.a === 'seen' && !(c.S.x.seenBy || []).includes(who))
-        c.set((s) => (s.x.seenBy = [...(s.x.seenBy || []), who]));
+      // only the last memory counts: the earlier ones looked at during this visit don't stand for it
+      if (d.a === 'seen' && d.id === LAST_PLACE && !(c.S.x.lastBy || []).includes(who))
+        c.set((s) => (s.x.lastBy = [...(s.x.lastBy || []), who]));
     },
     update(c, dt) {
       boxTick(dt);
       const p = Player.body.p;
       const place = placeNow(c);
+      // a memory can come during the visit (the last one, once the one before is looked at)
+      if (place && !City.places[place].shown) {
+        City.showPlace(place, false);
+        City.pillar(place, !seen.has(place));
+      }
       // where to go: the memory to look at first, else the lit door. Always marked on screen;
       // G pings it (beam of light + ring + sound) for when you have lost your way.
       const t = nextTrial(c);
