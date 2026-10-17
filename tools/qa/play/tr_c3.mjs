@@ -42,6 +42,9 @@ export default async ({ A, B, go, sleep }) => {
   await sleep(900);
   if ((await A.ev('Story.S.x.crate.st')) !== 'ground') return { covered, ok: false, notes: 'the dame took the crate' };
   covered.push(`dame refused on the crate (${who(dame)})`);
+  // the host only lets the crate be taken from beside it
+  await valet.ev('Story.ctx.spawn(TrC3.P(3, 0.05, 4.1), 0); 1');
+  await sleep(1200);
   await valet.ev("Story.ctx.act({ a: 'take' }); 1");
   await sleep(900);
   const [sa, sb] = await both('Story.S.x.crate.st');

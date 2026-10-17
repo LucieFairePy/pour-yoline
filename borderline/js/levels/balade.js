@@ -131,9 +131,20 @@
       const o = who === 'dame' ? 'valet' : 'dame';
       if (d.a === 'hand') {
         const now = performance.now();
-        if (x.hand) return c.set((s) => (s.x.hand = false));
+        // what the press meant on that player's screen (let go / reach out): a press that crosses
+        // the other's must not undo it, and the presses of a grab are not counted again
+        const on = d.on != null ? !!d.on : !x.hand;
+        if (!on) {
+          tap.req = {};
+          if (x.hand) c.set((s) => (s.x.hand = false));
+          return;
+        }
+        if (x.hand) return;
         tap.req[who] = now;
-        if (tap.req[o] && now - tap.req[o] < 2500) c.set((s) => (s.x.hand = true));
+        if (tap.req[o] && now - tap.req[o] < 2500) {
+          tap.req = {};
+          c.set((s) => (s.x.hand = true));
+        }
       }
       if (d.a === 'lan' && x.stage === 2 && !x.lan[who]) c.set((s) => (s.x.lan[who] = true));
       if (d.a === 'release' && x.stage === 3) {
@@ -212,7 +223,7 @@
       }
       if (sit) return sit;
       if (close || x.hand) {
-        if (Input.pressed('interact')) c.act({ a: 'hand' });
+        if (Input.pressed('interact')) c.act({ a: 'hand', on: !x.hand });
         return ['E', x.hand ? 'Lâcher sa main' : 'Lui tendre la main'];
       }
       return null;

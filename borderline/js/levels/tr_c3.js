@@ -490,7 +490,12 @@
       const x = c.S.x;
       const q = W.rel(c.pos(who));
       if (d.a === 'lever' && W.nearLever(q)) c.set((s) => (s.x.lock = !s.x.lock));
-      if (d.a === 'take' && who === 'valet' && x.crate.st !== 'carry') c.set((s) => (s.x.crate = { st: 'carry' }));
+      if (d.a === 'take' && who === 'valet' && x.crate.st !== 'carry') {
+        // only by the crate (the screen asks within 1.7 m; the partner's position here lags a little)
+        const cr = x.crate;
+        const cq = cr.st === 'plank' ? V3(cr.x, W.A.y + (cr.z - W.A.z) * Math.sin(W.st.tA), cr.z) : V3(cr.x, cr.y, cr.z);
+        if (Math.hypot(q.x - cq.x, q.z - cq.z) < 3.2 && Math.abs(q.y - cq.y) < 2.5) c.set((s) => (s.x.crate = { st: 'carry' }));
+      }
       if (d.a === 'drop' && x.crate.st === 'carry') {
         const p = V3(d.x, d.y, d.z);
         const onA = Math.abs(p.x) <= W.PLANK_W / 2 && Math.abs(p.z - W.A.z) <= W.PLANK_L / 2;
