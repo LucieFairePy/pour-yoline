@@ -55,7 +55,8 @@ window.CL = {
         for (let n = x().input.length; n < seq.length; n++) {
           const k = seq[n];
           const px = [-4.5, -1.5, 1.5, 4.5][k];
-          await B.walk([px, 0, 19.6], 0.3, 12000);
+          // through the door's opening (walls either side), so by the path finder
+          if (!(await B.walk([px, 0, 19.6], 0.3, 4000))) await B.go([px, 0, 19.6], { near: 0.3, ms: 15000, pad: 8 });
           const len = x().input.length;
           await B.tap('interact');
           await B.until(() => x().input.length !== len || x().p2, 3000);
@@ -86,14 +87,20 @@ window.CL = {
           for (const s of seg) {
             let tgt;
             if (s[0] === 'm') {
-              // wait for the moving slab to swing near us, then jump onto it
+              // the moving slab swings on the game clock (world/worlds.js update): predict where it
+              // will be when we land (~0.75 s) and go when that spot is within a jump
+              const m = Worlds.moving[s[1]];
+              const at = (dt) => {
+                const off = Math.sin((Game.clock.t + dt) * 0.9 + m.ph) * (m.axis === 'x' ? 3 : 2);
+                return [m.x + (m.axis === 'x' ? off : 0), m.y, m.z + (m.axis === 'z' ? off : 0)];
+              };
               const me = B.rel();
               await B.until(() => {
-                const q = mv(s[1]);
-                return Math.hypot(q.x - me[0], q.z - me[2]) < 4.6;
-              }, 6000, 30);
-              const q = mv(s[1]);
-              tgt = [q.x, q.y, q.z];
+                // its swing passes closest to us (x for the x-sliders, z for the z-slider)
+                const p = at(0.8);
+                return m.axis === 'x' ? Math.abs(p[0] - me[0]) < 0.9 : Math.abs(p[2] - me[2]) < 4.2;
+              }, 8000, 16);
+              tgt = at(0.8);
             } else tgt = s;
             const r = await B.leap(tgt, { ms: 2500 });
             if (r[1] < tgt[1] - 0.6 || Math.abs(r[2] - tgt[2]) > 2.5) {
@@ -140,25 +147,28 @@ window.CL = {
     if (Story.S.phase !== 'act5') return log.join(' ');
     await B.sl(2500);
     B.W = null;
-    for (let tries = 0; tries < 10 && x().stage === 'converge' && !CL.abort; tries++) {
-      // both go at the same wall-clock instant (both pages share the machine's clock)
-      const T = Math.ceil((Date.now() + 2500) / 4000) * 4000;
-      await B.sl(T - Date.now() - (dame ? 0 : 500));
+    // the dame grapples the ring when both stand ready on their platforms; the valet leaps as soon
+    // as he sees her fly (her grapple on his screen): both reach the heart within the 2 s
+    const ready = (p, who) => Math.hypot(p.x - Worlds.spawnConverge(who).x, p.z - Worlds.spawnConverge(who).z) < 2.2 && Math.abs(p.y - Worlds.OC.y) < 0.6;
+    const other = dame ? 'valet' : 'dame';
+    for (let tries = 0; tries < 12 && x().stage === 'converge' && !CL.abort; tries++) {
+      await B.walk(Worlds.spawnConverge(Story.role), 0.5, 6000);
       if (dame) {
+        await B.until(() => x().stage !== 'converge' || (Remote.has && ready(Remote.pos, other) && Remote.state && Remote.state.grounded), 15000, 50);
+        await B.sl(600);
         B.aim(Worlds.ring);
-        for (let i = 0; i < 20 && Player.lockTarget < 0; i++) {
+        for (let i = 0; i < 30 && Player.lockTarget < 0; i++) {
           await B.sl(30);
-          B.aim(Worlds.ring);
+          B.aimFine(Worlds.ring);
         }
         await B.tap('ability');
-        await B.until(() => x().stage !== 'converge', 2500);
+        await B.until(() => x().stage !== 'converge', 3000);
       } else {
-        await B.leap(Worlds.C.center.clone().add(V3(0, -1, 0)), { ms: 2500, run: 280 });
+        const flew = await B.until(() => x().stage !== 'converge' || (Remote.state && Remote.state.mode === 'grapple'), 15000, 16);
+        if (flew && x().stage === 'converge') await B.leap(Worlds.C.center.clone().add(V3(0, -1, 0)), { ms: 2500, run: 280 });
       }
       if (x().stage !== 'converge') break;
-      await B.sl(1500);
-      // back on our platform (a respawn put us there if we fell)
-      await B.walk(Worlds.spawnConverge(Story.role), 0.5, 6000);
+      await B.sl(2000);
       B.note('reelle', 'convergence ratée, on recommence');
     }
     B.note('reelle', x().stage === 'caught' ? 'les deux au cœur ensemble : pris' : 'convergence PAS faite (' + x().stage + ')');

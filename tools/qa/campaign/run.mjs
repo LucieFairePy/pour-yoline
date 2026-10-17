@@ -432,26 +432,41 @@ const prologue = async () => {
 };
 
 // ---------------------------------------------------------------- the story finale
+// the memory the city marks (js/levels/city.js placeNow): the newest world memory not looked at
+// yet, else the last one (danse) once every épreuve is done
+const MEMORY = `(() => { const ws = Lore.completed(Story.S.done).map((w) => w.memory); const nw = ws[ws.length - 1]; if (nw && !Story.S.seen.includes(nw)) return nw; return Trials.next(Story.S.done) ? null : 'danse'; })()`;
+// both walk to it and press E when the screen offers « Regarder » (the memory card is closed with Enter)
+const lookMemory = async (id) => {
+  const e = await H().ev(`City.places[${JSON.stringify(id)}].entry.toArray()`);
+  jot('souvenir ' + id, 'les deux', 'reelle', `marche vers le souvenir « ${id} » à ${e.map((v) => v.toFixed(1))}`);
+  const res = await Promise.all(
+    both().map((p, i) =>
+      p
+        .ev(`(async () => { const e = V3(${e[0]}, 0, ${e[2]}); await CB.go(V3(e.x + ${i ? 0.8 : -0.8}, 0, e.z + 0.6), { near: 1.2, ms: 150000 }); await CB.sl(400); const pr = $('prompt') ? $('prompt').textContent : ''; if (/Regarder/.test(pr)) await CB.tap('interact'); CB.note('reelle', 'E devant le souvenir ${id} (invite « ' + pr + ' »)'); return JSON.stringify({ at: CB.where(), d: +Math.hypot(Player.body.p.x - e.x, Player.body.p.z - e.z).toFixed(2), pr }); })()`)
+        .then(JSON.parse)
+        .catch((er) => ({ err: er.message.slice(0, 120) })),
+    ),
+  );
+  await sleep(1500);
+  await overlays();
+  await sleep(1000);
+  await overlays();
+  await drain();
+  const seen = await H().ev(`Story.S.seen.includes(${JSON.stringify(id)})`);
+  jot('souvenir ' + id, 'hôte', 'check', `positions ${JSON.stringify(res)}`, seen ? 'regardé' : 'PAS regardé');
+  return seen;
+};
 const finale = async () => {
   curPhase = 'city';
-  const e = await H().ev("City.places.danse.entry.toArray()");
   let ph = null;
-  for (let tries = 1; tries <= 3 && !ph; tries++) {
-    jot('dernier souvenir', 'les deux', 'reelle', `marche vers le souvenir « danse » à ${e.map((v) => v.toFixed(1))} (essai ${tries})`);
-    const res = await Promise.all(
-      both().map((p, i) =>
-        p
-          .ev(`(async () => { const e = V3(${e[0]}, 0, ${e[2]}); await CB.go(V3(e.x + ${i ? 0.8 : -0.8}, 0, e.z + 0.6), { near: 1.2, ms: 150000 }); await CB.sl(400); const pr = $('prompt') ? $('prompt').textContent : ''; if (/Regarder/.test(pr)) await CB.tap('interact'); CB.note('reelle', 'E devant le souvenir (invite « ' + pr + ' »)'); return JSON.stringify({ at: CB.where(), d: +Math.hypot(Player.body.p.x - e.x, Player.body.p.z - e.z).toFixed(2), pr }); })()`)
-          .then(JSON.parse)
-          .catch((er) => ({ err: er.message.slice(0, 120) })),
-      ),
-    );
-    await sleep(1500);
-    await overlays();
-    ph = await waitPhase(['act3'], 45000);
-    await drain();
-    const seen = await H().ev("JSON.stringify({ seen: Story.S.seen.includes('danse'), by: Story.S.x.seenBy || [] })");
-    jot('dernier souvenir', 'hôte', 'attente', `regardé : ${seen} ; positions ${JSON.stringify(res)}`, ph ? '→ act3' : 'pas encore');
+  for (let tries = 1; tries <= 5 && !ph; tries++) {
+    const id = await H().ev(MEMORY);
+    if (id) await lookMemory(id);
+    if (id === 'danse' || !id) {
+      ph = await waitPhase(['act3'], 45000);
+      const by = await H().ev('JSON.stringify(Story.S.x.seenBy || [])');
+      jot('dernier souvenir', 'hôte', 'attente', `vu par ${by}, le banc compte`, ph ? '→ act3' : 'pas encore');
+    }
   }
   return ph;
 };
@@ -547,6 +562,11 @@ try {
       await syncCheck('retour en ville');
       await maybeResume();
       const nx = await H().ev('JSON.stringify(Trials.next(Story.S.done))').then(JSON.parse);
+      // a world finished: its memory is marked in the city, the players look at it first
+      if (nx) {
+        const mem = await H().ev(MEMORY);
+        if (mem) await lookMemory(mem);
+      }
       if (!nx) {
         if (!(await finale())) {
           await block('dernier souvenir', 'act3 ne démarre pas après le souvenir « danse »');
