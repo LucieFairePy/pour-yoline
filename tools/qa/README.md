@@ -60,3 +60,43 @@ Memory tools (Windows, same port options):
 - `mem-rebuild.mjs --phases a,b [--reload a] [--fp '<expr>']`: first build against the build after
   a trip to the city (counts, the world's unload record, spawn-view screenshots compared pixel by
   pixel), and a reload in the level after the rebuild.
+
+## The campaign: a new game played to the credits
+
+`campaign/run.mjs` starts a NEW game (fresh profile, no save) with two players in local co-op and
+plays it the way two players do, to the credits, without ever calling `Story.goto` to skip ahead:
+
+```
+node tools/qa/campaign/run.mjs                        # Yoline creates the game
+node tools/qa/campaign/run.mjs --host william         # William creates it
+node tools/qa/campaign/run.mjs --from tr_c1 --stop tr_c1 --no-resume-checks   # one level
+node tools/qa/campaign/run.mjs --from act5 --resume tools/qa/out/campaign-…   # an earlier run's save
+```
+
+`--stop <phase>` ends after that level, `--cap <s>` bounds the wait per level, `--no-resume-checks`
+skips the four save/resume checks. A full run takes about 2 h 30 to 2 h 45 on this machine.
+
+- Prologue: each player walks from their corner of the city to the plaza by the streets (a path
+  finder over the physics boxes, `campaign/lib.js`); the welcome plays; then, for every épreuve,
+  both walk to the lit door (`Trials.next`) and the host lets them in.
+- Each level is played by `campaign/levels/<phase>.js`, injected in both pages: each page plays its
+  own kit (`Story.role`) through the game's input path (`Input.sim`, read by `Input.poll` like the
+  keyboard: the level's own `update()` sends the actions), real positions and real weapon hits.
+  A solver notes each step and how it was done: « entrée réelle », « action du jeu »
+  (`Story.ctx.act` with the object `update()` would send), « raccourci : raison » (a teleport or
+  state read where real play was not feasible), « info partagée » (what one screen shows and the
+  player would say out loud). A level without a solver is crossed with a labelled shortcut.
+- Rewards (card counted on both pages), films (skipped by holding E: real key events through
+  the DevTools protocol), memory cards and the letter (Enter) are handled by the runner. When a
+  world is finished and its memory is marked in the city, both walk to it and look at it (E).
+- Then the last memory, act3 (lift, roof bench), act4, act5 (three aces), the final, the epilogue
+  and the credits.
+- Save and resume: at four points (world 1 mid-way, the first level of world 2, inside the Cour,
+  the start of act5) both pages are closed and reopened; both must resume at the saved phase with
+  the same cards and done épreuves. Kits are checked against the plan in every level, and the two
+  pages are compared (phase, cards, done, chapter) after every level.
+
+Output: `tools/qa/out/campaign-<date>-<host>/journal.md` and `journal.json` (chronological: time,
+phase, step, who, how, result), screenshots of each blocking step, `save.json`. The run stops on a
+blocking step with its context and goes on past it with a labelled shortcut when there is one.
+Ports default to 8863 / 9433 (`--port`, `--cdp`).
