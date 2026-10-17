@@ -190,7 +190,9 @@ window.CL = {
           // bring the hand back in front of the niche the dame boards from (once she is in it)
           // whichever niche she stands in (she may have been set down on the VI pier and walked
           // back into the VI niche): bring the hand there
-          const nq = q ? W.nicheAt(q) : -1;
+          // (or on the VI pier: the niche's gate is shut unless the hand stands in front of it)
+          const onPier = q && W.nicheAt(q) < 0 && q.y > -0.8 && Math.abs(q.x) < 2.6 && q.z < 30;
+          const nq = q ? (onPier ? 6 : W.nicheAt(q)) : -1;
           if (nq >= 0 && W.hourDist(am, nq) > 0.05 && still()) {
             if (lastNote !== 'from' + nq + s1.round) {
               lastNote = 'from' + nq + s1.round;
@@ -302,8 +304,15 @@ window.CL = {
           }
           continue;
         }
-        // off the hand on the VI pier (the turning hand sets a rider down on it): back to the VI niche
-        if (ni < 0 && q.y > -0.8 && Math.abs(q.x) < 2.6 && q.z < 30 && Player.body.grounded) {
+        // off the hand on the VI pier (the turning hand sets a rider down on it): once the valet
+        // has brought the hand back to VI, straight onto it; else into the VI niche when it opens
+        if (ni < 0 && q.y > -0.8 && Math.abs(q.x) < 2.6 && q.z < 30 && Player.body.grounded && W.hourDist(am, 6) < 0.05 && still()) {
+          await B.walk(handPt(6, 9.6), 0.3, 4000);
+          await settle();
+          B.note('reelle', 'dame reprend la grande aiguille depuis le ponton du VI (onMinute=' + W.onMinute(Player.body) + ')');
+          continue;
+        }
+        if (ni < 0 && q.y > -0.8 && Math.abs(q.x) < 2.6 && q.z < 30 && Player.body.grounded && s1.round === 0) {
           await B.walk([0, -1.2, 21.4], 0.4, 6000);
           continue;
         }
