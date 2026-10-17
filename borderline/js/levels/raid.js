@@ -115,6 +115,7 @@
       Raid.screen.show(L.phaseName[3], A.boss, '#ff2a5a');
     }
     if (k === 'gaze') {
+      local.aegisCd = 0;
       Sound.play('gaze');
       HUD.say(A.gaze, A.boss, 2200);
       HUD.objective(A.gazeObj[c.role]);
@@ -484,6 +485,8 @@
         gazes.forEach((at, gi) => {
           if (!hs.gaze[gi] && hs.t > at) {
             hs.gaze[gi] = 1;
+            // a Regard always finds the Égide ready (the last phase's two are closer than its cooldown)
+            hs.cd = 0;
             fx('gaze');
           }
           if (hs.gaze[gi] === 1 && hs.t > at + 2.6) {
@@ -568,9 +571,9 @@
             hs.gaze = [];
             hs.ondeAt = -1;
             hs.onde = null;
+            // every add goes (a sword blow would leave a Tour, or a Spectre the rifle has not lit)
             Enemies.list.forEach((e) => {
-              if (e.type === 'pion' || e.type === 'spectre' || e.type === 'tour')
-                Enemies.damage(e.id, 999, 1, false);
+              if (e.type === 'pion' || e.type === 'spectre' || e.type === 'tour') Enemies.kill(e.id);
             });
             c.set((s) => {
               s.x.ritual = false;

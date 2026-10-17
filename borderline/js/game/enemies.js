@@ -176,6 +176,11 @@ const Enemies = (() => {
     boss() {
       return [...list.values()].find((e) => TYPES[e.type].boss) || null;
     },
+    // a level removing an enemy itself (host): no weapon rule applies
+    kill(id) {
+      const e = list.get(id);
+      if (e) kill(e);
+    },
     damage(id, dmg, stun, weak) {
       const e = list.get(id);
       if (!e) return;
