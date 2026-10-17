@@ -73,6 +73,9 @@ node tools/qa/campaign/run.mjs --from tr_c1 --stop tr_c1 --no-resume-checks   # 
 node tools/qa/campaign/run.mjs --from act5 --resume tools/qa/out/campaign-…   # an earlier run's save
 ```
 
+`--stop <phase>` ends after that level, `--cap <s>` bounds the wait per level, `--no-resume-checks`
+skips the four save/resume checks. A full run takes about 2 h 30 to 2 h 45 on this machine.
+
 - Prologue: each player walks from their corner of the city to the plaza by the streets (a path
   finder over the physics boxes, `campaign/lib.js`); the welcome plays; then, for every épreuve,
   both walk to the lit door (`Trials.next`) and the host lets them in.
@@ -84,7 +87,8 @@ node tools/qa/campaign/run.mjs --from act5 --resume tools/qa/out/campaign-…   
   state read where real play was not feasible), « info partagée » (what one screen shows and the
   player would say out loud). A level without a solver is crossed with a labelled shortcut.
 - Rewards (card counted on both pages), films (skipped by holding E: real key events through
-  the DevTools protocol), memory cards and the letter (Enter) are handled by the runner.
+  the DevTools protocol), memory cards and the letter (Enter) are handled by the runner. When a
+  world is finished and its memory is marked in the city, both walk to it and look at it (E).
 - Then the last memory, act3 (lift, roof bench), act4, act5 (three aces), the final, the epilogue
   and the credits.
 - Save and resume: at four points (world 1 mid-way, the first level of world 2, inside the Cour,
