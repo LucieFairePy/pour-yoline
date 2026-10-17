@@ -206,17 +206,12 @@ window.CL = {
         await until(() => mq().y > W.TOP - 0.6, 25000);
         release();
         L('partenaire en haut, attend d’être remontée');
-        // standing still at the bottom of the well, the feet stay planted (the cable cannot lift a
-        // player who does not move): hop now and then so the reel takes her
+        // she stands still at the bottom: the partner's reel hoists her; at the edge she pushes
+        // toward the terrace to climb over it, and on past the wheel (z 116.4, the stage's line)
         {
           const t2 = performance.now();
-          let hopT = 0;
           while (performance.now() - t2 < 60000 && !ab() && !(q().y > W.TOP - 0.6 && q().z > 116.4 && Player.body.grounded)) {
-            const b = Player.body;
-            if (b.grounded && q().y < W.TOP - 2.5 && performance.now() - hopT > 1200) {
-              hopT = performance.now();
-              await B.tap('jump');
-            } else if (!b.grounded && q().y > W.TOP - 2.5) {
+            if (q().y > W.TOP - 2.5 && (!Player.body.grounded || q().y > W.TOP - 0.6)) {
               Cam.yaw = 0;
               S.x = 0;
               S.z = 1;
