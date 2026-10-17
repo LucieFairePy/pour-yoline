@@ -468,7 +468,7 @@ const finale = async () => {
     if (id) await lookMemory(id);
     if (id === 'danse' || !id) {
       ph = await waitPhase(['act3'], 45000);
-      const by = await H().ev('JSON.stringify(Story.S.x.seenBy || [])');
+      const by = await H().ev('JSON.stringify(Story.S.x.lastBy || Story.S.x.seenBy || [])');
       jot('dernier souvenir', 'hôte', 'attente', `vu par ${by}, le banc compte`, ph ? '→ act3' : 'pas encore');
       if (!ph) {
         // the last memory was never put in the city (City.places.danse.shown false): known city bug,
@@ -589,8 +589,7 @@ try {
       if (!nx) {
         if (!(await finale())) {
           await block('dernier souvenir', 'act3 ne démarre pas après le souvenir « danse »');
-          await H().ev("Story.goto('act3'); 1");
-          jot('dernier souvenir', 'hôte', 'raccourci', "Story.goto('act3') après le blocage");
+          break;
         }
         continue;
       }
