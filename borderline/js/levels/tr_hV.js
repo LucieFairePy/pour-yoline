@@ -74,6 +74,9 @@
       talk: 0,
       raise: 0,
       lines: -1,
+      sync: 0,
+      seen: null,
+      lastMs: 0,
     });
   reset();
   const after = (sec, fn) => local.pend.push({ t: sec, fn });
@@ -105,6 +108,38 @@
     return dealOut;
   };
   const angNow = (x) => (x.stage === 0 ? ROUNDS[Math.min(x.round, 1)].spin * local.rt : local.ang);
+
+  // ---------- the garden's clock (local.rt, seconds of the deal), shared by both screens ----------
+  // The host's runs on real time (not on frames, which count 50 ms at most: a slow page fell
+  // behind) and judges the cuts; it is sent with the deal it belongs to (S.x.T, S.x.Tk). The
+  // guest's follows it: the last value heard plus the time since, eased toward it, so the garden
+  // is at the same angle on both screens whatever their frame rates. The guest's cut also says the
+  // angle it saw, taken by the host when it is near its own.
+  const lat = () => Math.min(0.25, (Net.rtt || 80) / 2000);
+  const clockStart = (x, key) => {
+    local.rt = x.Tk === key ? +x.T || 0 : 0;
+    local.seen = null;
+    local.sync = 1;
+  };
+  // the guest, as a value comes in (when it comes, not at the next frame)
+  const clockHear = (x) => {
+    if (Net.isHost || x.Tk !== local.key) return;
+    const v = +x.T || 0;
+    if (!local.seen || local.seen.v !== v) local.seen = { v, t: performance.now() };
+  };
+  const clockTick = (x, dt) => {
+    // real time, not the frame's dt (capped at 50 ms: a slow page would fall behind)
+    const ms = performance.now();
+    const real = local.lastMs ? clamp((ms - local.lastMs) / 1000, 0, Net.isHost ? 0.25 : 1) : dt;
+    local.lastMs = ms;
+    local.rt += real;
+    if (Net.isHost || x.Tk !== local.key || !local.seen) return;
+    const s = local.seen;
+    const want = s.v + lat() + Math.min(2, (ms - s.t) / 1000);
+    const e = want - local.rt;
+    if (Math.abs(e) > 0.5) local.rt = want;
+    else local.rt += e * Math.min(1, real * 4);
+  };
   const count = (m) => {
     let n = 0;
     for (let i = 0; i < 16; i++) if (m & (1 << i)) n++;
@@ -204,7 +239,10 @@
     const x = c.S.x;
     const i = d.i | 0;
     if (x.stage !== 0 || who !== cutterOf(x) || i < 0 || i >= W.SLOTS.length || x.cut & (1 << i)) return;
-    const sp = W.slotPos(i, angNow(x));
+    // the garden as the cutter saw it when pressing E (its own screen), if near enough the host's
+    const ha = angNow(x);
+    const ang = Number.isFinite(+d.ang) && Math.abs(+d.ang - ha) < 0.12 ? +d.ang : ha;
+    const sp = W.slotPos(i, ang);
     const p = c.pos(who);
     // a little more slack than the prompt (the garden turns while the order travels)
     if (Math.hypot(p.x - sp.x, p.z - sp.z) > REACH + 0.6 || Math.abs(p.y - W.O.y) > 1.2) return;
@@ -367,7 +405,7 @@
         const prevRound = local.key ? +local.key.split('|')[1] : -1;
         local.key = key;
         if (x.stage === 0) {
-          local.rt = 0;
+          clockStart(x, key);
           local.roundT = 0;
           if (x.round !== prevRound) {
             const lines = () => say(me === cutterOf(x) ? TXT.cutter : TXT.guide, 6400);
@@ -379,6 +417,7 @@
           }
         }
       }
+      clockHear(x);
       const D = deal(x);
       W.ST.roses = { col: D.col, tall: D.tall };
       W.ST.cut = x.cut | 0;
@@ -389,6 +428,14 @@
     host(c, dt) {
       if (!W.built) return;
       const x = c.S.x;
+      local.sync += dt;
+      if (local.sync > 1 && x.stage === 0) {
+        local.sync = 0;
+        c.set((s) => {
+          s.x.T = +local.rt.toFixed(3);
+          s.x.Tk = local.key;
+        });
+      }
       if (x.stage === 0 && !x.pause) {
         local.roundT += dt;
         if (local.roundT > 95 && !local.hinted['t' + x.round]) {
@@ -425,7 +472,7 @@
       if (x.stage === 1) local.winT += dt;
       // the garden turns (round 2): it carries whoever stands on it
       const a0 = angNow(x);
-      local.rt += dt;
+      clockTick(x, dt);
       const a1 = angNow(x);
       const da = a1 - a0;
       if (da && W.onGarden(p) && Player.body.grounded) {
@@ -466,7 +513,7 @@
             prompt = ['E', TXT.cut, false];
             if (press) {
               W.AU.snip();
-              c.act({ a: 'cut', i: best });
+              c.act({ a: 'cut', i: best, ang: +a1.toFixed(4) });
             }
           }
         }
