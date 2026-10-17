@@ -470,6 +470,21 @@ const finale = async () => {
       ph = await waitPhase(['act3'], 45000);
       const by = await H().ev('JSON.stringify(Story.S.x.seenBy || [])');
       jot('dernier souvenir', 'hôte', 'attente', `vu par ${by}, le banc compte`, ph ? '→ act3' : 'pas encore');
+      if (!ph) {
+        // the last memory was never put in the city (City.places.danse.shown false): known city bug,
+        // a re-entry of the city shows it. Shortcut: both pages reloaded (the game's own resume)
+        const shown = [await Y.ev('City.places.danse.shown'), await W.ev('City.places.danse.shown')];
+        if (!shown[0] || !shown[1]) {
+          await block('dernier souvenir', `le dernier souvenir « danse » n’est pas affiché dans la ville (shown Yoline ${shown[0]}, William ${shown[1]}) alors que l’objectif l’annonce : impossible de le regarder`);
+          jot('dernier souvenir', 'les deux', 'raccourci', 'rechargement des deux pages : la ville, réouverte, affiche le dernier souvenir');
+          await closePages();
+          await openPages();
+          await H().ev('window.__test = true; 1');
+          await G().ev('window.__test = true; 1');
+          await waitPhase(['city'], 60000);
+          await sleep(3000);
+        }
+      }
     }
   }
   return ph;

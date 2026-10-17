@@ -275,7 +275,7 @@ window.CL = {
           continue;
         }
         const ni = W.nicheAt(q);
-        if (ni >= 0 && (ni === s1.from || ni === 6) && W.hourDist(am, ni) < 0.05 && still()) {
+        if (ni >= 0 && W.hourDist(am, ni) < 0.05 && still()) {
           if (ni === 6) {
             // the VI pier, then the minute hand just past its end
             for (let k = 0; k < 3 && rel().y < -0.5 && !ab(); k++) {
