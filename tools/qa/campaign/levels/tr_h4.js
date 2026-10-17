@@ -227,11 +227,9 @@ window.CL = (() => {
       for (let k = 0; k < 5 && alive() && st() === 2; k++) {
         await B.sl(500);
         await B.go(A(-2, 47.4), { near: 0.3, ms: 15000 });
-        // the bridge's slabs start 1.2 m past the island's edge and stop 1.2 m before the far
-        // one: walking straight drops into the gaps (the step-up needs ground), so hop both
-        await B.leap(A(-2, 50.6), { dj: false, ms: 1500 });
-        await B.walk(A(-2, 56.2), 0.4, 5000);
-        await B.leap(A(-2, 59.6), { dj: false, ms: 1500 });
+        // the bridge's stones meet both islands' edges: walk straight across (the post pA stands
+        // at x -2, z 59.4: step aside before it)
+        await B.walk(A(-2, 57.6), 0.4, 8000);
         await B.walk(A(-1.3, 61.5), 0.5, 6000, true);
         await B.sl(600);
         if (W.at('a2', q())) {

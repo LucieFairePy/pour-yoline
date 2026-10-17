@@ -613,7 +613,13 @@ const H4 = (() => {
     ].forEach(([x, z]) => slab(x, 0, z, 2.4, 2.4, 'carry', 1));
 
     // section 1b · the gap: grapple across, then the lantern on its post builds the bridge back
-    [50.4, 53, 55.6].forEach((z) => slab(-2, 0, z, 2.4, 2.4, 'post', 2, 'pA'));
+    // the first and last stones reach the islands' edges (z 48 and 58): walking onto the bridge
+    // must not drop into a void (the step-up needs ground)
+    [
+      [49.8, 3.6],
+      [53, 2.4],
+      [56.2, 3.6],
+    ].forEach(([z, sz]) => slab(-2, 0, z, 2.4, sz, 'post', 2, 'pA'));
     // a double jump can clear the gap: an unseen wall at the far edge holds until the bridge is
     // lit (it drops for the Dame's own grapple hop)
     gapWall = K.collider(-1, 0.5, 57.1, 17, 5, 0.4, { dyn: true, tag: 'nocam' });
