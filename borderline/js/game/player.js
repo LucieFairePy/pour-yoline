@@ -113,7 +113,13 @@ const Player = (() => {
         const d = tmp.length();
         tmp.normalize();
         v.lerp(tmp.multiplyScalar(21), 1 - Math.exp(-10 * dt));
-        if (d < 2.4 || Input.pressed('jump')) {
+        // caught on something on the way (a balcony, a box seen from below): no closer for a
+        // moment, the rope lets go by itself, as Space would
+        if (d < P.gBest - 0.05) {
+          P.gBest = d;
+          P.gStuck = 0;
+        } else P.gStuck += dt;
+        if (d < 2.4 || Input.pressed('jump') || P.gStuck > 1.2) {
           const land = d < 2.4 && P.grappleLand && P.grappleLand();
           if (land) {
             // ballistic hop that comes down on the given spot (vy 7.5, gravity 26)
@@ -178,6 +184,8 @@ const Player = (() => {
     if (!frozen && P.lockTarget >= 0 && Input.pressed('ability')) {
       P.mode = 'grapple';
       P.target = P.lockTarget;
+      P.gBest = Infinity;
+      P.gStuck = 0;
     }
 
     P.preSpeed = Math.hypot(v.x, v.y, v.z);
