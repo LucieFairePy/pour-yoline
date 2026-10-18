@@ -13,16 +13,21 @@
 //    Salle 2: projector (6.5, 48) (the tree's shadow falls off the screen), heart turned once
 //    (o 2 → 3, on its side), (11, 1.65) → (-4.28, 2.4); then one double jump to the 4.5 m wing.
 //  · Salle 3: both stand hand in hand at (±0.62, 84.2) (the seer's panel shows the couple).
-//  · Salle 4: the dame stands at (0, 109) (the shaft), the valet slides the ring to (0, 2.134)
-//    and the bit to (-0.471, 0.97) (the shape on the seer's panel).
+//  · Salle 4: the dame (the shaft) moves until her shadow covers the stem of the key on her panel,
+//    then describes the key (the panel is framed like the screen; the simulated voice relays the
+//    picture). The valet finds, on the wall, where
+//    each cut-out's shadow fills what is missing, slides it there watching it move, then nudges by
+//    the resemblance shown on screen.
 //  · Salle 5: the pilot tries the notch pairs until the black stretch in front of the walker's
-//    post is crossable (seen on her screen), the walker waits on each post for it, then jumps.
+//    post is crossable (seen on her screen; small blocks a jump clears may sit on it), the walker
+//    waits on each post for it, then jumps.
 //  · Montreur: the valet keeps the centre projector off (lever 1): the puppet is cornered in an
-//    outer third. The dame grapples that third's ring (lands on the top box) and cuts the strings
+//    outer third. The dame grapples that third's ring from the apron on the far side of the
+//    balconies (from under them the rope catches on the top box), lands on it and cuts the strings
 //    (hold E): top knot, then the second box (jump across), then from the apron lane onto the
 //    lowest box, then the jump to the second-lowest one.
-// Shortcuts only as fallbacks (labelled): a walker that has not crossed a pit room after 5 min is
-// teleported onto the exit wing; a runner stuck 7 min is teleported onto the knot's box.
+// Shortcut only as a fallback (labelled, never seen used): a walker that has not crossed a pit
+// room (salles 1, 2) after 5 min is teleported onto the exit wing.
 window.CL = {
   timeout: 1500,
   async run() {
@@ -316,7 +321,9 @@ window.CL = {
     const supports = () => [[16, 22, 1.5], ...W.POSTS.map(([a, b, t]) => [a, b, t]), [-22, -16, 1.5]];
     const R5Z = W.ROOMS.r5.zw - 1.2;
     const supportOf = (q) => supports().findIndex(([a, b, t]) => q[0] > a - 0.3 && q[0] < b + 0.3 && Math.abs(q[1] - t) < 0.4 && q[2] > W.ROOMS.r5.zw - 2.8);
-    // a black stretch that holds between support g and support g+1, nothing taller in the way
+    // a black stretch that holds between support g and support g+1, nothing in the way that a jump
+    // does not clear (other bars' shadows meet by chance into small blocks, often a step up on the
+    // stretch's far end: up to 1.1 m higher, a jump goes over it)
     const okStretch = (g) => {
       const sp = supports();
       const e0 = sp[g][0];
@@ -326,7 +333,7 @@ window.CL = {
         if (r[3] < 1.0 || r[3] > 3.3 || r[1] - r[0] < 1.6) continue;
         if (r[0] < e1 - 0.1 || r[1] > e0 + 0.1) continue;
         if (r[0] - e1 > 2.7 || e0 - r[1] > 2.7) continue;
-        if (R.some((q) => q !== r && q[1] > e1 && q[0] < e0 && q[3] > r[3] + 0.3 && q[2] < r[3] + 2.4)) continue;
+        if (R.some((q) => q !== r && q[1] > e1 && q[0] < e0 && q[3] > r[3] + 1.1 && q[2] < r[3] + 2.4)) continue;
         return r;
       }
       return null;
@@ -334,11 +341,6 @@ window.CL = {
     const walkerR5 = async () => {
       const t0 = now();
       while (live() && stage() === 5) {
-        if (now() - t0 > 300000) {
-          B.tp([-18.5, 1.55, R5Z], 'salle des deux lumières pas traversée en 5 min');
-          await sl(2500);
-          continue;
-        }
         const q = me();
         const g = supportOf(q);
         if (g === 4) {
@@ -462,10 +464,12 @@ window.CL = {
       await toFloor();
       await B.walk([secC(s) + 5.6, 0, ZL], 0.5, 15000, true);
     };
+    // the grapple from the apron, on the side away from the balconies' zig-zag: from under them
+    // (the console side) the rope drags her into the top box from below and she hangs there
     const grapple = async (s) => {
       const ring = W.ringPos(s);
       for (let k = 0; k < 3 && live() && stage() === 6; k++) {
-        await B.walk([secC(s) + 5.6, 0, ZL], 0.4, 8000, false);
+        await B.walk([secC(s) - 7, 0, ZL], 0.4, 10000, true);
         B.stop();
         await sl(150);
         for (let i = 0; i < 8; i++) {
@@ -475,6 +479,11 @@ window.CL = {
         await B.tap('ability');
         const ok = await B.until(() => Player.mode !== 'grapple' && Player.body.grounded && me()[1] > 8, 5000, 50);
         if (ok) return true;
+        if (Player.mode === 'grapple') {
+          // caught on something: let go (Space)
+          await B.tap('jump');
+          await B.until(() => Player.body.grounded, 4000, 50);
+        }
         await toFloor();
       }
       return false;
@@ -507,13 +516,6 @@ window.CL = {
         const kx = cx - W.KNOTS[j][0];
         const q = me();
         const b = balAt(q);
-        if (now() - lastCut > 420000) {
-          const [u, top] = W.BAL[j];
-          B.tp([j & 1 ? cx - 0.6 : cx - u - 0.6, top + 0.05, BZ - 1.4], 'fil ' + j + ' : aucune coupe depuis 7 min, la coureuse ne sait pas monter jusqu’au nœud');
-          lastCut = now();
-          await sl(600);
-          continue;
-        }
         if (b && b[0] === s && b[1] === j) {
           if (Math.abs(q[0] - kx) > 1.2) await B.walk([kx + (j & 1 ? 0.4 : 0.6), 0, ZK], 0.25, 3000, false);
           if (await cut(j)) {
@@ -535,7 +537,7 @@ window.CL = {
             await toFloor();
             continue;
           }
-          if (W.secOf(q[0]) !== s || Math.abs(q[0] - (cx + 5.6)) > 1.5) await toSec(s);
+          if (W.secOf(q[0]) !== s) await toSec(s);
           if (await grapple(s)) say('reelle', 'grappin sur l’anneau du tiers ' + s + ' : la loge du haut');
           continue;
         }
@@ -696,36 +698,233 @@ window.CL = {
       say('reelle', (ME === 'dame' ? 'Yoline' : 'William') + ' en place pour le couple (silhouette du panneau de William), main dans la main');
       await holdPose(p, 3);
     };
+    // ---------------- salle 4 : the key ----------------
+    // the screen region the panel frames (the level's match area), sampled finely: 1 cell = 3.3 cm
+    const KA = { x0: -3.4, x1: 3.4, y0: 0, y1: 4.4 };
+    const NX = 204;
+    const NY = 132;
+    const CW = (KA.x1 - KA.x0) / NX;
+    // the seer's panel as she sees it: the dark shape on the warm canvas, one char per cell
+    const readPanel = () => {
+      const cv = [...document.querySelectorAll('canvas')].find((c) => c.width === 500 && c.height === 324 && c.parentElement && /silhouette/i.test(c.parentElement.textContent));
+      if (!cv || cv.parentElement.style.display === 'none') return null;
+      const d = cv.getContext('2d').getImageData(0, 0, 500, 324).data;
+      let out = '';
+      for (let r = 0; r < NY; r++)
+        for (let i = 0; i < NX; i++) {
+          const k = (Math.floor(((r + 0.5) * 324) / NY) * 500 + Math.floor(((i + 0.5) * 500) / NX)) * 4;
+          out += d[k] + d[k + 1] + d[k + 2] < 240 ? '1' : '0';
+        }
+      return out.includes('1') ? out : null;
+    };
+    // what the screen shows (the level's own shadow test, the CPU twin of the wall's shader): the
+    // bodies in the light and the cut-outs over the panel's frame, or one cut-out's shadow over a
+    // wider stretch of the wall (3 frames wide, 2 high; the frame is its bottom middle)
+    const onWall = (w) =>
+      [Player.body.p, Remote.has ? Remote.pos : null]
+        .filter(Boolean)
+        .map((p) => W.rel(p))
+        .filter((q) => W.inRoom('r4', q) && q.z > w.lights[0].z + 0.5);
+    const shadowOf = (w, i, o) => {
+      const c = w.cuts[i];
+      const g = W.shadowGrid({ ...w, cuts: [{ ...c, o: o ?? c.o }] }, [], KA.x0 - 6.8, KA.x1 + 6.8, 0, 8.8, NX * 3, NY * 2);
+      const pts = [];
+      for (let k = 0; k < g.length; k++) if (g[k]) pts.push([(k % (NX * 3)) - NX, ((k / (NX * 3)) | 0) - NY]);
+      return pts;
+    };
+    // where a shadow sits on the wall (its centre, metres)
+    const centreOf = (pts) => {
+      let a = 0;
+      let b = 0;
+      for (const [i, r] of pts) {
+        a += i;
+        b += r;
+      }
+      return pts.length ? [KA.x1 - (a / pts.length + 0.5) * CW, KA.y1 - (b / pts.length + 0.5) * CW] : null;
+    };
+    // the valet compares the described shape with the wall: where would this cut-out's shadow
+    // (turned o) fill what is still missing, without darkening what should stay light
+    const bestSpot = (w, T, i) => {
+      const others = W.shadowGrid({ ...w, cuts: w.cuts.filter((_, j) => j !== i) }, onWall(w), KA.x0, KA.x1, KA.y0, KA.y1, NX, NY);
+      let t0 = NX;
+      let t1 = -1;
+      let r0 = NY;
+      let r1 = -1;
+      for (let k = 0; k < T.length; k++)
+        if (T[k] === '1') {
+          const ii = k % NX;
+          const rr = (k / NX) | 0;
+          t0 = Math.min(t0, ii);
+          t1 = Math.max(t1, ii);
+          r0 = Math.min(r0, rr);
+          r1 = Math.max(r1, rr);
+        }
+      let best = null;
+      const os = w.cuts[i].turn ? [0, 1, 2, 3] : [w.cuts[i].o];
+      for (const o of os) {
+        const pts = shadowOf(w, i, o);
+        if (!pts.length) continue;
+        let m0 = 1e9;
+        let m1 = -1e9;
+        let n0 = 1e9;
+        let n1 = -1e9;
+        for (const [a, b] of pts) {
+          m0 = Math.min(m0, a);
+          m1 = Math.max(m1, a);
+          n0 = Math.min(n0, b);
+          n1 = Math.max(n1, b);
+        }
+        for (let dr = r0 - n1; dr <= r1 - n0; dr++)
+          for (let di = t0 - m1; di <= t1 - m0; di++) {
+            let sc = 0;
+            for (const [a, b] of pts) {
+              const ii = a + di;
+              const rr = b + dr;
+              if (ii < 0 || rr < 0 || ii >= NX || rr >= NY) continue;
+              const k = rr * NX + ii;
+              sc += T[k] === '1' ? (others[k] ? 0 : 1) : -1;
+            }
+            if (!best || sc > best.sc) best = { sc, o, di, dr, n: pts.length, from: centreOf(pts) };
+          }
+      }
+      return best;
+    };
+    // slide cut-out i until its shadow's centre is at (gx, gy) on the wall, watching it move
+    const slideShadow = async (w, i, gx, gy) => {
+      const c = w.cuts[i];
+      const L = c.lim || { x: [-9, 9], y: [-9, 9] };
+      let k = 0.5; // how far the cut-out goes for its shadow to go 1 m (seen after the first push)
+      for (let it = 0; it < 6 && live() && stage() === 4; it++) {
+        const cur = centreOf(shadowOf(w, i));
+        if (!cur) return false;
+        const ex = gx - cur[0];
+        const ey = gy - cur[1];
+        if (Math.hypot(ex, ey) < 0.015) return true;
+        const x0 = c.x;
+        const y0 = c.y;
+        await sel(i, 2);
+        await drive('r4', 'cut', i, clampv(x0 + ex * k, L.x[0], L.x[1]), clampv(y0 + ey * k, L.y[0], L.y[1]), { ms: 20000 });
+        const aft = centreOf(shadowOf(w, i));
+        const sm = Math.hypot(aft[0] - cur[0], aft[1] - cur[1]);
+        const cm = Math.hypot(c.x - x0, c.y - y0);
+        if (sm > 0.1 && cm > 0.05) k = cm / sm;
+      }
+      return false;
+    };
+    const keyFit = async (w) => {
+      const T = B.heard.r4panel;
+      // the ring, then the teeth, then the ring once more (with the teeth in place)
+      for (const i of [0, 1, 0]) {
+        if (!live() || stage() !== 4) return true;
+        const b = bestSpot(w, T, i);
+        if (!b) continue;
+        if (b.o !== w.cuts[i].o) {
+          await sel(i, 2);
+          for (let k = 0; k < 4 && w.cuts[i].o !== b.o && live(); k++) {
+            await B.tap('jump');
+            await sl(220);
+          }
+        }
+        const c0 = centreOf(shadowOf(w, i));
+        // the best spot, from where the shadow was when it was measured
+        const gx = b.from[0] - b.di * CW;
+        const gy = b.from[1] - b.dr * CW;
+        await slideShadow(w, i, gx, gy);
+        say('reelle', (i ? 'panneton' : 'anneau') + ' : son ombre glissée de (' + c0.map((v) => v.toFixed(2)).join(', ') + ') à (' + gx.toFixed(2) + ', ' + gy.toFixed(2) + ') sur le mur' + (i ? ', tourné ' + b.o : ''));
+      }
+      // then by the resemblance shown on screen: small nudges, kept when it rises
+      const shown = async () => {
+        await sl(1100);
+        return W.local.match || 0;
+      };
+      let m = await shown();
+      for (let round = 0; round < 3 && live() && stage() === 4 && m < 0.8; round++) {
+        for (const i of [0, 1])
+          for (const [dx, dy] of [[0.03, 0], [-0.03, 0], [0, 0.03], [0, -0.03]]) {
+            if (!live() || stage() !== 4) return true;
+            const c = w.cuts[i];
+            const x0 = c.x;
+            const y0 = c.y;
+            await sel(i, 2);
+            await drive('r4', 'cut', i, x0 + dx, y0 + dy, { ms: 6000 });
+            const m2 = await shown();
+            if (m2 > m + 0.005) m = m2;
+            else await drive('r4', 'cut', i, x0, y0, { ms: 6000 });
+          }
+      }
+      return !live() || stage() !== 4 || (W.local.match || 0) >= 0.72;
+    };
     const stage4 = async () => {
       await route([
         ['g', [0, 0, 89.0]],
         ['w', [0, 0, 92.5]],
       ]);
       if (ME === 'dame') {
-        await route([['g', [0, 0, 109]]]);
-        say('reelle', 'Yoline est la tige de la clé, devant l’écran (forme sur son panneau)');
-        await holdPose([0, 0, 109], 4);
+        // she is the shaft: she moves until her own shadow on the wall covers the panel's stem,
+        // no more (starting on the room's middle line, steps halved as it gets right)
+        await route([['g', [0, 0, 104]]]);
+        await B.until(() => !live() || stage() !== 4 || readPanel(), 10000, 200);
+        const T0 = readPanel();
+        const fitMe = () => {
+          const g = W.shadowGrid({ ...W.WALLS.r4, cuts: [] }, [W.rel(Player.body.p)], KA.x0, KA.x1, KA.y0, KA.y1, NX, NY);
+          let sc = 0;
+          for (let k = 0; k < g.length; k++) if (g[k]) sc += T0[k] === '1' ? 1 : -1;
+          return sc;
+        };
+        let at = [0, 0, 104];
+        if (T0) {
+          await settle(at, 0.07);
+          let best = fitMe();
+          for (const step of [1.6, 0.8, 0.4, 0.2, 0.1]) {
+            for (let more = true, n = 0; more && n < 12 && live() && stage() === 4; n++) {
+              more = false;
+              for (const [dx, dz] of [[0, step], [0, -step], [step, 0], [-step, 0]]) {
+                const p = [at[0] + dx, 0, clampv(at[2] + dz, 99, 111.5)];
+                await settle(p, 0.05, 4000);
+                const sc = fitMe();
+                if (sc > best) {
+                  best = sc;
+                  at = p;
+                  more = true;
+                  break;
+                }
+              }
+            }
+          }
+          await settle(at, 0.05);
+        }
+        say('reelle', 'Yoline est la tige de la clé : son ombre posée sur la tige de son panneau, à (' + me()[0].toFixed(2) + ', ' + me()[2].toFixed(2) + ')');
+        // she describes the shape on her panel to the valet, as precisely as she can (it is framed
+        // like the screen): the simulated voice carries the picture she sees
+        let told = 0;
+        let warned = false;
+        const t = now();
+        while (live() && stage() === 4) {
+          const pic = readPanel();
+          if (pic && now() - told > 6000) {
+            if (!told) say('info', 'Yoline décrit à William la clé de son panneau, cadré comme l’écran (voix simulée : la page relaie l’image du panneau)');
+            B.tell('r4panel', pic);
+            told = now();
+          }
+          if (flatDist(at) > 0.14) await settle(at, 0.05, 4000);
+          if (!warned && now() - t > 60000) {
+            warned = true;
+            say('reelle', 'salle 4 : pose tenue 60 s, ressemblance ' + Math.round((W.local.match || 0) * 100) + ' %');
+          }
+          await sl(300);
+        }
         return;
       }
       await route([['g', [8.5, 0, 98.2]]]);
       await takeConsole('r4');
-      const set = async () => {
-        await sel(0, 2);
-        await drive('r4', 'cut', 0, 0, 2.134);
-        await sel(1, 2);
-        for (let k = 0; k < 4 && W.WALLS.r4.cuts[1].o !== 0 && live(); k++) {
-          await B.tap('jump');
-          await sl(220);
-        }
-        await drive('r4', 'cut', 1, -0.471, 0.97);
-      };
-      await set();
-      say('reelle', 'William place l’anneau et le panneton comme le décrit le panneau de Yoline');
-      say('raccourci', 'positions exactes anneau (0, 2.134) / panneton (-0.471, 0.97) tirées de la table SOL du niveau : le panneau ne montre que la forme, un joueur tâtonnerait');
+      const w4 = W.WALLS.r4;
+      await B.until(() => !live() || stage() !== 4 || B.heard.r4panel, 90000, 200);
+      if (!B.heard.r4panel) return;
+      say('reelle', 'William écoute Yoline décrire la clé et regarde le mur');
+      const ok4 = await keyFit(w4);
+      say('reelle', 'anneau et panneton placés à l’œil (leurs ombres sur la forme décrite), puis à la ressemblance affichée' + (stage() === 4 ? ' : ' + Math.round((W.local.match || 0) * 100) + ' %' : ' : la porte s’ouvre') + (ok4 ? '' : ' (?)'));
       while (live() && stage() === 4) {
         if (!W.local.ctl) await takeConsole('r4');
-        const c = W.WALLS.r4.cuts;
-        if (Math.abs(c[0].x) > 0.02 || Math.abs(c[0].y - 2.134) > 0.02 || Math.abs(c[1].x + 0.471) > 0.02 || Math.abs(c[1].y - 0.97) > 0.02) await set();
         await sl(400);
       }
     };
