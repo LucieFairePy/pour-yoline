@@ -19,7 +19,9 @@ export default async ({ A, B, go, sleep }) => {
   const save0 = await json(A, '{ done: Story.S.done, seen: Story.S.seen }');
 
   // ---- the city stays loaded through a level, the level's world goes ----
-  const FP = 'JSON.stringify([Phys.count(), City.benches.length, Object.keys(City.doors).length, Object.keys(City.places).length, !!City.roofBench])';
+  // the city's own colliders (within 400 m of its centre: every world is built far away; a table
+  // of the Cour may still be held through the city, Phys.count() would count it)
+  const FP = "JSON.stringify([Phys.query(-400, -400, 400, 400).filter((b) => Math.abs(b.min[0]) < 400 && Math.abs(b.min[2]) < 400).length, City.benches.length, Object.keys(City.doors).length, Object.keys(City.places).length, !!City.roofBench])";
   const fp0 = await both(A, B, FP);
   const n0 = await both(A, B, 'Life.log.length');
   await go('tr_s1');
