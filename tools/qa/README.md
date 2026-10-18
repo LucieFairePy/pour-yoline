@@ -48,7 +48,19 @@ A is Yoline (host) and B William (guest); `Story.role` gives each page's kit for
 `Story.ctx.act(d)` sends an action as that player. Every summary ends with a **Coverage** section:
 which phases loaded on both screens, which were unloaded and rebuilt, where co-op and save were
 checked, and the interactions each script covered; phases without a script are listed as "load,
-render and errors only".
+render and errors only", and the summary ends with how many playable phases have a script.
+
+`play-kit.mjs` holds what the scripts share: `hands(A, B)` injects `campaign/lib.js` (real input
+through `Input.sim`: `CB.walk`, `CB.go`, `CB.trek` which hops a lip like a player, `CB.tap`,
+`CB.aim`…), `kits`, `until` / `untilBoth`, `key` (real key events: Enter closes a memory card),
+`rebuild` (the world unloaded in the city and rebuilt identical) and `rebuildHeld` (a table of the
+Cour: kept through the city, unloaded at another épreuve, rebuilt identical), and fingerprint
+helpers (`owned`: a world's colliders, `meshes`: the meshes of its group). A script states in its
+`notes` every step it set up instead of playing (`setup: …`).
+
+`check-grapple.mjs` (fix-kit style, `--port` / `--cdp`) checks the grapple itself on tr_h6's ring:
+the valet kit never locks, no lock looking away or out of range, F flies (the partner's screen
+draws the rope's hook on the ring), Space lets go, a full flight lands past the gap on both screens.
 
 Memory tools (Windows, same port options):
 
