@@ -4,7 +4,8 @@
 // Before: a grounded player who does not touch the stick kept her « feet planted » (cable share 0)
 // unless the partner's anchor was registered, and the partner, still held against the wheel by the
 // cable, often never got grounded enough to anchor: she stayed at the bottom until she moved or
-// jumped, with nothing telling her so.
+// jumped, with nothing telling her so. And where the hoist stops by the wheel varies: a valet left
+// hanging against the wall under the edge (seen 1.7 m under it) could not climb out either.
 // Every move goes through Input.sim (the keyboard's path), with tools/qa/campaign/lib.js.
 //   node tools/qa/fix-c1-pulley.mjs [--port 8864 --cdp 9434 --root <checkout>]
 import { readFileSync } from 'node:fs';
@@ -53,6 +54,16 @@ run('c1-pulley', async ({ A, B, go, sleep, log }) => {
   if (!up) return { ok: false, notes: 'the ballast did not hoist the valet', valet: await rel(valet) };
   await sleep(1500);
   const bottom = await rel(dame);
+  // where a hoist stops by the wheel varies (frame rate, a landing on the very edge that frees the
+  // cable): the worst case seen, hanging against the wall 1.7 m under the edge, is set up here
+  // (a labelled shortcut). Touching nothing, he must end up standing on the terrace
+  await valet.ev('Player.body.p.copy(TrC1.P(0, TrC1.TOP - 1.75, 115.6)); Player.body.v.set(0, 0, 0); 1');
+  let hungOut = false;
+  for (let i = 0; i < 16 && !hungOut; i++) {
+    await sleep(250);
+    hungOut = await valet.ev('Player.body.grounded && Math.abs(TrC1.rel(Player.body.p).y - TrC1.TOP) < 0.3 && TrC1.rel(Player.body.p).z > 116');
+  }
+  const afterHang = await rel(valet);
   // the valet walks onto the terrace, anchors (E) and reels in (Maj)
   await valet.ev('B.walk(TrC1.P(0.5, TrC1.TOP, 117.8), 0.4, 5000).then(() => 1)');
   await sleep(1200);
@@ -76,10 +87,10 @@ run('c1-pulley', async ({ A, B, go, sleep, log }) => {
     if (d[1] > TOP - 3) break;
   }
   await valet.ev("Input.sim.held.clear(); 1");
-  const r = { dameAtBottom: bottom, valetAnchoredAt: anchorAt, anchorGrounded, valetMinY, dameStill: still, dameMaxY: yMax, rose: +(yMax - bottom[1]).toFixed(2), dbg };
+  const r = { hungOut, afterHang, dameAtBottom: bottom, valetAnchoredAt: anchorAt, anchorGrounded, valetMinY, dameStill: still, dameMaxY: yMax, rose: +(yMax - bottom[1]).toFixed(2), dbg };
   log(JSON.stringify(r));
   // the valet anchored standing on the terrace and stayed there; the dame, who never touched
   // anything, was reeled up the 39 m well to the wheel
   const onTerrace = anchorGrounded && Math.abs(anchorAt[1] - TOP) < 0.3 && valetMinY > TOP - 0.6;
-  return { ok: still && bottom[1] < -20 && onTerrace && yMax > TOP - 3, ...r };
+  return { ok: hungOut && still && bottom[1] < -20 && onTerrace && yMax > TOP - 3, ...r };
 });

@@ -436,6 +436,13 @@
           Sound.play('land', 0.4);
         }
       }
+      // hoisted on the pulley, hanging by the wheel with the partner far below: the cable carries
+      // you up past the edge and onto the terrace. Where a hoist stops varies (a landing on the very
+      // edge frees the cable and drops you back under it): you must always reach the terrace
+      if (pulley && has && !b.grounded && !local.an && !local.heavy && Math.abs(b.p.z - W.z) < 1.2 && q.y > TrC1.TOP - 6 && q.y < TrC1.TOP + 3 && Remote.pos.y < b.p.y - 3) {
+        if (q.y < TrC1.TOP + 0.4) b.v.y = Math.max(b.v.y, 4);
+        b.v.z = Math.max(b.v.z, 2.5);
+      }
       if (caughtNow && local.saved <= 0) {
         Sound.play('grappleHit');
         Fx.burst(me.clone(), '#ffcf8a', 40, 4, 0.6, 0);
