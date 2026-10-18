@@ -5,8 +5,8 @@
 // - the valet climbs to his side gallery;
 // - a take sent from the guide's page (as the level would) is refused: not the carrier;
 // - the dame takes the tower at the buffet (E): carried on both screens;
-// - she jumps with it (Space): one strike on both screens — not counted when the carrier is the
-//   host (suspected game bug, written in the notes);
+// - she jumps with it (Space): one strike on both screens (also when she is the host:
+//   tools/qa/fix-hd-host-jump.mjs);
 // - round 1 (setup: set by the host), the valet carries: he takes the tower (E), jumps (Space):
 //   one strike on both screens; jumps again: the tower spills, back at the buffet (a new try).
 import { hands, kits, who as W, until, untilBoth, both, json, release, rebuildHeld, owned, meshes } from '../play-kit.mjs';
@@ -43,10 +43,8 @@ export default async (ctx) => {
     // a jump with the tower, by the host's carrier (round 0): see the note when it is not counted
     await sleep(1400);
     await dame.ev("CB.tap('jump', 120)");
-    if (await untilBoth(A, B, '(Story.S.x.str | 0) === 1', 2500)) covered.push(`${who(dame)} jumps with it (Space): one strike on both screens`);
-    else if (dame === A)
-      notes.push('SUSPECTED GAME BUG: the host carrying the tower jumps (Space, v.y 9.2) and no strike is counted: js/levels/tr_hD.js update() sets local.jumpCd = 1.5 before c.act({ a: "jump" }), and on the host action() reads the same local.jumpCd (> 0) and drops it; the guest carrier is counted');
-    else return fail(`a jump with the tower (guest carrier): ${JSON.stringify(await x(A))}`);
+    if (!(await untilBoth(A, B, '(Story.S.x.str | 0) === 1', 2500))) return fail(`a jump with the tower (${who(dame)} carrying): ${JSON.stringify(await x(A))}`);
+    covered.push(`${who(dame)} jumps with it (Space): one strike on both screens`);
 
     // ---- round 1: the valet carries (setup), jumps twice: a strike, then the spill ----
     await A.ev('Story.ctx.set((s) => { s.x.round = 1; s.x.carry = 0; s.x.str = 0; }); 1');

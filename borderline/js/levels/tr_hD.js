@@ -72,6 +72,7 @@
       rt: 0,
       bumpCd: 0,
       jumpCd: 0,
+      jumpAsk: 0,
       sayCd: {},
       pend: [],
       objT: 0,
@@ -488,6 +489,7 @@
       }
       local.talk = Math.max(0, local.talk - dt);
       local.jumpCd -= dt;
+      local.jumpAsk -= dt;
       clockTick(x, dt);
       if (x.stage === 1) local.winT += dt;
       const iCarry = x.stage === 0 && r === carrierOf(x);
@@ -501,8 +503,10 @@
           v.x *= CARRY_V / hs;
           v.z *= CARRY_V / hs;
         }
-        if (!Player.body.grounded && v.y > 4 && local.jumpCd <= 0) {
-          local.jumpCd = 1.5;
+        // its own cooldown: on the host, the strike's (jumpCd, in action) would see this one and
+        // drop the host's own jump
+        if (!Player.body.grounded && v.y > 4 && local.jumpAsk <= 0) {
+          local.jumpAsk = 1.5;
           c.act({ a: 'jump' });
         }
       }
