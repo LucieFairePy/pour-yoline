@@ -30,6 +30,11 @@ window.B = window.CB = (() => {
     if (notes.length > 400) notes.shift();
   };
   B.drain = () => notes.splice(0);
+  // the simulated voice: what this player says out loud (B.tell) is relayed by run.mjs (about once
+  // a second) into the partner's B.heard — for what only one screen shows (note it 'info')
+  B.out = [];
+  B.heard = {};
+  B.tell = (k, v) => B.out.push([k, v]);
   B.x = () => Story.S.x;
   B.until = async (fn, ms = 20000, step = 100) => {
     // always give the page a turn first: a solver loop of calls that are already true would

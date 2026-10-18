@@ -207,6 +207,12 @@ const drain = async () => {
     const ns = await p.ev('JSON.stringify(window.CB ? CB.drain() : [])').then(JSON.parse).catch(() => []);
     for (const n of ns) jot(n.phase || curPhase, `${nm(p)} (${n.kit})`, n.how, n.text);
   }
+  // the simulated voice: what a solver says (CB.tell) reaches the partner's page (CB.heard)
+  const [a, b] = both();
+  for (const [p, o] of [[a, b], [b, a]]) {
+    const said = await p.ev('JSON.stringify(window.CB && CB.out ? CB.out.splice(0) : [])').then(JSON.parse).catch(() => []);
+    if (said.length) await o.ev(`(() => { if (window.CB && CB.heard) for (const [k, v] of ${JSON.stringify(said)}) CB.heard[k] = v; return 1; })()`).catch(() => {});
+  }
 };
 // overlays a player closes with a key: a memory card (Enter), the letter once its button shows
 const overlays = async () => {

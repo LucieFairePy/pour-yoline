@@ -155,15 +155,23 @@ window.CL = {
     // ---------------- room 3 ----------------
     if (live() && X().stage === 3) {
       await B.sl(1200);
-      // the Guardian's light, as drawn on this screen (observed, nothing changed)
-      let gAng = 0;
-      const upd = W.update;
-      W.update = function (dt, t, x, r, ga) {
-        gAng = ga;
-        return upd.apply(this, arguments);
+      // the Guardian's light as this screen draws it: the fan of light on the floor (the only
+      // ShapeGeometry of the workshop), its heading read from its world transform
+      let fan = null;
+      W.group.traverse((o) => {
+        if (!fan && o.isMesh && o.geometry && o.geometry.type === 'ShapeGeometry') fan = o;
+      });
+      const gq = new THREE.Quaternion();
+      const beamAng = () => {
+        if (!fan) return 0;
+        fan.updateWorldMatrix(true, false);
+        const o = fan.getWorldPosition(V3());
+        const d = V3(0, 0, 1).applyQuaternion(fan.getWorldQuaternion(gq));
+        const a = W.rel(o);
+        const b = W.rel(o.add(d));
+        return Math.atan2(b.x - a.x, b.z - a.z);
       };
-      if (!dame)
-        B.note('raccourci', 'angle du faisceau du Gardien (visible à l’écran) lu en observant D1.update, pour traverser au sol quand il est tourné ailleurs');
+      if (!dame) B.note('reelle', 'le Valet regarde le faisceau du Gardien au sol' + (fan ? '' : ' (faisceau introuvable ?)'));
       try {
         const mine = dame ? ['h', 'd'] : ['s', 'c'];
         const sw = (k) => W.switches[k];
@@ -174,7 +182,7 @@ window.CL = {
         const curPlat = () => mine.find(onPlat);
         const running = () => X().r3 === 'run';
         const safe = () => {
-          const a = ((gAng % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          const a = ((beamAng() % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
           return a > 2.5 && a < 3.5;
         };
         const grappleTo = async (k) => {
@@ -242,7 +250,7 @@ window.CL = {
         }
         say('reelle', 'horloge : ' + pulls + ' leviers, ' + fails + ' échecs, étape ' + X().stage);
       } finally {
-        W.update = upd;
+        S.held.delete('interact');
       }
     }
 

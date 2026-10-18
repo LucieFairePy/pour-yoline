@@ -85,7 +85,8 @@ skips the four save/resume checks. A full run takes about 2 h 30 to 2 h 45 on th
   A solver notes each step and how it was done: « entrée réelle », « action du jeu »
   (`Story.ctx.act` with the object `update()` would send), « raccourci : raison » (a teleport or
   state read where real play was not feasible), « info partagée » (what one screen shows and the
-  player would say out loud). A level without a solver is crossed with a labelled shortcut.
+  player would say out loud); `CB.tell(key, value)` on one page reaches the partner's `CB.heard[key]`
+  through run.mjs about once a second: the simulated voice). A level without a solver is crossed with a labelled shortcut.
 - Rewards (card counted on both pages), films (skipped by holding E: real key events through
   the DevTools protocol), memory cards and the letter (Enter) are handled by the runner. When a
   world is finished and its memory is marked in the city, both walk to it and look at it (E).
