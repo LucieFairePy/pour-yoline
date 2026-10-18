@@ -47,12 +47,18 @@
     });
     return m;
   };
+  // never a hop on the way: a take refused (the host still sees us short of the buffet) can be
+  // accepted late, and a hop with the tower in hand is a strike
   const take = async () => {
-    await B.go([0, 0, 52.4], { near: 0.35, ms: 40000 });
+    await B.go([0, 0, 52.4], { near: 0.35, ms: 40000, hop: false });
     Cam.yaw = 0;
     await B.sl(200);
-    await B.tap('interact');
-    await B.until(() => !live() || X().carry === 1, 2500);
+    // the host judges the buffet from our position as it last received it: stand still, ask
+    // again from the same spot rather than walking off
+    for (let i = 0; i < 3 && live() && X().carry !== 1; i++) {
+      await B.tap('interact');
+      await B.until(() => !live() || X().carry === 1, 2500);
+    }
     B.note('reelle', 'tour de coupes prise au buffet : ' + (X().carry === 1 ? 'oui' : 'non'));
     return X().carry === 1;
   };

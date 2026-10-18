@@ -385,9 +385,10 @@ window.B = window.CB = (() => {
       B.stop();
       if (!stuck && Math.hypot(to.x - pos().x, to.z - pos().z) < near + 0.2) return true;
       if (stuck) {
-        // a small hop sideways and replan
+        // a small hop sideways and replan (o.hop === false: a sidestep only, for a player who
+        // must not jump, e.g. one carrying the tower of coupes in tr_hD)
         S.x = Math.random() < 0.5 ? -1 : 1;
-        S.held.add('jump');
+        if (o.hop !== false) S.held.add('jump');
         await sl(300);
         S.held.delete('jump');
         await sl(300);
