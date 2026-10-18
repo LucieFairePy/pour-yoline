@@ -463,29 +463,41 @@ window.CL = (() => {
       const p = q();
       if (atTop()) break;
       if (p.z < 263) {
-        await path([A(q().x > 2 ? 1.5 : q().x < -2 ? -1.5 : q().x, 0, 240.2), A(P7[0][0], 0, 240.6)], 0.4, false);
+        if (isD()) {
+          // the dame stays on the near edge (beyond the mushrooms' reach: within 9.5 m of them
+          // her light goes to the mushrooms, not the ground) and keeps her light on the cell just
+          // ahead of the valet until he is across. She sees every hole of the path in her light.
+          const stand = A(P7[0][0] + (P7[0][0] > 0 ? -2.2 : 2.2), 0, 240);
+          await path([A(q().x > 2 ? 1.5 : q().x < -2 ? -1.5 : q().x, 0, 239.5), stand], 0.4, false);
+          await wait(() => remIdx() >= 0 || (qm().z > 236 && qm().z < 242.2 && Math.abs(qm().x - P7[0][0]) < 3), 90000);
+          let at = -1;
+          const t0 = performance.now();
+          while (alive() && st() === 7 && remIdx() < P7.length && performance.now() - t0 < 240000) {
+            at = Math.max(at, remIdx());
+            const tg = P7[Math.min(at + 1, P7.length - 1)];
+            B.aimFine(A(tg[0], 0, tg[1]), 0.6);
+            S.x = 0;
+            S.z = 0;
+            S.held.add('interact');
+            await B.sl(40);
+          }
+          S.held.delete('interact');
+          Cam.pitch = 0.18;
+          B.note('reelle', 'la Dame, au bord du champ, éclaire la case devant le Valet' + (remIdx() >= P7.length ? ' : il est passé' : ' (?)'));
+          await go(A(P7[0][0], 0, 240.6), 0.4, 8000, false);
+        } else await path([A(q().x > 2 ? 1.5 : q().x < -2 ? -1.5 : q().x, 0, 240.2), A(P7[0][0], 0, 240.6)], 0.4, false);
         for (let k = 0; k < P7.length; k++) {
           if (!alive() || st() !== 7) return;
-          if (isD()) {
-            // light the next cells (the spot covers 3.4 m) — not once the mushrooms take the aim
-            const tg = P7[Math.min(k + 1, P7.length - 1)];
-            if (Math.hypot(Player.body.p.x - mush.x, Player.body.p.z - mush.z) > 9.7) {
-              await wait(() => remIdx() >= k - 2, 20000);
-              const t0 = performance.now();
-              while (alive() && performance.now() - t0 < 750) {
-                B.aim(A(tg[0], 0, tg[1]));
-                S.held.add('interact');
-                await B.sl(50);
-              }
-              S.held.delete('interact');
-              Cam.pitch = 0.18;
-            }
-          } else {
+          if (!isD()) {
+            // step only on a cell her light has shown (no hole there)
             const ok = await B.until(() => {
               markLit();
               return lit[k] || !alive() || st() !== 7;
-            }, 90000, 60);
-            if (!ok) B.note('raccourci', 'case ' + k + ' jamais éclairée par la Dame en 90 s : j’y vais quand même');
+            }, 120000, 40);
+            if (!ok) {
+              B.note('reelle', 'case ' + k + ' pas encore éclairée par la Dame : j’attends');
+              continue walk;
+            }
           }
           await go(A(P7[k][0], 0, P7[k][1]), 0.35, 8000, false);
           if (q().y < -0.5) {
