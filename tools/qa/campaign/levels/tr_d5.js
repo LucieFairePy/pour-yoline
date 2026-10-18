@@ -170,7 +170,7 @@ window.CL = {
           await B.walk([-12.4, 0, cz], 0.2, 15000);
           if (gi >= 0) {
             await B.until(() => X().r2.gates[gi] || ab(), 120000, 100);
-            B.note('reelle', 'cloche ' + (gi + 1) + ' sonnée, grille ouverte');
+            B.note('reelle', 'cloche ' + (gi + 1) + (X().r2.gates[gi] ? ' sonnée, grille ouverte' : ' pas sonnée (attente 120 s)'));
             await B.sl(1500);
           }
         }
@@ -207,11 +207,20 @@ window.CL = {
           [52, 0],
           [66, 1],
         ]) {
-          await B.until(() => Math.abs(slabZ() - bz) < 0.4 || ab(), 120000, 50);
-          await B.sl(700);
+          // the slab stops where the dame's walk ends (she may drift half a metre past her mark):
+          // wait for it to stand still under the bubble (r 4.5), not on an exact spot
+          let lastZ = slabZ();
+          let stillT = 0;
+          await B.until(() => {
+            const z = slabZ();
+            stillT = Math.abs(z - lastZ) < 0.01 ? stillT + 1 : 0;
+            lastZ = z;
+            return (Math.abs(z - bz) < 1.5 && stillT > 10) || ab();
+          }, 120000, 50);
+          await B.sl(300);
           for (let k = 0; k < 5 && !X().r2.gates[gi] && !ab(); k++) {
-            // stand in the middle of the slab, jump, double jump at the apex, ride the weak gravity
-            await B.walk([0, 0, slabZ()], 0.3, 2000);
+            // stand on the slab right under the bell, jump, double jump at the apex, ride the weak gravity
+            await B.walk([0, 0, slabZ() + Math.max(-1, Math.min(1, bz - slabZ()))], 0.3, 2000);
             S.held.add('jump');
             await B.sl(60);
             S.held.delete('jump');
@@ -415,6 +424,10 @@ window.CL = {
 
     // ================= stage 5: the card =================
     await B.until(() => X().stage >= 5 || ab(), 30000, 200);
+    if (X().stage < 5) {
+      B.note('reelle', me + ' : la carte n’est pas descendue (salle ' + X().stage + ' pas finie)');
+      return me + ': ' + log.join(', ');
+    }
     const trail = [];
     for (let tries = 0; tries < 3 && rel().y > 1 && !ab(); tries++) {
       const a = norm360(angOf(rel()));
