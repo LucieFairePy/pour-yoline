@@ -33,6 +33,7 @@ window.CL = {
     const angOf = (q) => Math.atan2(q.z - OC, q.x) / DEG;
 
     const G = [0, W.G1, W.G2];
+    let hops = 0;
     const lvOf = (y) => (y > W.G2 - 1 ? 2 : y > W.G1 - 1 ? 1 : 0);
     // walk an arc (r, from the current angle to `to`, in the given direction) on the current floor
     const arc = async (r, to, dir) => {
@@ -41,12 +42,19 @@ window.CL = {
       const norm = (v) => ((v % 360) + 360) % 360;
       let left = norm360((to - a) * dir);
       if (left > 359) left = 0;
+      let ok = true;
       while (left > 0.5 && !ab()) {
         const st = Math.min(6, left);
         a += st * dir;
         left -= st;
-        await B.walk(pol(r, a, y), left > 0.5 ? 0.8 : 0.35, 6000, true);
+        if (await B.walk(pol(r, a, y), left > 0.5 ? 0.8 : 0.35, 6000, true)) continue;
+        // blocked (a station's pedestal stands on the gallery lane): jump over it
+        hops++;
+        await B.leap(pol(r, a, y), { ms: 1500 });
+        await settle();
+        if (Math.hypot(rel().x - pol(r, a)[0], rel().z - pol(r, a)[2]) > 1.2) ok = false;
       }
+      return ok;
     };
     function norm360(v) {
       return ((v % 360) + 360) % 360;
@@ -59,16 +67,17 @@ window.CL = {
     function shortDir(a, b) {
       return shortDelta(a, b) >= 0 ? 1 : -1;
     }
-    // the way round a gallery that passes no other station on that floor
+    // the way round a gallery that passes no other station on that floor (their pedestals stand
+    // on the lane, r 18.4: the one you stand next to, 4° away, counts when it is ahead)
     function galleryDir(lv, a, b) {
       const others = Object.values(W.STATION)
-        .filter((s) => s.lv === lv && Math.abs(shortDelta(a, s.a)) > 6)
+        .filter((s) => s.lv === lv)
         .map((s) => s.a);
       const passes = (dir) => {
         const span = norm360((b - a) * dir);
         return others.some((o) => {
           const d = norm360((o - a) * dir);
-          return d > 2 && d < span - 2;
+          return d > 0.5 && d < span - 2;
         });
       };
       const d0 = shortDir(a, b);
@@ -161,7 +170,7 @@ window.CL = {
           await B.walk([-12.4, 0, cz], 0.2, 15000);
           if (gi >= 0) {
             await B.until(() => X().r2.gates[gi] || ab(), 120000, 100);
-            B.note('reelle', 'cloche ' + (gi + 1) + ' sonnée, grille ouverte');
+            B.note('reelle', 'cloche ' + (gi + 1) + (X().r2.gates[gi] ? ' sonnée, grille ouverte' : ' pas sonnée (attente 120 s)'));
             await B.sl(1500);
           }
         }
@@ -198,11 +207,20 @@ window.CL = {
           [52, 0],
           [66, 1],
         ]) {
-          await B.until(() => Math.abs(slabZ() - bz) < 0.4 || ab(), 120000, 50);
-          await B.sl(700);
+          // the slab stops where the dame's walk ends (she may drift half a metre past her mark):
+          // wait for it to stand still under the bubble (r 4.5), not on an exact spot
+          let lastZ = slabZ();
+          let stillT = 0;
+          await B.until(() => {
+            const z = slabZ();
+            stillT = Math.abs(z - lastZ) < 0.01 ? stillT + 1 : 0;
+            lastZ = z;
+            return (Math.abs(z - bz) < 1.5 && stillT > 10) || ab();
+          }, 120000, 50);
+          await B.sl(300);
           for (let k = 0; k < 5 && !X().r2.gates[gi] && !ab(); k++) {
-            // stand in the middle of the slab, jump, double jump at the apex, ride the weak gravity
-            await B.walk([0, 0, slabZ()], 0.3, 2000);
+            // stand on the slab right under the bell, jump, double jump at the apex, ride the weak gravity
+            await B.walk([0, 0, slabZ() + Math.max(-1, Math.min(1, bz - slabZ()))], 0.3, 2000);
             S.held.add('jump');
             await B.sl(60);
             S.held.delete('jump');
@@ -406,17 +424,27 @@ window.CL = {
 
     // ================= stage 5: the card =================
     await B.until(() => X().stage >= 5 || ab(), 30000, 200);
-    if (rel().y > 1) {
+    if (X().stage < 5) {
+      B.note('reelle', me + ' : la carte n’est pas descendue (salle ' + X().stage + ' pas finie)');
+      return me + ': ' + log.join(', ');
+    }
+    const trail = [];
+    for (let tries = 0; tries < 3 && rel().y > 1 && !ab(); tries++) {
       const a = norm360(angOf(rel()));
       const da = Math.abs(shortDelta(a, 8)) < Math.abs(shortDelta(a, 172)) ? 8 : 172;
-      await arc(18.4, da, galleryDir(lvOf(rel().y), a, da));
+      const from = B.rel();
+      const okArc = await arc(18.4, da, galleryDir(lvOf(rel().y), a, da));
+      trail.push('arc ' + Math.round(a) + '°→' + da + '° depuis ' + from + (okArc ? '' : ' (marche bloquée)') + ' → ' + B.rel());
       await B.walk(pol(15.4, da, rel().y), 0.4, 6000);
       await B.until(() => grounded() && rel().y < 1, 8000, 40);
+      trail.push('bord ' + B.rel());
     }
     const s = me === 'dame' ? -1 : 1;
-    await B.walk([s * 6, 0, OC - 6], 0.6, 10000);
-    await B.walk([s * 2.2, 0, OC - 1.0], 0.4, 8000);
-    B.note('reelle', me + ' à la carte');
+    const w1 = rel().y < 1 && (await B.walk([s * 6, 0, OC - 6], 0.6, 10000));
+    const w2 = w1 && (await B.walk([s * 2.2, 0, OC - 1.0], 0.4, 8000));
+    if (w2 && W.nearCard(rel())) B.note('reelle', me + ' à la carte');
+    else B.note('reelle', me + ' PAS à la carte ' + B.rel() + (trail.length ? ' (' + trail.join(' ; ') + ')' : ''));
+    log.push('carte ' + (W.nearCard(rel()) ? 'ok' : 'ko') + (hops ? ' (' + hops + ' sauts par-dessus un socle)' : ''));
     await B.until(() => Story.S.phase !== 'tr_d5' || ab(), 20000, 200);
     return me + ': ' + log.join(', ');
   },

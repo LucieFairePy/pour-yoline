@@ -155,6 +155,7 @@ window.CL = {
       await B.walk([cs.x, cs.y, cs.z], 0.3, 3000);
       if (!W.nearCrank(rel())) B.note('reelle', 'valet pas à la manivelle : ' + B.rel());
       let lastNote = '';
+      const seen = [];
       const t0 = performance.now();
       while (X().stage === 1 && !X().s1.done && !ab() && performance.now() - t0 < 600000) {
         const s1 = X().s1;
@@ -185,7 +186,18 @@ window.CL = {
         const am = aMin();
         const q = mate();
         const p = q && W.polar(q);
-        const onHand = q && q.y > -0.45 && p.r > 1.5 && p.r < 17.2 && W.hourDist(p.a, am) < 0.45;
+        // on the hand = seen standing there for a moment (her leap from a niche passes over the
+        // hand: turning it then would pull it from under her before she lands), and not on the VI
+        // pier (it lies along the hand at VI, at the same height: she walks from it onto the hand)
+        const pierQ = q && W.nicheAt(q) < 0 && q.y > -0.8 && Math.abs(q.x) < 2.6 && q.z < 30;
+        const over = q && !pierQ && q.y > -0.45 && p.r > 1.5 && p.r < 17.2 && W.hourDist(p.a, am) < 0.45;
+        const nowT = performance.now();
+        if (!over) seen.length = 0;
+        else {
+          seen.push([nowT, q.y]);
+          while (seen.length && nowT - seen[0][0] > 900) seen.shift();
+        }
+        const onHand = over && seen.length > 2 && nowT - seen[0][0] > 600 && Math.max(...seen.map((e) => e[1])) - Math.min(...seen.map((e) => e[1])) < 0.15;
         if (!onHand) {
           // bring the hand back in front of the niche the dame boards from (once she is in it)
           // whichever niche she stands in (she may have been set down on the VI pier and walked
@@ -237,6 +249,7 @@ window.CL = {
       await B.walk([0, 0, 17.2], 0.4, 6000);
       await B.walk([0, -1.2, 21.4], 0.4, 4000);
       B.note('reelle', 'dame dans la niche du VI');
+      let miss = 0;
       const t0 = performance.now();
       while (X().stage === 1 && X().s1.round < 3 && !ab() && performance.now() - t0 < 600000) {
         const s1 = X().s1;
@@ -288,19 +301,29 @@ window.CL = {
             await settle();
             B.note('reelle', 'dame monte sur la grande aiguille au VI (onMinute=' + W.onMinute(Player.body) + ')');
           } else {
+            // jump only while the hand stands still in front of the niche; if it leaves, wait in the
+            // niche for the valet to bring it back (the outer loop)
+            const there = () => W.hourDist(aMin(), ni) < 0.05 && still();
             let ok = false;
-            for (let k = 0; k < 3 && !ok && !ab(); k++) {
+            let k = 0;
+            for (; k < 3 && !ok && there() && !ab(); k++) {
               await B.walk(handPt(ni, 19.8, -1.2), 0.4, 2000);
+              if (!there()) break;
               B.face(handPt(ni, 14));
               await B.leap(handPt(ni, 14.6), { ms: 1800 });
               await settle();
               ok = W.onMinute(Player.body);
             }
-            B.note('reelle', 'dame remonte sur la grande aiguille depuis le ' + W.ROMAN[ni] + ' : ' + ok);
-            if (!ok) {
-              B.tp(handPt(ni, 14.6, 0.1), 'saut de la niche (-1,2 m) sur la grande aiguille raté 3 fois');
-              await settle();
-            }
+            if (ok || W.nicheAt(rel()) !== ni) {
+              B.note('reelle', 'dame remonte sur la grande aiguille depuis le ' + W.ROMAN[ni] + ' : ' + ok);
+            } else if (k >= 3 && there()) {
+              miss++;
+              B.note('reelle', 'dame remonte sur la grande aiguille depuis le ' + W.ROMAN[ni] + ' : raté 3 fois (aiguille en place)');
+              if (miss >= 2) {
+                B.tp(handPt(ni, 14.6, 0.1), 'saut de la niche (-1,2 m) sur la grande aiguille raté 6 fois, aiguille en place');
+                await settle();
+              }
+            } else B.note('reelle', 'dame reste dans la niche du ' + W.ROMAN[ni] + ' : l’aiguille est repartie pendant le saut');
           }
           continue;
         }
