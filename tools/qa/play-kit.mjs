@@ -17,12 +17,12 @@ export const LIB = readFileSync(join(HERE, 'campaign', 'lib.js'), 'utf8');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // CB.trek: CB.walk with a hop when the body stops moving (a step lip, a stair start), as a
-// player does
-const TREK = `CB.trek = async (p, near = 0.45, ms = 15000) => {
+// player does; stops early once stop() is true (e.g. the level moved the player)
+const TREK = `CB.trek = async (p, near = 0.45, ms = 15000, stop = null) => {
   const t = performance.now(); let last = Player.body.p.clone(), stuck = 0;
   while (performance.now() - t < ms) {
     const b = Player.body.p;
-    if (Math.hypot(p.x - b.x, p.z - b.z) < near) { CB.stop(); return true; }
+    if (Math.hypot(p.x - b.x, p.z - b.z) < near || (stop && stop())) { CB.stop(); return true; }
     Cam.yaw = Math.atan2(p.x - b.x, p.z - b.z);
     CB.steer(p);
     await CB.sl(50);
