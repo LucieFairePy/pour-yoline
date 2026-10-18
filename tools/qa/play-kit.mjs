@@ -97,3 +97,28 @@ export const meshes = (obj) =>
   `(() => { let r = ${obj}; while (r && r.parent && r.parent !== R.scene) r = r.parent; let m = 0, n = 0; if (r) r.traverse((o) => { if (o.isMesh || o.isPoints || o.isLine || o.isSprite) m++; if (o.isInstancedMesh) n += o.count; }); return [m, n]; })()`;
 // the first Object3D held by a world's record (e.g. a book, a slot), for meshes()
 export const obj3d = (rec) => `(() => { const r = ${rec}; return r && (r.isObject3D ? r : Object.values(r).find((v) => v && v.isObject3D)); })()`;
+
+// a table of the Cour (one world shared by its three faces): the world waits through the city
+// (still built there), is unloaded once another épreuve is entered (`via`), and is built again
+// identical on re-entry (same fingerprint on both pages)
+export const rebuildHeld = async ({ A, B, go, sleep }, phase, { world, fp, built, via = 'tr_s1' }) => {
+  const w = who(A);
+  const fp0 = await both(A, B, fp);
+  const n0 = await both(A, B, 'Life.log.length');
+  if (bad(await go('city'))) return { ok: false, notes: 'the city did not load on both screens' };
+  await sleep(500);
+  const held = await both(A, B, built);
+  if (held.some((v) => !v)) return { ok: false, notes: `${world} not kept through the city: ${JSON.stringify(held)}` };
+  if (bad(await go(via))) return { ok: false, notes: `${via} did not load on both screens` };
+  await sleep(500);
+  for (const [i, p] of [A, B].entries()) {
+    const un = await p.ev(`!(${built}) && Life.log.slice(${n0[i]}).some((r) => r.world === ${JSON.stringify(world)})`);
+    if (!un) return { ok: false, notes: `${w(p)}: ${world} not unloaded once ${via} was entered` };
+  }
+  if (bad(await go(phase))) return { ok: false, notes: `${phase} did not load again on both screens` };
+  if (!(await untilBoth(A, B, built, 15000))) return { ok: false, notes: `${phase}: world not built again on entry` };
+  await sleep(800);
+  const fp1 = await both(A, B, fp);
+  if (fp1[0] !== fp0[0] || fp1[1] !== fp0[1]) return { ok: false, notes: `fingerprint changed: ${JSON.stringify({ fp0, fp1 })}` };
+  return { ok: true, text: `kept through the city, unloaded at ${via}, rebuilt identical on both pages ${fp1[0].slice(0, 80)}` };
+};
