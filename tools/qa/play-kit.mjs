@@ -69,3 +69,9 @@ export const rebuild = async ({ A, B, go, sleep }, phase, { world, fp, built }) 
   if (fp1[0] !== fp0[0] || fp1[1] !== fp0[1]) return { ok: false, notes: `fingerprint changed: ${JSON.stringify({ fp0, fp1 })}` };
   return { ok: true, text: `unloaded in the city and rebuilt, same fingerprint on both pages ${fp1[0].slice(0, 80)}` };
 };
+
+// how many colliders a world owns (Phys.owner at build), for fingerprints: Phys.count() also
+// counts the city's, which grows when a new door is put up. Searched within r m of the world's
+// origin (W.P(0, 0, 0), W the world's global name).
+export const owned = (name, W, r = 1200) =>
+  `(() => { const o = ${W}.P(0, 0, 0), s = new Set(); Phys.query(o.x - ${r}, o.z - ${r}, o.x + ${r}, o.z + ${r}).forEach((b) => b.owner === ${JSON.stringify(name)} && s.add(b)); return s.size; })()`;
