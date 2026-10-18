@@ -16,8 +16,24 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 export const LIB = readFileSync(join(HERE, 'campaign', 'lib.js'), 'utf8');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// CB.trek: CB.walk with a hop when the body stops moving (a step lip, a stair start), as a
+// player does
+const TREK = `CB.trek = async (p, near = 0.45, ms = 15000) => {
+  const t = performance.now(); let last = Player.body.p.clone(), stuck = 0;
+  while (performance.now() - t < ms) {
+    const b = Player.body.p;
+    if (Math.hypot(p.x - b.x, p.z - b.z) < near) { CB.stop(); return true; }
+    Cam.yaw = Math.atan2(p.x - b.x, p.z - b.z);
+    CB.steer(p);
+    await CB.sl(50);
+    if (Player.body.p.distanceTo(last) < 0.02) stuck++; else stuck = 0;
+    last.copy(Player.body.p);
+    if (stuck > 6) { await CB.tap('jump', 80); stuck = 0; }
+  }
+  CB.stop(); return false;
+}; 1`;
 export const hands = async (...pages) => {
-  for (const p of pages) if (!(await p.ev("typeof CB !== 'undefined' && !!CB.walk"))) await p.ev(LIB + ';1');
+  for (const p of pages) if (!(await p.ev("typeof CB !== 'undefined' && !!CB.trek"))) await p.ev(LIB + ';' + TREK);
 };
 export const who = (A) => (p) => (p === A ? 'Yoline (host)' : 'William (guest)');
 export const kits = async (A, B) => {
@@ -75,3 +91,7 @@ export const rebuild = async ({ A, B, go, sleep }, phase, { world, fp, built }) 
 // origin (W.P(0, 0, 0), W the world's global name).
 export const owned = (name, W, r = 1200) =>
   `(() => { const o = ${W}.P(0, 0, 0), s = new Set(); Phys.query(o.x - ${r}, o.z - ${r}, o.x + ${r}, o.z + ${r}).forEach((b) => b.owner === ${JSON.stringify(name)} && s.add(b)); return s.size; })()`;
+// [meshes, instances] of the scene-level group holding an object of the world (e.g. its screen
+// mesh), for worlds that do not expose their root group
+export const meshes = (obj) =>
+  `(() => { let r = ${obj}; while (r && r.parent && r.parent !== R.scene) r = r.parent; let m = 0, n = 0; if (r) r.traverse((o) => { if (o.isMesh || o.isPoints || o.isLine || o.isSprite) m++; if (o.isInstancedMesh) n += o.count; }); return [m, n]; })()`;
