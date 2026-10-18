@@ -108,6 +108,8 @@ try {
     log('boot', JSON.stringify(r));
     if (!r.ok) fail('boot', `players disagree or did not start: ${r.phaseA} / ${r.phaseB}`);
     report.gpuAtBootMB = chrome.gpuMB();
+    // every playable phase, for the coverage summary (which have a play script)
+    report.allPhases = await levels().catch(() => []);
   }
 
   // ---- phases: every level loads on both screens without a page error
@@ -273,6 +275,13 @@ for (const [ph, r] of pl) L.push(`- ${ph} ${r.ok ? 'ok' : 'FAILED'}: ${r.covered
 if (Object.keys(report.phases).length) {
   const none = Object.keys(report.phases).filter((p) => !report.play[p]);
   L.push(`Phases loaded but with no scripted interaction (load, render and errors only): ${none.length} — ${none.join(', ')}`);
+}
+{
+  const dir = join(HERE, 'play');
+  const have = new Set(existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4)) : []);
+  const all = report.allPhases || [];
+  const missing = all.filter((p) => !have.has(p));
+  if (all.length) L.push(`Play scripts in tools/qa/play: ${all.length - missing.length}/${all.length} phases; without one: ${missing.length ? missing.join(', ') : 'none'}.`);
 }
 
 // ---- comparison with an earlier report
