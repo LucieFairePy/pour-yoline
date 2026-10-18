@@ -100,9 +100,14 @@ export const obj3d = (rec) => `(() => { const r = ${rec}; return r && (r.isObjec
 
 // a table of the Cour (one world shared by its three faces): the world waits through the city
 // (still built there), is unloaded once another épreuve is entered (`via`), and is built again
-// identical on re-entry (same fingerprint on both pages)
+// identical on re-entry (same fingerprint on both pages as a fresh build of this face)
 export const rebuildHeld = async ({ A, B, go, sleep }, phase, { world, fp, built, via = 'tr_s1' }) => {
   const w = who(A);
+  // the reference: a fresh build for this face (the page may have resumed in another face of
+  // the same table, whose world then carries that face's state)
+  if (bad(await go(via)) || bad(await go(phase))) return { ok: false, notes: `${via} / ${phase} did not load on both screens` };
+  if (!(await untilBoth(A, B, built, 15000))) return { ok: false, notes: `${phase}: world not built` };
+  await sleep(1500);
   const fp0 = await both(A, B, fp);
   const n0 = await both(A, B, 'Life.log.length');
   if (bad(await go('city'))) return { ok: false, notes: 'the city did not load on both screens' };
