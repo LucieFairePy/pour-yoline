@@ -90,3 +90,13 @@ set's `_SOURCE_ET_LICENCE.json` / `License.txt` was checked).
 | `ui_click_*` | "Interface Sounds", https://kenney.nl/assets/interface-sounds (`click_001`, `select_001`, `select_002`) | Kenney | CC0 | idem |
 | `step_concrete_*`, `step_wood_*`, `land_*`, `glass_*` | "Impact Sounds", https://kenney.nl/assets/impact-sounds (`footstep_concrete`, `footstep_wood`, `impactSoft_heavy`, `impactGlass_heavy`) | Kenney | CC0 | idem |
 | `switch_latch`, `switch_click`, `creak_*` | "RPG Audio", https://kenney.nl/assets/rpg-audio (`metalLatch`, `metalClick`, `creak1..3`) | Kenney | CC0 | idem |
+
+## Animation lab (`anim/`) — `animlab.html` only, not loaded by the game yet
+
+Details, file hashes and what was changed: `anim/README.md`.
+
+| File | Source | Author | Licence | Changes |
+|------|--------|--------|---------|---------|
+| `anim/ual_mannequin.glb` | "Universal Animation Library" 1 + 2, Standard editions, https://quaternius.com/packs/universalanimationlibrary.html | Quaternius | CC0 | UAL1 mesh and skin, 16 UAL1 clips + 8 UAL2 clips merged by bone name, constant channels dropped (1.6 MB). |
+| `anim/ual_mannequin_f.glb` | "Universal Animation Library 2", Standard edition (`Mannequin_F.glb`) | Quaternius | CC0 | Unchanged. |
+| `anim/kaykit_knight.glb` | "KayKit Character Pack: Adventurers 1.0", https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 | Kay Lousberg | CC0 | Weapon and shield props removed, 8 of 76 clips kept. |

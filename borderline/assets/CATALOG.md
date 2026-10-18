@@ -31,6 +31,11 @@ in the background, after the game has started; the estoc and the sounds only wit
 Runtime-only dependency: `three@0.128.0/examples/js/loaders/GLTFLoader.js` (MIT, same CDN and
 version as three.min.js, jsDelivr then unpkg), fetched only when a model is first asked for.
 
+Animation lab (`anim/`, used only by `animlab.html`, not by the game yet; details and hashes in
+`anim/README.md`): `anim/ual_mannequin.glb` (Quaternius, Universal Animation Library 1 + 2
+Standard, CC0, 24 clips, 1.6 MB), `anim/ual_mannequin_f.glb` (Quaternius, UAL2 Standard, CC0,
+1.4 MB), `anim/kaykit_knight.glb` (Kay Lousberg, KayKit Adventurers 1.0, CC0, 8 clips, 0.5 MB).
+
 ## 2. Downloaded, inspected, not kept
 
 | asset | source / licence | why not |
