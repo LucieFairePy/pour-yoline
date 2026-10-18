@@ -95,3 +95,5 @@ export const owned = (name, W, r = 1200) =>
 // mesh), for worlds that do not expose their root group
 export const meshes = (obj) =>
   `(() => { let r = ${obj}; while (r && r.parent && r.parent !== R.scene) r = r.parent; let m = 0, n = 0; if (r) r.traverse((o) => { if (o.isMesh || o.isPoints || o.isLine || o.isSprite) m++; if (o.isInstancedMesh) n += o.count; }); return [m, n]; })()`;
+// the first Object3D held by a world's record (e.g. a book, a slot), for meshes()
+export const obj3d = (rec) => `(() => { const r = ${rec}; return r && (r.isObject3D ? r : Object.values(r).find((v) => v && v.isObject3D)); })()`;
